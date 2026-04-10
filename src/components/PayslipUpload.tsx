@@ -92,9 +92,33 @@ const PayslipUpload = ({ onUploadComplete }: PayslipUploadProps) => {
       extraction_status: 'pending',
     });
 
+    setState('processing');
+
+    // Trigger AI extraction via edge function
+    try {
+      const { data: fnData, error: fnError } = await supabase.functions.invoke('process-payslip', {
+        body: { payslip_id: payslip.id },
+      });
+
+      if (fnError) {
+        console.error('Processing error:', fnError);
+        toast({ title: 'Upload complete', description: 'Your payslip was uploaded but processing encountered an issue. You can retry from the vault.' });
+      } else {
+        const anomalyCount = fnData?.anomalies_found || 0;
+        toast({
+          title: 'Payslip processed',
+          description: anomalyCount > 0
+            ? `We found ${anomalyCount} item${anomalyCount !== 1 ? 's' : ''} worth reviewing.`
+            : 'Everything looks good — no issues found.',
+        });
+      }
+    } catch (err) {
+      console.error('Edge function call failed:', err);
+      toast({ title: 'Upload complete', description: 'Processing will continue in the background.' });
+    }
+
     setProgress(100);
     setState('success');
-    toast({ title: 'Payslip uploaded', description: 'Your payslip has been uploaded and is being processed.' });
     onUploadComplete?.(payslip.id);
   }, [user, toast, onUploadComplete]);
 
