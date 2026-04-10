@@ -1,32 +1,52 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { CheckCircle } from 'lucide-react';
-import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 
-const SignIn = () => {
+const ResetPassword = () => {
   const navigate = useNavigate();
-  const { signIn } = useAuth();
   const { toast } = useToast();
-  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [valid, setValid] = useState(false);
+
+  useEffect(() => {
+    const hash = window.location.hash;
+    if (hash.includes('type=recovery')) {
+      setValid(true);
+    }
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    const { error } = await signIn(email, password);
+    const { error } = await supabase.auth.updateUser({ password });
     setLoading(false);
     if (error) {
-      toast({ title: 'Sign in failed', description: error.message, variant: 'destructive' });
+      toast({ title: 'Error', description: error.message, variant: 'destructive' });
     } else {
-      navigate('/dashboard');
+      toast({ title: 'Password updated', description: 'You can now sign in with your new password.' });
+      navigate('/sign-in');
     }
   };
+
+  if (!valid) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background px-4">
+        <Card className="w-full max-w-md border-0 shadow-lg">
+          <CardContent className="p-8 text-center">
+            <p className="text-muted-foreground">Invalid or expired reset link.</p>
+            <Link to="/forgot-password" className="mt-4 inline-block text-primary hover:underline text-sm">Request a new link</Link>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
@@ -41,29 +61,19 @@ const SignIn = () => {
         </div>
         <Card className="border-0 shadow-lg">
           <CardHeader className="text-center">
-            <CardTitle className="text-2xl">Welcome back</CardTitle>
-            <CardDescription>Sign in to continue to PayCheck</CardDescription>
+            <CardTitle className="text-2xl">Set new password</CardTitle>
+            <CardDescription>Enter your new password below.</CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
-                <Input id="email" type="email" placeholder="you@example.com" value={email} onChange={(e) => setEmail(e.target.value)} required />
-              </div>
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <Label htmlFor="password">Password</Label>
-                  <Link to="/forgot-password" className="text-xs text-primary hover:underline">Forgot password?</Link>
-                </div>
-                <Input id="password" type="password" placeholder="••••••••" value={password} onChange={(e) => setPassword(e.target.value)} required />
+                <Label htmlFor="password">New password</Label>
+                <Input id="password" type="password" placeholder="At least 8 characters" value={password} onChange={(e) => setPassword(e.target.value)} required minLength={8} />
               </div>
               <Button type="submit" className="w-full" disabled={loading}>
-                {loading ? 'Signing in…' : 'Sign in'}
+                {loading ? 'Updating…' : 'Update password'}
               </Button>
             </form>
-            <p className="mt-6 text-center text-sm text-muted-foreground">
-              Don't have an account? <Link to="/sign-up" className="text-primary hover:underline font-medium">Sign up</Link>
-            </p>
           </CardContent>
         </Card>
       </div>
@@ -71,4 +81,4 @@ const SignIn = () => {
   );
 };
 
-export default SignIn;
+export default ResetPassword;

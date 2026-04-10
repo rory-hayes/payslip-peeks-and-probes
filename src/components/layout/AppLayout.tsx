@@ -12,6 +12,7 @@ import {
   CheckCircle,
   CreditCard,
 } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
 
 const navItems = [
   { label: 'Dashboard', icon: LayoutDashboard, path: '/dashboard' },
@@ -23,7 +24,13 @@ const navItems = [
 const AppLayout = ({ children }: { children: ReactNode }) => {
   const location = useLocation();
   const navigate = useNavigate();
+  const { signOut } = useAuth();
   const [open, setOpen] = useState(false);
+
+  const handleSignOut = async () => {
+    await signOut();
+    navigate('/');
+  };
 
   const NavLinks = ({ onSelect }: { onSelect?: () => void }) => (
     <div className="flex flex-col gap-1">
@@ -72,7 +79,7 @@ const AppLayout = ({ children }: { children: ReactNode }) => {
             Upgrade
           </Link>
           <button
-            onClick={() => navigate('/')}
+            onClick={handleSignOut}
             className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
           >
             <LogOut className="h-4 w-4" />
@@ -108,7 +115,7 @@ const AppLayout = ({ children }: { children: ReactNode }) => {
                   <CreditCard className="h-4 w-4" /> Upgrade
                 </Link>
                 <button
-                  onClick={() => { setOpen(false); navigate('/'); }}
+                  onClick={() => { setOpen(false); handleSignOut(); }}
                   className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-muted-foreground hover:bg-muted"
                 >
                   <LogOut className="h-4 w-4" /> Sign out
