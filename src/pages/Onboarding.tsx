@@ -7,23 +7,66 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Progress } from '@/components/ui/progress';
 import { CheckCircle, ArrowRight, ArrowLeft, Upload, Sparkles } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
+import { useToast } from '@/hooks/use-toast';
 
 const steps = ['Welcome', 'Country', 'Pay profile', 'Payroll details', 'Ready'];
 
 const Onboarding = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const { toast } = useToast();
   const [step, setStep] = useState(0);
   const [country, setCountry] = useState<'UK' | 'Ireland' | ''>('');
   const [frequency, setFrequency] = useState('monthly');
   const [employer, setEmployer] = useState('');
   const [payrollEmail, setPayrollEmail] = useState('');
   const [flags, setFlags] = useState({ pension: false, studentLoan: false, bonus: false, benefits: false });
+  const [saving, setSaving] = useState(false);
 
   const progress = ((step + 1) / steps.length) * 100;
   const canNext = step === 0 || (step === 1 && country) || (step === 2 && employer) || step === 3 || step === 4;
 
   const next = () => { if (step < steps.length - 1) setStep(step + 1); };
   const back = () => { if (step > 0) setStep(step - 1); };
+
+  const handleFinish = async () => {
+    if (!user) return;
+    setSaving(true);
+    
+    // Update profile
+    const { error: profileError } = await supabase
+      .from('profiles')
+      .update({
+        country: country || null,
+        pay_frequency: frequency,
+        employer_name: employer,
+        payroll_email: payrollEmail || null,
+        has_pension: flags.pension,
+        has_student_loan: flags.studentLoan,
+        has_bonus: flags.bonus,
+        has_benefits: flags.benefits,
+        onboarding_complete: true,
+      })
+      .eq('user_id', user.id);
+
+    // Create employer record
+    if (employer) {
+      await supabase.from('employers').insert({
+        user_id: user.id,
+        name: employer,
+        payroll_email: payrollEmail || null,
+      });
+    }
+
+    setSaving(false);
+    if (profileError) {
+      toast({ title: 'Error', description: profileError.message, variant: 'destructive' });
+    } else {
+      navigate('/dashboard');
+    }
+  };
 
   return (
     <div className="flex min-h-screen flex-col bg-background">
@@ -163,8 +206,8 @@ const Onboarding = () => {
                   Continue <ArrowRight className="h-4 w-4" />
                 </Button>
               ) : (
-                <Button onClick={() => navigate('/dashboard')} className="gap-1">
-                  Upload your first payslip <ArrowRight className="h-4 w-4" />
+                <Button onClick={handleFinish} disabled={saving} className="gap-1">
+                  {saving ? 'Saving…' : 'Upload your first payslip'} <ArrowRight className="h-4 w-4" />
                 </Button>
               )}
             </div>
