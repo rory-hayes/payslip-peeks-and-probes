@@ -1,22 +1,61 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import AppLayout from '@/components/layout/AppLayout';
+import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
 const Settings = () => {
   const { toast } = useToast();
-  const [firstName, setFirstName] = useState('Alex');
+  const { user, signOut } = useAuth();
+  const [firstName, setFirstName] = useState('');
   const [country, setCountry] = useState<'UK' | 'Ireland'>('UK');
   const [frequency, setFrequency] = useState('monthly');
-  const [employer, setEmployer] = useState('Acme Technologies Ltd');
-  const [payrollEmail, setPayrollEmail] = useState('payroll@acme.com');
+  const [employer, setEmployer] = useState('');
+  const [payrollEmail, setPayrollEmail] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  const handleSave = () => {
-    toast({ title: 'Settings saved', description: 'Your profile has been updated.' });
+  useEffect(() => {
+    if (!user) return;
+    supabase
+      .from('profiles')
+      .select('*')
+      .eq('user_id', user.id)
+      .single()
+      .then(({ data }) => {
+        if (data) {
+          setFirstName(data.first_name || '');
+          setCountry((data.country as 'UK' | 'Ireland') || 'UK');
+          setFrequency(data.pay_frequency || 'monthly');
+          setEmployer(data.employer_name || '');
+          setPayrollEmail(data.payroll_email || '');
+        }
+      });
+  }, [user]);
+
+  const handleSave = async () => {
+    if (!user) return;
+    setLoading(true);
+    const { error } = await supabase
+      .from('profiles')
+      .update({
+        first_name: firstName,
+        country,
+        pay_frequency: frequency,
+        employer_name: employer,
+        payroll_email: payrollEmail || null,
+      })
+      .eq('user_id', user.id);
+    setLoading(false);
+    if (error) {
+      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+    } else {
+      toast({ title: 'Settings saved', description: 'Your profile has been updated.' });
+    }
   };
 
   return (
@@ -81,13 +120,22 @@ const Settings = () => {
           </CardContent>
         </Card>
 
-        <Button onClick={handleSave}>Save changes</Button>
+        <Button onClick={handleSave} disabled={loading}>
+          {loading ? 'Saving…' : 'Save changes'}
+        </Button>
 
         <Separator />
 
         <Card className="border-0 shadow-sm">
           <CardHeader className="pb-2"><CardTitle className="text-base text-destructive">Danger zone</CardTitle></CardHeader>
           <CardContent className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-foreground">Sign out</p>
+                <p className="text-xs text-muted-foreground">Sign out of your account on this device.</p>
+              </div>
+              <Button variant="outline" size="sm" onClick={signOut}>Sign out</Button>
+            </div>
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-foreground">Delete account</p>

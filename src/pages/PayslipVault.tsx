@@ -1,15 +1,16 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import AppLayout from '@/components/layout/AppLayout';
+import PayslipUpload from '@/components/PayslipUpload';
 import { demoPayslips, formatCurrency, formatDate } from '@/lib/demo-data';
-import { FileText, Upload, Search, AlertTriangle } from 'lucide-react';
+import { FileText, Search, AlertTriangle } from 'lucide-react';
 
 const PayslipVault = () => {
   const [search, setSearch] = useState('');
+  const [showUpload, setShowUpload] = useState(false);
   const filtered = demoPayslips.filter(
     (s) =>
       s.employer_name.toLowerCase().includes(search.toLowerCase()) ||
@@ -24,8 +25,9 @@ const PayslipVault = () => {
             <h1 className="text-2xl font-bold text-foreground">Payslip Vault</h1>
             <p className="text-sm text-muted-foreground">{demoPayslips.length} payslips stored securely</p>
           </div>
-          <Button className="gap-2"><Upload className="h-4 w-4" /> Upload payslip</Button>
         </div>
+
+        <PayslipUpload onUploadComplete={() => setShowUpload(false)} />
 
         <div className="relative">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
