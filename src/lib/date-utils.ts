@@ -1,23 +1,28 @@
 import { parse, isValid, format } from 'date-fns';
 
 /**
- * Robust date parser that handles:
- * - ISO (YYYY-MM-DD)
- * - DD/MM/YYYY, DD-MM-YYYY
- * - Textual ("31 March 2026", "March 31, 2026")
- * - Already-valid Date strings
+ * Robust date parser for UK/IE payslip dates.
+ * Handles ISO, DD/MM/YYYY, D/M/YYYY, textual, and mixed formats.
+ * Always returns a Date in UTC-safe manner.
  */
 const DATE_FORMATS = [
   'yyyy-MM-dd',
   'dd/MM/yyyy',
+  'd/M/yyyy',
   'dd-MM-yyyy',
+  'd-M-yyyy',
+  'dd.MM.yyyy',
+  'd.M.yyyy',
   'dd MMMM yyyy',
-  'dd MMM yyyy',
-  'MMMM dd, yyyy',
-  'MMM dd, yyyy',
   'd MMMM yyyy',
+  'dd MMM yyyy',
   'd MMM yyyy',
-  'MM/dd/yyyy',
+  'MMMM dd, yyyy',
+  'MMMM d, yyyy',
+  'MMM dd, yyyy',
+  'MMM d, yyyy',
+  'MMMM dd yyyy',
+  'MMM dd yyyy',
 ];
 
 export function parsePayDate(input: string | null | undefined): Date | null {
@@ -25,31 +30,45 @@ export function parsePayDate(input: string | null | undefined): Date | null {
   const trimmed = input.trim();
   if (!trimmed) return null;
 
-  // Try native parse first (handles ISO)
-  const native = new Date(trimmed);
-  if (isValid(native) && /^\d{4}-\d{2}-\d{2}/.test(trimmed)) {
-    return native;
+  // ISO with optional time — construct via UTC to avoid timezone shift
+  const isoMatch = trimmed.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (isoMatch) {
+    const d = new Date(Date.UTC(+isoMatch[1], +isoMatch[2] - 1, +isoMatch[3]));
+    if (isValid(d) && d.getUTCDate() === +isoMatch[3]) return d;
   }
 
-  // Try each format
+  // Try each date-fns format
   for (const fmt of DATE_FORMATS) {
-    const parsed = parse(trimmed, fmt, new Date());
-    if (isValid(parsed)) return parsed;
+    const parsed = parse(trimmed, fmt, new Date(2000, 0, 1));
+    if (isValid(parsed) && parsed.getFullYear() > 1900 && parsed.getFullYear() < 2100) {
+      return parsed;
+    }
   }
-
-  // Last resort: native parse
-  if (isValid(native)) return native;
 
   return null;
 }
 
 /**
- * Format a date string for display, e.g. "31 Oct 2025".
- * Returns "Unknown date" if parsing fails.
+ * Normalise any date string to YYYY-MM-DD for database storage.
+ * Returns null if the date cannot be parsed.
+ */
+export function normaliseToISO(input: string | null | undefined): string | null {
+  const d = parsePayDate(input);
+  if (!d) return null;
+  // Use UTC-safe formatting for ISO dates, local for date-fns parsed
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
+/**
+ * Format a date string for display, e.g. "31 Mar 2025".
+ * Returns a dash if parsing fails (never "Invalid Date").
  */
 export function formatDate(dateStr: string | null | undefined): string {
   const d = parsePayDate(dateStr);
-  if (!d) return 'Unknown date';
+  if (!d) return '—';
   return format(d, 'd MMM yyyy');
 }
 
@@ -58,7 +77,7 @@ export function formatDate(dateStr: string | null | undefined): string {
  */
 export function formatMonth(dateStr: string): string {
   const d = parsePayDate(dateStr);
-  if (!d) return '?';
+  if (!d) return '—';
   return format(d, 'MMM');
 }
 
