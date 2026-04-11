@@ -7,10 +7,11 @@ import AppLayout from '@/components/layout/AppLayout';
 import { usePayslips, useAnomalies, usePayTrends } from '@/hooks/use-payslip-data';
 import ExpectedVsActual from '@/components/ExpectedVsActual';
 import ExpectedVsActualChart from '@/components/ExpectedVsActualChart';
-import { useCurrency } from '@/hooks/use-profile';
+import { useCurrency, useProfile } from '@/hooks/use-profile';
 import { formatDate } from '@/lib/demo-data';
+import { generatePaySummaryPdf } from '@/lib/generate-pay-summary-pdf';
 import {
-  Upload, TrendingUp, TrendingDown, AlertTriangle, FileText, ArrowRight, BarChart3,
+  Upload, TrendingUp, TrendingDown, AlertTriangle, FileText, ArrowRight, BarChart3, Download,
 } from 'lucide-react';
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -20,7 +21,8 @@ const Dashboard = () => {
   const { data: payslips, isLoading: loadingSlips } = usePayslips();
   const { data: anomalies, isLoading: loadingAnomalies } = useAnomalies();
   const { data: trends } = usePayTrends();
-  const { format: formatCurrency, symbol: currSym } = useCurrency();
+  const { data: profile } = useProfile();
+  const { format: formatCurrency, symbol: currSym, currency } = useCurrency();
 
   const latest = payslips?.[payslips.length - 1];
   const previous = payslips && payslips.length > 1 ? payslips[payslips.length - 2] : null;
@@ -29,6 +31,22 @@ const Dashboard = () => {
   const isLoading = loadingSlips || loadingAnomalies;
 
   const isEmpty = !isLoading && (!payslips || payslips.length === 0);
+
+  const handleExportPdf = () => {
+    if (!payslips || payslips.length === 0) return;
+    generatePaySummaryPdf({
+      payslips,
+      currency,
+      country: profile?.country ?? null,
+      annualSalary: profile?.annual_salary,
+      deductionOpts: {
+        pensionPercent: profile?.has_pension ? (profile.pension_percent ?? 5) : 0,
+        hasStudentLoan: profile?.has_student_loan,
+        studentLoanPlan: (profile?.student_loan_plan as any) ?? 'plan2',
+      },
+      firstName: profile?.first_name,
+    });
+  };
 
   return (
     <AppLayout>
@@ -41,9 +59,16 @@ const Dashboard = () => {
               {isEmpty ? 'Upload your first payslip to get started.' : 'Here\'s your pay overview.'}
             </p>
           </div>
-          <Link to="/vault">
-            <Button className="gap-2"><Upload className="h-4 w-4" /> Upload payslip</Button>
-          </Link>
+          <div className="flex gap-2">
+            {payslips && payslips.length > 0 && (
+              <Button variant="outline" className="gap-2" onClick={handleExportPdf}>
+                <Download className="h-4 w-4" /> Export PDF
+              </Button>
+            )}
+            <Link to="/vault">
+              <Button className="gap-2"><Upload className="h-4 w-4" /> Upload payslip</Button>
+            </Link>
+          </div>
         </div>
 
         {/* Loading state */}
