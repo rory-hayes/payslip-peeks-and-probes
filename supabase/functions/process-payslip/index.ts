@@ -157,8 +157,8 @@ function runAnomalyChecks(
       severity: "high",
       confidence: "high",
       title: "Missing key pay fields",
-      description: "We couldn't find gross pay or net pay on this payslip. The figures may need manual review.",
-      suggested_action: "Open the original payslip and confirm the values are correct.",
+      description: "What changed: We couldn't extract gross pay or net pay from this payslip.\n\nWhy it matters: Without these core figures, we can't run meaningful checks on your pay. The values may be in an unusual format or location on the document.\n\nHere's what changed and why it may need review.",
+      suggested_action: "Open your original payslip document and manually confirm the gross and net pay values. Then edit them in the review screen to ensure your records are accurate.",
     });
   }
 
@@ -167,9 +167,9 @@ function runAnomalyChecks(
       anomaly_type: "net_exceeds_gross",
       severity: "high",
       confidence: "high",
-      title: "Net pay exceeds gross pay",
-      description: "Your net pay is higher than your gross pay, which is unusual unless you received a refund or back-pay adjustment.",
-      suggested_action: "Check with payroll — this may be an error or a one-off adjustment.",
+      title: "Net pay is higher than gross pay",
+      description: `What changed: Your net pay (${sym}${current.net_pay.toFixed(2)}) is higher than your gross pay (${sym}${current.gross_pay.toFixed(2)}).\n\nWhy it matters: Normally, deductions reduce your gross pay to produce a lower net figure. When net exceeds gross, it usually means there's a refund, back-pay adjustment, or an extraction error.\n\nThis may be perfectly valid, but it's worth checking.`,
+      suggested_action: "Check your payslip for any tax refunds, back-pay adjustments, or expense reimbursements that might explain this. If none apply, ask your payroll team to clarify.",
     });
   }
 
@@ -179,8 +179,8 @@ function runAnomalyChecks(
       severity: "high",
       confidence: "high",
       title: "Negative net pay",
-      description: "Your net pay is negative, which is extremely unusual and may indicate an overpayment recovery.",
-      suggested_action: "Contact payroll immediately to understand why your net pay is negative.",
+      description: `What changed: Your net pay is ${sym}${current.net_pay.toFixed(2)}, which is a negative amount.\n\nWhy it matters: A negative net pay is extremely unusual. It typically means your employer is recovering an overpayment, or deductions exceeded your earnings this period. This directly affects the money reaching your account.\n\nHere's what changed and why it may need review.`,
+      suggested_action: "Contact your payroll team as soon as possible to understand why your net pay is negative. Ask for a written breakdown of any overpayment recovery or adjustment being applied.",
     });
   }
 
@@ -190,8 +190,8 @@ function runAnomalyChecks(
       severity: "high",
       confidence: "high",
       title: "Negative gross pay",
-      description: "Your gross pay is negative, which shouldn't normally happen.",
-      suggested_action: "This is likely an extraction error — check the original payslip.",
+      description: `What changed: Your gross pay is showing as ${sym}${current.gross_pay.toFixed(2)}, which is a negative amount.\n\nWhy it matters: Negative gross pay shouldn't normally occur. This is most likely an extraction error where the value was read incorrectly from your payslip.\n\nHere's what changed and why it may need review.`,
+      suggested_action: "Check the original payslip document to confirm the gross pay figure. If the extraction was wrong, edit the value in the review screen.",
     });
   }
 
