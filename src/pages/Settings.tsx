@@ -14,10 +14,12 @@ const Settings = () => {
   const { user, signOut } = useAuth();
   const [firstName, setFirstName] = useState('');
   const [country, setCountry] = useState<'UK' | 'Ireland'>('UK');
+  const [annualSalary, setAnnualSalary] = useState('');
   const [frequency, setFrequency] = useState('monthly');
   const [employer, setEmployer] = useState('');
   const [payrollEmail, setPayrollEmail] = useState('');
   const [loading, setLoading] = useState(false);
+  const currencySymbol = country === 'Ireland' ? '€' : '£';
 
   useEffect(() => {
     if (!user) return;
