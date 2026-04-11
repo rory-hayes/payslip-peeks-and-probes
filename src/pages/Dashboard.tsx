@@ -7,6 +7,7 @@ import AppLayout from '@/components/layout/AppLayout';
 import { usePayslips, useAnomalies, usePayTrends } from '@/hooks/use-payslip-data';
 import ExpectedVsActual from '@/components/ExpectedVsActual';
 import ExpectedVsActualChart from '@/components/ExpectedVsActualChart';
+import YearToDateSummary from '@/components/YearToDateSummary';
 import { useCurrency, useProfile } from '@/hooks/use-profile';
 import { formatDate } from '@/lib/demo-data';
 import { generatePaySummaryPdf } from '@/lib/generate-pay-summary-pdf';
@@ -156,6 +157,7 @@ const Dashboard = () => {
             {/* Expected vs Actual comparison */}
             <ExpectedVsActual latestPayslip={latest} />
             <ExpectedVsActualChart payslips={payslips!} />
+            <YearToDateSummary payslips={payslips!} />
 
             {/* Chart + anomalies */}
             <div className="grid gap-6 lg:grid-cols-5">
