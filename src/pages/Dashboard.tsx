@@ -130,6 +130,7 @@ const Dashboard = () => {
 
             {/* Expected vs Actual comparison */}
             <ExpectedVsActual latestPayslip={latest} />
+            <ExpectedVsActualChart payslips={payslips!} />
 
             {/* Chart + anomalies */}
             <div className="grid gap-6 lg:grid-cols-5">
