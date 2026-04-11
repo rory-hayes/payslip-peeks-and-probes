@@ -16,8 +16,9 @@ const ExpectedVsActual = ({ latestPayslip }: Props) => {
   if (!profile?.annual_salary) return null;
 
   const opts = {
-    pensionPercent: profile.has_pension ? 5 : 0,
+    pensionPercent: profile.has_pension ? (profile.pension_percent ?? 5) : 0,
     hasStudentLoan: profile.has_student_loan,
+    studentLoanPlan: (profile.student_loan_plan as any) ?? 'plan2',
   };
   const expected = calculateExpectedMonthly(profile.annual_salary, profile.country, opts);
   const actual = latestPayslip;
@@ -55,8 +56,8 @@ const ExpectedVsActual = ({ latestPayslip }: Props) => {
               <TooltipContent className="max-w-64">
                 <p className="text-xs">
                   Based on your annual salary of {fmt(profile.annual_salary)} and {profile.country ?? 'UK'} tax rates
-                  {expected.pension > 0 ? ', 5% pension contribution' : ''}
-                  {expected.studentLoan > 0 ? ', Plan 2 student loan' : ''}.
+                   {expected.pension > 0 ? `, ${profile.pension_percent ?? 5}% pension contribution` : ''}
+                   {expected.studentLoan > 0 ? `, ${(profile.student_loan_plan ?? 'plan2').replace('plan', 'Plan ')} student loan` : ''}.
                   Estimates only — may differ from actual deductions.
                 </p>
               </TooltipContent>
