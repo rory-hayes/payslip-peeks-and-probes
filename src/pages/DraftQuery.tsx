@@ -8,35 +8,83 @@ import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 import AppLayout from '@/components/layout/AppLayout';
 import { usePayslip, useAnomalies } from '@/hooks/use-payslip-data';
+import { useProfile } from '@/hooks/use-profile';
 import { formatDate } from '@/lib/date-utils';
 import { ArrowLeft, Copy, Mail, CheckCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+
+function safeDateLabel(raw: string | null | undefined): string {
+  if (!raw) return 'a recent pay period';
+  const formatted = formatDate(raw);
+  if (!formatted || formatted === '—' || formatted.toLowerCase().includes('invalid')) {
+    return 'a recent pay period';
+  }
+  return formatted;
+}
+
+function buildDraft(
+  dateLabel: string,
+  employerName: string | null,
+  anomalies: { title: string; description?: string | null; suggested_action?: string | null }[],
+  firstName: string | null,
+) {
+  const greeting = 'Dear Payroll Team,';
+  const opening = `I'm writing regarding my payslip dated ${dateLabel}.`;
+
+  let middle: string;
+  if (anomalies.length > 0) {
+    const items = anomalies.map((a) => {
+      let line = `• ${a.title}`;
+      if (a.description) {
+        // Take first sentence of description for conciseness
+        const firstSentence = a.description.split(/(?<=\.)\s/)[0];
+        line += ` — ${firstSentence}`;
+      }
+      return line;
+    });
+    middle =
+      `While reviewing my payslip, I noticed the following:\n\n${items.join('\n')}\n\n` +
+      `Could you please confirm whether these figures are correct? If there has been a change, I'd appreciate a brief explanation.`;
+  } else {
+    middle =
+      `I have a question about my pay this period and would appreciate your help clarifying the details. ` +
+      `Could you please confirm the breakdown of deductions and net pay?`;
+  }
+
+  const signOff = firstName
+    ? `Kind regards,\n${firstName}`
+    : 'Kind regards';
+
+  return `${greeting}\n\n${opening}\n\n${middle}\n\nI'd be happy to discuss further if needed.\n\n${signOff}`;
+}
+
+function buildSubject(dateLabel: string, hasAnomalies: boolean): string {
+  if (hasAnomalies) {
+    return `Query about my ${dateLabel} payslip`;
+  }
+  return `Clarification on my ${dateLabel} payslip`;
+}
 
 const DraftQuery = () => {
   const { id } = useParams();
   const { toast } = useToast();
   const { data: slip, isLoading } = usePayslip(id);
   const { data: allAnomalies } = useAnomalies();
+  const { data: profile } = useProfile();
   const anomalies = allAnomalies?.filter((a) => a.payslip_id === id) || [];
-
-  const defaultSubject = slip ? `Query about my ${formatDate(slip.pay_date)} payslip` : '';
-  const defaultBody = slip
-    ? `Dear Payroll Team,\n\nI'm writing regarding my payslip dated ${formatDate(slip.pay_date)}.\n\n${
-        anomalies.length > 0
-          ? `I noticed the following:\n${anomalies.map((a) => `• ${a.title}`).join('\n')}\n\nCould you please review these items and confirm whether the figures are correct?`
-          : 'I have a question about my pay this period and would appreciate your help reviewing the details.'
-      }\n\nI'd appreciate any clarification. Happy to discuss further if needed.\n\nKind regards`
-    : '';
 
   const [subject, setSubject] = useState('');
   const [body, setBody] = useState('');
+  const [toEmail, setToEmail] = useState('');
   const [copied, setCopied] = useState(false);
   const [initialized, setInitialized] = useState(false);
 
   // Initialize once data loads
   if (slip && !initialized) {
-    setSubject(defaultSubject);
-    setBody(defaultBody);
+    const dateLabel = safeDateLabel(slip.pay_date);
+    setSubject(buildSubject(dateLabel, anomalies.length > 0));
+    setBody(buildDraft(dateLabel, slip.employer_name, anomalies, profile?.first_name ?? null));
+    setToEmail(profile?.payroll_email ?? '');
     setInitialized(true);
   }
 
@@ -47,7 +95,7 @@ const DraftQuery = () => {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const mailtoLink = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+  const mailtoLink = `mailto:${encodeURIComponent(toEmail)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
 
   if (isLoading) {
     return (
@@ -81,7 +129,10 @@ const DraftQuery = () => {
           <Link to={`/payslip/${id}`}><Button variant="ghost" size="icon"><ArrowLeft className="h-4 w-4" /></Button></Link>
           <div>
             <h1 className="text-xl font-bold text-foreground">Draft payroll query</h1>
-            <p className="text-sm text-muted-foreground">For payslip dated {formatDate(slip.pay_date)}</p>
+            <p className="text-sm text-muted-foreground">
+              For payslip dated {safeDateLabel(slip.pay_date)}
+              {slip.employer_name ? ` · ${slip.employer_name}` : ''}
+            </p>
           </div>
         </div>
 
@@ -89,15 +140,31 @@ const DraftQuery = () => {
           <CardHeader className="pb-2"><CardTitle className="text-base">Your message</CardTitle></CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
+              <Label>To</Label>
+              <Input
+                type="email"
+                placeholder="payroll@company.com"
+                value={toEmail}
+                onChange={(e) => setToEmail(e.target.value)}
+              />
+              {!toEmail && (
+                <p className="text-xs text-muted-foreground">
+                  Add your payroll email in <Link to="/settings" className="text-primary hover:underline">Settings</Link> to prefill this.
+                </p>
+              )}
+            </div>
+            <div className="space-y-2">
               <Label>Subject</Label>
               <Input value={subject} onChange={(e) => setSubject(e.target.value)} />
             </div>
             <div className="space-y-2">
               <Label>Message</Label>
-              <Textarea value={body} onChange={(e) => setBody(e.target.value)} rows={12} className="resize-y" />
+              <Textarea value={body} onChange={(e) => setBody(e.target.value)} rows={14} className="resize-y" />
             </div>
             <p className="text-xs text-muted-foreground">
-              You can edit this message before sending. We've drafted it based on the issues flagged on this payslip.
+              Edit this message before sending. {anomalies.length > 0
+                ? "We've drafted it based on the issues flagged on this payslip."
+                : "We've prepared a general clarification request for this payslip."}
             </p>
           </CardContent>
         </Card>
@@ -113,7 +180,7 @@ const DraftQuery = () => {
         </div>
 
         <p className="text-xs text-muted-foreground">
-          This draft is generated as a starting point. Review and personalise it before sending. PayCheck does not send emails on your behalf.
+          This draft is a starting point. Review and personalise it before sending. PayCheck does not send emails on your behalf.
         </p>
       </div>
     </AppLayout>

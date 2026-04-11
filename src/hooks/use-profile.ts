@@ -14,6 +14,7 @@ export interface UserProfile {
   pension_percent: number | null;
   student_loan_plan: string | null;
   onboarding_complete: boolean;
+  payroll_email: string | null;
 }
 
 export function useProfile() {
@@ -23,7 +24,7 @@ export function useProfile() {
     queryFn: async (): Promise<UserProfile> => {
       const { data, error } = await supabase
         .from('profiles')
-        .select('country, currency, annual_salary, first_name, employer_name, pay_frequency, has_pension, has_student_loan, pension_percent, student_loan_plan, onboarding_complete')
+        .select('country, currency, annual_salary, first_name, employer_name, pay_frequency, has_pension, has_student_loan, pension_percent, student_loan_plan, onboarding_complete, payroll_email')
         .eq('user_id', user!.id)
         .single();
       if (error) throw error;
@@ -39,6 +40,7 @@ export function useProfile() {
         pension_percent: data.pension_percent ? Number(data.pension_percent) : null,
         student_loan_plan: data.student_loan_plan ?? null,
         onboarding_complete: !!data.onboarding_complete,
+        payroll_email: data.payroll_email ?? null,
       };
     },
     enabled: !!user,
