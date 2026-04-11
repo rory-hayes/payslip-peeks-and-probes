@@ -1,6 +1,70 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 
+// ---------- Date normalisation ----------
+
+const MONTH_MAP: Record<string, number> = {
+  january: 0, february: 1, march: 2, april: 3, may: 4, june: 5,
+  july: 6, august: 7, september: 8, october: 9, november: 10, december: 11,
+  jan: 0, feb: 1, mar: 2, apr: 3, jun: 5, jul: 6, aug: 7, sep: 8, oct: 9, nov: 10, dec: 11,
+};
+
+function normaliseDate(input: string | null | undefined): string | null {
+  if (!input) return null;
+  const s = input.trim();
+  if (!s) return null;
+
+  // Already ISO
+  const iso = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (iso) {
+    const d = new Date(Date.UTC(+iso[1], +iso[2] - 1, +iso[3]));
+    if (!isNaN(d.getTime()) && d.getUTCDate() === +iso[3]) {
+      return `${iso[1]}-${iso[2]}-${iso[3]}`;
+    }
+  }
+
+  // DD/MM/YYYY or DD-MM-YYYY or DD.MM.YYYY
+  const dmy = s.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})$/);
+  if (dmy) {
+    let [, dd, mm, yy] = dmy;
+    let year = parseInt(yy);
+    if (year < 100) year += 2000;
+    const month = parseInt(mm);
+    const day = parseInt(dd);
+    if (month >= 1 && month <= 12 && day >= 1 && day <= 31) {
+      const d = new Date(Date.UTC(year, month - 1, day));
+      if (d.getUTCDate() === day && d.getUTCMonth() === month - 1) {
+        return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+      }
+    }
+  }
+
+  // Textual: "31 March 2026" or "March 31, 2026" etc.
+  const textDMY = s.match(/^(\d{1,2})\s+([A-Za-z]+)\s+(\d{2,4})$/);
+  if (textDMY) {
+    const day = parseInt(textDMY[1]);
+    const month = MONTH_MAP[textDMY[2].toLowerCase()];
+    let year = parseInt(textDMY[3]);
+    if (year < 100) year += 2000;
+    if (month !== undefined && day >= 1 && day <= 31) {
+      return `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+    }
+  }
+
+  const textMDY = s.match(/^([A-Za-z]+)\s+(\d{1,2}),?\s+(\d{2,4})$/);
+  if (textMDY) {
+    const month = MONTH_MAP[textMDY[1].toLowerCase()];
+    const day = parseInt(textMDY[2]);
+    let year = parseInt(textMDY[3]);
+    if (year < 100) year += 2000;
+    if (month !== undefined && day >= 1 && day <= 31) {
+      return `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+    }
+  }
+
+  return null;
+}
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
