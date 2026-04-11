@@ -58,7 +58,7 @@ const AppLayout = ({ children }: { children: ReactNode }) => {
   return (
     <div className="flex min-h-screen bg-background">
       {/* Desktop sidebar */}
-      <aside className="hidden w-64 shrink-0 border-r border-border bg-card md:flex md:flex-col">
+      <aside className="hidden w-64 shrink-0 border-r border-border bg-card md:flex md:flex-col" role="navigation" aria-label="Main navigation">
         <div className="flex h-16 items-center gap-2 border-b border-border px-6">
           <Link to="/dashboard" className="flex items-center gap-2">
             <div className="flex h-7 w-7 items-center justify-center rounded-md bg-primary">
@@ -100,7 +100,7 @@ const AppLayout = ({ children }: { children: ReactNode }) => {
           </Link>
           <Sheet open={open} onOpenChange={setOpen}>
             <SheetTrigger asChild>
-              <Button variant="ghost" size="icon"><Menu className="h-5 w-5" /></Button>
+              <Button variant="ghost" size="icon" aria-label="Open menu"><Menu className="h-5 w-5" aria-hidden="true" /></Button>
             </SheetTrigger>
             <SheetContent side="right" className="w-64 p-4">
               <div className="mt-4">
@@ -125,7 +125,7 @@ const AppLayout = ({ children }: { children: ReactNode }) => {
           </Sheet>
         </header>
 
-        <main className="flex-1 overflow-y-auto p-4 md:p-8">{children}</main>
+        <main className="flex-1 overflow-y-auto p-4 md:p-8" role="main">{children}</main>
       </div>
     </div>
   );
