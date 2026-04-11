@@ -3,16 +3,34 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
+import { Skeleton } from '@/components/ui/skeleton';
 import AppLayout from '@/components/layout/AppLayout';
-import { demoPayslips, demoAnomalies, formatCurrency, formatDate } from '@/lib/demo-data';
-import { AlertTriangle, ArrowLeft, ArrowRight, FileText, GitCompare, MessageSquare } from 'lucide-react';
+import { usePayslip, usePayslips, useAnomalies } from '@/hooks/use-payslip-data';
+import { formatCurrency, formatDate } from '@/lib/demo-data';
+import { AlertTriangle, ArrowLeft, FileText, GitCompare, MessageSquare } from 'lucide-react';
 
 const PayslipDetail = () => {
   const { id } = useParams();
-  const slip = demoPayslips.find((s) => s.id === id);
-  const anomalies = demoAnomalies.filter((a) => a.payslip_id === id);
-  const idx = demoPayslips.findIndex((s) => s.id === id);
-  const prevSlip = idx > 0 ? demoPayslips[idx - 1] : null;
+  const { data: slip, isLoading } = usePayslip(id);
+  const { data: payslips } = usePayslips();
+  const { data: allAnomalies } = useAnomalies();
+
+  const anomalies = allAnomalies?.filter((a) => a.payslip_id === id) || [];
+  const idx = payslips?.findIndex((s) => s.id === id) ?? -1;
+  const prevSlip = idx > 0 ? payslips![idx - 1] : null;
+
+  if (isLoading) {
+    return (
+      <AppLayout>
+        <div className="space-y-6 max-w-3xl">
+          <Skeleton className="h-8 w-48" />
+          <Card className="border-0 shadow-sm"><CardContent className="p-6 space-y-4">
+            {Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-5 w-full" />)}
+          </CardContent></Card>
+        </div>
+      </AppLayout>
+    );
+  }
 
   if (!slip) {
     return (
@@ -56,11 +74,8 @@ const PayslipDetail = () => {
           )}
         </div>
 
-        {/* Pay breakdown */}
         <Card className="border-0 shadow-sm">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base">Pay breakdown</CardTitle>
-          </CardHeader>
+          <CardHeader className="pb-2"><CardTitle className="text-base">Pay breakdown</CardTitle></CardHeader>
           <CardContent>
             <div className="space-y-3">
               {rows.map((row, i) => (
@@ -78,7 +93,6 @@ const PayslipDetail = () => {
           </CardContent>
         </Card>
 
-        {/* Anomalies */}
         {anomalies.length > 0 && (
           <Card className="border-0 shadow-sm">
             <CardHeader className="pb-2">
@@ -105,10 +119,9 @@ const PayslipDetail = () => {
           </Card>
         )}
 
-        {/* Actions */}
         <div className="flex flex-wrap gap-3">
           {prevSlip && (
-            <Link to="/compare">
+            <Link to={`/compare?current=${slip.id}&previous=${prevSlip.id}`}>
               <Button variant="outline" className="gap-2"><GitCompare className="h-4 w-4" /> Compare to {formatDate(prevSlip.pay_date)}</Button>
             </Link>
           )}
