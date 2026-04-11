@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -10,29 +11,41 @@ import ExpectedVsActualChart from '@/components/ExpectedVsActualChart';
 import YearToDateSummary from '@/components/YearToDateSummary';
 import YearToDateChart from '@/components/YearToDateChart';
 import { useCurrency, useProfile } from '@/hooks/use-profile';
-import { formatDate } from '@/lib/demo-data';
+import { formatDate } from '@/lib/date-utils';
+import { demoPayslips, demoAnomalies, demoPayTrends } from '@/lib/demo-data';
 import { generatePaySummaryPdf } from '@/lib/generate-pay-summary-pdf';
+import type { Payslip, AnomalyResult, PayTrend } from '@/lib/types';
 import {
   Upload, TrendingUp, TrendingDown, AlertTriangle, FileText, ArrowRight, BarChart3, Download,
+  Eye, Shield, Sparkles,
 } from 'lucide-react';
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from 'recharts';
 
 const Dashboard = () => {
-  const { data: payslips, isLoading: loadingSlips } = usePayslips();
-  const { data: anomalies, isLoading: loadingAnomalies } = useAnomalies();
-  const { data: trends } = usePayTrends();
+  const { data: realPayslips, isLoading: loadingSlips } = usePayslips();
+  const { data: realAnomalies, isLoading: loadingAnomalies } = useAnomalies();
+  const { data: realTrends } = usePayTrends();
   const { data: profile } = useProfile();
   const { format: formatCurrency, symbol: currSym, currency } = useCurrency();
+  const [demoMode, setDemoMode] = useState(false);
 
-  const latest = payslips?.[payslips.length - 1];
-  const previous = payslips && payslips.length > 1 ? payslips[payslips.length - 2] : null;
-  const netChange = latest && previous ? latest.net_pay - previous.net_pay : 0;
-  const unresolvedCount = anomalies?.filter((a) => a.status === 'new').length ?? 0;
   const isLoading = loadingSlips || loadingAnomalies;
+  const hasRealData = !isLoading && realPayslips && realPayslips.length > 0;
+  const showDemo = demoMode && !hasRealData;
 
-  const isEmpty = !isLoading && (!payslips || payslips.length === 0);
+  const payslips: Payslip[] = showDemo ? demoPayslips : (realPayslips || []);
+  const anomalies: AnomalyResult[] = showDemo ? demoAnomalies : (realAnomalies || []);
+  const trends: PayTrend[] | undefined = showDemo ? demoPayTrends : realTrends;
+
+  const latest = payslips.length > 0 ? payslips[payslips.length - 1] : null;
+  const previous = payslips.length > 1 ? payslips[payslips.length - 2] : null;
+  const netChange = latest && previous ? latest.net_pay - previous.net_pay : 0;
+  const unresolvedCount = anomalies.filter((a) => a.status === 'new').length;
+  const isEmpty = !isLoading && !hasRealData && !showDemo;
+
+  const greeting = profile?.first_name ? `Hi, ${profile.first_name}` : 'Good morning';
 
   const handleExportPdf = () => {
     if (!payslips || payslips.length === 0) return;
@@ -56,13 +69,13 @@ const Dashboard = () => {
         {/* Header */}
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-foreground md:text-3xl">Good morning ✋</h1>
+            <h1 className="text-2xl font-bold text-foreground md:text-3xl">{greeting} 👋</h1>
             <p className="mt-1 text-muted-foreground">
-              {isEmpty ? 'Upload your first payslip to get started.' : 'Here\'s your pay overview.'}
+              {isEmpty ? 'Upload your first payslip to get started.' : showDemo ? 'You\'re exploring demo data. Upload a payslip to see your own.' : 'Here\'s your pay overview.'}
             </p>
           </div>
-          <div className="flex gap-2">
-            {payslips && payslips.length > 0 && (
+          <div className="flex gap-2 flex-wrap">
+            {payslips.length > 0 && !showDemo && (
               <Button variant="outline" className="gap-2" onClick={handleExportPdf}>
                 <Download className="h-4 w-4" /> Export PDF
               </Button>
@@ -72,6 +85,20 @@ const Dashboard = () => {
             </Link>
           </div>
         </div>
+
+        {/* Demo mode banner */}
+        {showDemo && (
+          <Card className="border-primary/20 bg-primary/5 shadow-sm">
+            <CardContent className="flex items-center gap-3 p-4">
+              <Eye className="h-5 w-5 text-primary shrink-0" />
+              <div className="flex-1">
+                <p className="text-sm font-medium text-foreground">Demo mode</p>
+                <p className="text-xs text-muted-foreground">You're viewing sample data. Upload your own payslip to see real insights.</p>
+              </div>
+              <Button variant="outline" size="sm" onClick={() => setDemoMode(false)}>Exit demo</Button>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Loading state */}
         {isLoading && (
@@ -91,11 +118,36 @@ const Dashboard = () => {
         {/* Empty state */}
         {isEmpty && (
           <Card className="border-0 shadow-sm">
-            <CardContent className="flex flex-col items-center justify-center py-16 text-center">
-              <FileText className="h-12 w-12 text-muted-foreground/40" />
-              <h3 className="mt-4 text-lg font-semibold text-foreground">No payslips yet</h3>
-              <p className="mt-2 text-sm text-muted-foreground">Upload a payslip to see your dashboard come to life.</p>
-              <Link to="/vault"><Button className="mt-4 gap-2"><Upload className="h-4 w-4" /> Upload payslip</Button></Link>
+            <CardContent className="flex flex-col items-center justify-center py-16 text-center px-6">
+              <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10 mb-6">
+                <Sparkles className="h-8 w-8 text-primary" />
+              </div>
+              <h3 className="text-xl font-bold text-foreground">Welcome to PayCheck</h3>
+              <p className="mt-3 max-w-md text-muted-foreground leading-relaxed">
+                Upload your payslip and we'll extract the key figures, compare them against your profile, and flag anything that looks unusual. Your data stays private and secure.
+              </p>
+              <div className="mt-6 flex flex-col sm:flex-row gap-3">
+                <Link to="/vault">
+                  <Button className="gap-2 w-full sm:w-auto"><Upload className="h-4 w-4" /> Upload your first payslip</Button>
+                </Link>
+                <Button variant="outline" className="gap-2" onClick={() => setDemoMode(true)}>
+                  <Eye className="h-4 w-4" /> Try demo mode
+                </Button>
+              </div>
+              <div className="mt-8 grid grid-cols-3 gap-6 text-center">
+                <div>
+                  <Shield className="h-5 w-5 mx-auto text-muted-foreground/60" />
+                  <p className="mt-2 text-xs text-muted-foreground">Encrypted & private</p>
+                </div>
+                <div>
+                  <AlertTriangle className="h-5 w-5 mx-auto text-muted-foreground/60" />
+                  <p className="mt-2 text-xs text-muted-foreground">Anomaly detection</p>
+                </div>
+                <div>
+                  <TrendingUp className="h-5 w-5 mx-auto text-muted-foreground/60" />
+                  <p className="mt-2 text-xs text-muted-foreground">Track pay trends</p>
+                </div>
+              </div>
             </CardContent>
           </Card>
         )}
@@ -138,9 +190,13 @@ const Dashboard = () => {
                     <AlertTriangle className="h-4 w-4 text-anomaly" />
                   </div>
                   <div className="mt-2 text-2xl font-bold text-foreground">{unresolvedCount}</div>
-                  <Link to="/anomalies" className="mt-1 inline-flex items-center gap-1 text-xs text-primary hover:underline">
-                    Review now <ArrowRight className="h-3 w-3" />
-                  </Link>
+                  {unresolvedCount > 0 ? (
+                    <Link to="/anomalies" className="mt-1 inline-flex items-center gap-1 text-xs text-primary hover:underline">
+                      Review now <ArrowRight className="h-3 w-3" />
+                    </Link>
+                  ) : (
+                    <p className="mt-1 text-xs text-success">Everything looks normal</p>
+                  )}
                 </CardContent>
               </Card>
               <Card className="border-0 shadow-sm">
@@ -149,17 +205,21 @@ const Dashboard = () => {
                     <span className="text-sm text-muted-foreground">Total payslips</span>
                     <FileText className="h-4 w-4 text-muted-foreground" />
                   </div>
-                  <div className="mt-2 text-2xl font-bold text-foreground">{payslips?.length ?? 0}</div>
+                  <div className="mt-2 text-2xl font-bold text-foreground">{payslips.length}</div>
                   <div className="mt-1 text-xs text-muted-foreground">Stored securely</div>
                 </CardContent>
               </Card>
             </div>
 
             {/* Expected vs Actual comparison */}
-            <ExpectedVsActual latestPayslip={latest} />
-            <ExpectedVsActualChart payslips={payslips!} />
-            <YearToDateSummary payslips={payslips!} />
-            <YearToDateChart payslips={payslips!} />
+            {!showDemo && (
+              <>
+                <ExpectedVsActual latestPayslip={latest} />
+                <ExpectedVsActualChart payslips={payslips} />
+                <YearToDateSummary payslips={payslips} />
+                <YearToDateChart payslips={payslips} />
+              </>
+            )}
 
             {/* Chart + anomalies */}
             <div className="grid gap-6 lg:grid-cols-5">
@@ -185,7 +245,7 @@ const Dashboard = () => {
                 </Card>
               )}
 
-              {anomalies && anomalies.filter((a) => a.status === 'new').length > 0 && (
+              {anomalies.filter((a) => a.status === 'new').length > 0 && (
                 <Card className={`border-0 shadow-sm ${trends && trends.length > 1 ? 'lg:col-span-2' : 'lg:col-span-5'}`}>
                   <CardHeader className="pb-2">
                     <div className="flex items-center justify-between">
@@ -196,7 +256,7 @@ const Dashboard = () => {
                   <CardContent>
                     <div className="space-y-3">
                       {anomalies.filter((a) => a.status === 'new').slice(0, 4).map((anomaly) => (
-                        <Link key={anomaly.id} to={`/payslip/${anomaly.payslip_id}`} className="flex items-start gap-3 rounded-lg p-2 -mx-2 hover:bg-muted/50 transition-colors">
+                        <Link key={anomaly.id} to={showDemo ? '#' : `/payslip/${anomaly.payslip_id}`} className="flex items-start gap-3 rounded-lg p-2 -mx-2 hover:bg-muted/50 transition-colors">
                           <div className={`mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full ${
                             anomaly.severity === 'high' ? 'bg-destructive/10 text-destructive' :
                             anomaly.severity === 'medium' ? 'bg-anomaly/10 text-anomaly' :
@@ -222,13 +282,13 @@ const Dashboard = () => {
               <CardHeader className="pb-2">
                 <div className="flex items-center justify-between">
                   <CardTitle className="text-base">Recent payslips</CardTitle>
-                  <Link to="/vault" className="text-xs text-primary hover:underline">View all</Link>
+                  {!showDemo && <Link to="/vault" className="text-xs text-primary hover:underline">View all</Link>}
                 </div>
               </CardHeader>
               <CardContent>
                 <div className="divide-y divide-border">
-                  {payslips?.slice().reverse().slice(0, 4).map((slip) => (
-                    <Link key={slip.id} to={`/payslip/${slip.id}`} className="flex items-center gap-4 py-3 hover:bg-muted/30 -mx-2 px-2 rounded-lg transition-colors">
+                  {payslips.slice().reverse().slice(0, 4).map((slip) => (
+                    <Link key={slip.id} to={showDemo ? '#' : `/payslip/${slip.id}`} className="flex items-center gap-4 py-3 hover:bg-muted/30 -mx-2 px-2 rounded-lg transition-colors">
                       <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10">
                         <FileText className="h-5 w-5 text-primary" />
                       </div>

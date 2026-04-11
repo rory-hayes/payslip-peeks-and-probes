@@ -30,10 +30,26 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { Switch } from '@/components/ui/switch';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from '@/components/ui/accordion';
 import AppLayout from '@/components/layout/AppLayout';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { Download, Trash2, HelpCircle } from 'lucide-react';
 
 const STUDENT_LOAN_PLANS = [
   { value: 'plan1', label: 'Plan 1', desc: 'Started before Sep 2012 (England/Wales)' },
@@ -57,6 +73,10 @@ const Settings = () => {
   const [hasStudentLoan, setHasStudentLoan] = useState(false);
   const [studentLoanPlan, setStudentLoanPlan] = useState('plan2');
   const [loading, setLoading] = useState(false);
+  const [deleteConfirm, setDeleteConfirm] = useState('');
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [exporting, setExporting] = useState(false);
   const currencySymbol = country === 'Ireland' ? '€' : '£';
 
   useEffect(() => {
@@ -109,12 +129,67 @@ const Settings = () => {
     }
   };
 
+  const handleExportData = async () => {
+    if (!user) return;
+    setExporting(true);
+    try {
+      const { data: payslips } = await supabase
+        .from('payslips')
+        .select('*, payslip_extractions(*)')
+        .eq('user_id', user.id);
+
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('user_id', user.id)
+        .single();
+
+      const { data: anomalies } = await supabase
+        .from('anomaly_results')
+        .select('*, payslips!inner(user_id)')
+        .order('created_at', { ascending: false });
+
+      const exportData = {
+        exported_at: new Date().toISOString(),
+        profile,
+        payslips,
+        anomalies: anomalies?.filter((a: any) => a.payslips?.user_id === user.id) || [],
+      };
+
+      const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `paycheck-export-${new Date().toISOString().split('T')[0]}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast({ title: 'Data exported', description: 'Your data has been downloaded as a JSON file.' });
+    } catch {
+      toast({ title: 'Export failed', description: 'Something went wrong. Please try again.', variant: 'destructive' });
+    }
+    setExporting(false);
+  };
+
+  const handleDeleteAccount = async () => {
+    if (deleteConfirm !== 'DELETE' || !user) return;
+    setDeleting(true);
+    // Delete user data (payslips, extractions, anomalies handled by cascade)
+    await supabase.from('payslips').delete().eq('user_id', user.id);
+    await supabase.from('profiles').delete().eq('user_id', user.id);
+    await supabase.from('employers').delete().eq('user_id', user.id);
+    await supabase.from('issue_drafts').delete().eq('user_id', user.id);
+    await supabase.from('user_notes').delete().eq('user_id', user.id);
+    await signOut();
+    setDeleting(false);
+    setDeleteOpen(false);
+  };
+
   return (
     <AppLayout>
       <div className="space-y-6 max-w-2xl">
         <div>
           <h1 className="text-2xl font-bold text-foreground">Settings</h1>
-          <p className="text-sm text-muted-foreground">Manage your profile and preferences</p>
+          <p className="text-sm text-muted-foreground">Manage your profile, preferences, and data</p>
         </div>
 
         <Card className="border-0 shadow-sm">
@@ -172,7 +247,6 @@ const Settings = () => {
         <Card className="border-0 shadow-sm">
           <CardHeader className="pb-2"><CardTitle className="text-base">Deductions</CardTitle></CardHeader>
           <CardContent className="space-y-4">
-            {/* Pension */}
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-foreground">Pension contribution</p>
@@ -196,7 +270,6 @@ const Settings = () => {
               </div>
             )}
 
-            {/* Student loan (UK only) */}
             {country === 'UK' && (
               <>
                 <Separator />
@@ -242,7 +315,8 @@ const Settings = () => {
             </div>
             <div className="space-y-2">
               <Label>Payroll / HR email</Label>
-              <Input type="email" value={payrollEmail} onChange={(e) => setPayrollEmail(e.target.value)} />
+              <Input type="email" value={payrollEmail} onChange={(e) => setPayrollEmail(e.target.value)} placeholder="payroll@company.com" />
+              <p className="text-xs text-muted-foreground">Used to pre-fill the "To" field when drafting payroll queries.</p>
             </div>
           </CardContent>
         </Card>
@@ -253,15 +327,69 @@ const Settings = () => {
 
         <Separator />
 
+        {/* How it works */}
+        <Card className="border-0 shadow-sm">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base flex items-center gap-2">
+              <HelpCircle className="h-4 w-4" /> How PayCheck works
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <Accordion type="single" collapsible className="w-full">
+              <AccordionItem value="upload">
+                <AccordionTrigger className="text-sm">How do I upload a payslip?</AccordionTrigger>
+                <AccordionContent className="text-sm text-muted-foreground">
+                  Go to the Payslip Vault and drag & drop a PDF or image of your payslip. We'll extract the key figures automatically and compare them against your profile.
+                </AccordionContent>
+              </AccordionItem>
+              <AccordionItem value="anomalies">
+                <AccordionTrigger className="text-sm">What are anomalies?</AccordionTrigger>
+                <AccordionContent className="text-sm text-muted-foreground">
+                  Anomalies are changes or issues we've flagged on your payslip — like a sudden tax increase, a missing deduction, or a drop in net pay. Each one includes an explanation and suggested next step.
+                </AccordionContent>
+              </AccordionItem>
+              <AccordionItem value="advice">
+                <AccordionTrigger className="text-sm">Is PayCheck tax advice?</AccordionTrigger>
+                <AccordionContent className="text-sm text-muted-foreground">
+                  No. PayCheck provides guidance and issue spotting to help you understand your payslips. Our findings are not formal tax, legal, or payroll advice. Always confirm with your employer or a qualified professional.
+                </AccordionContent>
+              </AccordionItem>
+              <AccordionItem value="security">
+                <AccordionTrigger className="text-sm">Is my data secure?</AccordionTrigger>
+                <AccordionContent className="text-sm text-muted-foreground">
+                  Yes. Your payslip data is encrypted in transit and at rest. Only you can access your data — we never share it with third parties. You can export or delete your data at any time.
+                </AccordionContent>
+              </AccordionItem>
+            </Accordion>
+          </CardContent>
+        </Card>
+
+        <Separator />
+
         <Card className="border-0 shadow-sm">
           <CardHeader className="pb-2"><CardTitle className="text-base">Privacy & security</CardTitle></CardHeader>
-          <CardContent className="space-y-3">
+          <CardContent className="space-y-4">
             <p className="text-sm text-muted-foreground leading-relaxed">
               Your payslip data is encrypted and stored securely. Only you can access it. PayCheck provides guidance and issue spotting — not formal tax, legal, or payroll advice.
             </p>
             <div className="flex gap-4 text-xs">
               <a href="/privacy" className="text-primary hover:underline">Privacy Policy</a>
               <a href="/terms" className="text-primary hover:underline">Terms of Service</a>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="border-0 shadow-sm">
+          <CardHeader className="pb-2"><CardTitle className="text-base">Your data</CardTitle></CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-foreground">Download my data</p>
+                <p className="text-xs text-muted-foreground">Export all your payslips, profile, and anomaly data as JSON.</p>
+              </div>
+              <Button variant="outline" size="sm" className="gap-2" onClick={handleExportData} disabled={exporting}>
+                <Download className="h-4 w-4" /> {exporting ? 'Exporting…' : 'Export'}
+              </Button>
             </div>
           </CardContent>
         </Card>
@@ -278,12 +406,50 @@ const Settings = () => {
               </div>
               <Button variant="outline" size="sm" onClick={signOut}>Sign out</Button>
             </div>
+            <Separator />
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-foreground">Delete account</p>
-                <p className="text-xs text-muted-foreground">Permanently delete your account and all stored payslips.</p>
+                <p className="text-xs text-muted-foreground">Permanently delete your account and all stored payslips. This cannot be undone.</p>
               </div>
-              <Button variant="destructive" size="sm">Delete account</Button>
+              <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+                <DialogTrigger asChild>
+                  <Button variant="destructive" size="sm" className="gap-2">
+                    <Trash2 className="h-4 w-4" /> Delete account
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Delete your PayCheck account?</DialogTitle>
+                    <DialogDescription className="space-y-3">
+                      <p>This will permanently delete:</p>
+                      <ul className="list-disc pl-5 space-y-1 text-sm">
+                        <li>Your profile and settings</li>
+                        <li>All uploaded payslips and extracted data</li>
+                        <li>All anomaly results and issue drafts</li>
+                        <li>Your employer records</li>
+                      </ul>
+                      <p className="font-medium text-destructive">This action cannot be undone.</p>
+                      <p className="text-sm">Type <strong>DELETE</strong> to confirm:</p>
+                    </DialogDescription>
+                  </DialogHeader>
+                  <Input
+                    value={deleteConfirm}
+                    onChange={(e) => setDeleteConfirm(e.target.value)}
+                    placeholder="Type DELETE to confirm"
+                  />
+                  <DialogFooter>
+                    <Button variant="outline" onClick={() => { setDeleteOpen(false); setDeleteConfirm(''); }}>Cancel</Button>
+                    <Button
+                      variant="destructive"
+                      disabled={deleteConfirm !== 'DELETE' || deleting}
+                      onClick={handleDeleteAccount}
+                    >
+                      {deleting ? 'Deleting…' : 'Delete my account'}
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
             </div>
           </CardContent>
         </Card>

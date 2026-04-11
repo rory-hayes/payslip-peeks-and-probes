@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import type { Payslip, AnomalyResult, PayTrend } from '@/lib/types';
+import { formatMonth } from '@/lib/date-utils';
 
 export function usePayslips() {
   const { user } = useAuth();
@@ -110,7 +111,7 @@ export function useAnomalies() {
 export function usePayTrends(): { data: PayTrend[] | undefined; isLoading: boolean } {
   const { data: payslips, isLoading } = usePayslips();
   const trends = payslips?.map((s) => ({
-    month: new Date(s.pay_date).toLocaleDateString('en-GB', { month: 'short' }),
+    month: formatMonth(s.pay_date),
     gross: s.gross_pay,
     net: s.net_pay,
     tax: s.tax_amount,

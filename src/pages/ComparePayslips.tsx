@@ -5,7 +5,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import AppLayout from '@/components/layout/AppLayout';
 import { usePayslips } from '@/hooks/use-payslip-data';
 import { useCurrency } from '@/hooks/use-profile';
-import { formatDate } from '@/lib/demo-data';
+import { formatDate } from '@/lib/date-utils';
 import { ArrowLeft, TrendingUp, TrendingDown, Minus, ArrowRight } from 'lucide-react';
 
 const ComparePayslips = () => {

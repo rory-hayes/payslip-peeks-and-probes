@@ -1,4 +1,5 @@
 import type { Payslip, AnomalyResult, IssueDraft, PayTrend } from './types';
+export { formatDate } from './date-utils';
 
 export const demoPayslips: Payslip[] = [
   {
@@ -219,12 +220,4 @@ export const formatCurrency = (amount: number, country: 'UK' | 'Ireland' = 'UK')
   return country === 'Ireland'
     ? `€${amount.toLocaleString('en-IE', { minimumFractionDigits: 2 })}`
     : `£${amount.toLocaleString('en-GB', { minimumFractionDigits: 2 })}`;
-};
-
-export const formatDate = (dateStr: string) => {
-  return new Date(dateStr).toLocaleDateString('en-GB', {
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric',
-  });
 };
