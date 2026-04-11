@@ -32,6 +32,7 @@ const Settings = () => {
         if (data) {
           setFirstName(data.first_name || '');
           setCountry((data.country as 'UK' | 'Ireland') || 'UK');
+          setAnnualSalary(data.annual_salary ? String(data.annual_salary) : '');
           setFrequency(data.pay_frequency || 'monthly');
           setEmployer(data.employer_name || '');
           setPayrollEmail(data.payroll_email || '');
