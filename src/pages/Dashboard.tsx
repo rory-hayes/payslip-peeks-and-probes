@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import AppLayout from '@/components/layout/AppLayout';
 import { usePayslips, useAnomalies, usePayTrends } from '@/hooks/use-payslip-data';
+import ExpectedVsActual from '@/components/ExpectedVsActual';
 import { useCurrency } from '@/hooks/use-profile';
 import { formatDate } from '@/lib/demo-data';
 import {
@@ -125,6 +126,9 @@ const Dashboard = () => {
                 </CardContent>
               </Card>
             </div>
+
+            {/* Expected vs Actual comparison */}
+            <ExpectedVsActual latestPayslip={latest} />
 
             {/* Chart + anomalies */}
             <div className="grid gap-6 lg:grid-cols-5">
