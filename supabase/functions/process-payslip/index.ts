@@ -606,14 +606,18 @@ serve(async (req) => {
       console.error("DB update error:", updateExtErr);
     }
 
-    // Update payslip record with dates / country
+    // Update payslip record with normalised dates / country
+    const normPayDate = normaliseDate(extracted.pay_date as string);
+    const normPeriodStart = normaliseDate(extracted.pay_period_start as string);
+    const normPeriodEnd = normaliseDate(extracted.pay_period_end as string);
+
     await supabase
       .from("payslips")
       .update({
-        status: "completed",
-        pay_date: extracted.pay_date || null,
-        pay_period_start: extracted.pay_period_start || null,
-        pay_period_end: extracted.pay_period_end || null,
+        status: normPayDate ? "completed" : "needs_review",
+        pay_date: normPayDate,
+        pay_period_start: normPeriodStart,
+        pay_period_end: normPeriodEnd,
         country: extracted.country || payslip.country,
       })
       .eq("id", payslip_id);
