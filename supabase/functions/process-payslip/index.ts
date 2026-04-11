@@ -144,8 +144,12 @@ function runAnomalyChecks(
   country: string | null
 ): Anomaly[] {
   const anomalies: Anomaly[] = [];
+  const sym = (country === "Ireland" || country === "ireland") ? "€" : "£";
 
-  // --- Universal checks ---
+  const pct = (curr: number, prev: number) =>
+    prev !== 0 ? ((curr - prev) / Math.abs(prev)) * 100 : curr !== 0 ? 100 : 0;
+
+  // ─── Standalone checks (no comparison needed) ───
 
   if (current.gross_pay == null || current.net_pay == null) {
     anomalies.push({
@@ -153,255 +157,249 @@ function runAnomalyChecks(
       severity: "high",
       confidence: "high",
       title: "Missing key pay fields",
-      description:
-        "We couldn't find gross pay or net pay on this payslip. This may indicate an extraction issue.",
-      suggested_action:
-        "Check the original payslip and manually confirm the values.",
+      description: "We couldn't find gross pay or net pay on this payslip. The figures may need manual review.",
+      suggested_action: "Open the original payslip and confirm the values are correct.",
     });
   }
 
-  if (
-    current.net_pay != null &&
-    current.gross_pay != null &&
-    current.net_pay > current.gross_pay
-  ) {
+  if (current.net_pay != null && current.gross_pay != null && current.net_pay > current.gross_pay) {
     anomalies.push({
       anomaly_type: "net_exceeds_gross",
       severity: "high",
       confidence: "high",
       title: "Net pay exceeds gross pay",
-      description:
-        "Your net pay is higher than your gross pay, which is unusual unless you have refunds or back-pay adjustments.",
-      suggested_action: "Check with payroll — this may be an error.",
+      description: "Your net pay is higher than your gross pay, which is unusual unless you received a refund or back-pay adjustment.",
+      suggested_action: "Check with payroll — this may be an error or a one-off adjustment.",
     });
   }
 
   if (current.net_pay != null && current.net_pay < 0) {
     anomalies.push({
-      anomaly_type: "negative_value",
+      anomaly_type: "negative_net_pay",
       severity: "high",
       confidence: "high",
       title: "Negative net pay",
-      description: "Your net pay is negative, which is extremely unusual.",
-      suggested_action:
-        "Contact payroll immediately to understand this result.",
+      description: "Your net pay is negative, which is extremely unusual and may indicate an overpayment recovery.",
+      suggested_action: "Contact payroll immediately to understand why your net pay is negative.",
+    });
+  }
+
+  if (current.gross_pay != null && current.gross_pay < 0) {
+    anomalies.push({
+      anomaly_type: "negative_gross_pay",
+      severity: "high",
+      confidence: "high",
+      title: "Negative gross pay",
+      description: "Your gross pay is negative, which shouldn't normally happen.",
+      suggested_action: "This is likely an extraction error — check the original payslip.",
     });
   }
 
   // Deductions reconciliation
-  if (
-    current.gross_pay != null &&
-    current.net_pay != null &&
-    current.total_deductions != null
-  ) {
+  if (current.gross_pay != null && current.net_pay != null && current.total_deductions != null) {
     const expectedNet = current.gross_pay - current.total_deductions;
     const diff = Math.abs(expectedNet - current.net_pay);
     if (diff > 1) {
       anomalies.push({
         anomaly_type: "deductions_mismatch",
-        severity: "medium",
+        severity: diff > 50 ? "high" : "medium",
         confidence: "medium",
         title: "Deductions don't add up",
-        description: `Gross pay minus total deductions should equal net pay, but there's a £${diff.toFixed(2)} difference.`,
-        suggested_action:
-          "Check if all deductions are shown — there may be hidden items.",
+        description: `Gross pay (${sym}${current.gross_pay.toFixed(2)}) minus total deductions (${sym}${current.total_deductions.toFixed(2)}) should equal net pay, but there's a ${sym}${diff.toFixed(2)} gap.`,
+        suggested_action: "Check if all deductions are shown — there may be hidden items not listed on the payslip.",
       });
     }
   }
 
-  // --- Comparison checks (if we have a previous payslip) ---
+  // ─── Comparison checks ───
   if (previous) {
-    // Net pay change
-    if (current.net_pay != null && previous.net_pay != null) {
-      const pctChange =
-        ((current.net_pay - previous.net_pay) / previous.net_pay) * 100;
-      if (Math.abs(pctChange) > 10) {
-        const direction = pctChange > 0 ? "increased" : "decreased";
+    // Net pay change (5% threshold)
+    if (current.net_pay != null && previous.net_pay != null && previous.net_pay > 0) {
+      const change = pct(current.net_pay, previous.net_pay);
+      if (Math.abs(change) > 5) {
+        const direction = change > 0 ? "increased" : "dropped";
         anomalies.push({
           anomaly_type: "net_pay_change",
-          severity: Math.abs(pctChange) > 20 ? "high" : "medium",
+          severity: Math.abs(change) > 15 ? "high" : "medium",
           confidence: "high",
-          title: `Net pay ${direction} by ${Math.abs(pctChange).toFixed(1)}%`,
-          description: `Your net pay changed from £${previous.net_pay.toFixed(2)} to £${current.net_pay.toFixed(2)}. This is a significant shift.`,
-          suggested_action:
-            "Review what changed — check tax, NI, pension, or new deductions.",
+          title: `Net pay ${direction} by ${Math.abs(change).toFixed(1)}%`,
+          description: `Your net pay ${direction} from ${sym}${previous.net_pay.toFixed(2)} to ${sym}${current.net_pay.toFixed(2)}. That's a ${sym}${Math.abs(current.net_pay - previous.net_pay).toFixed(2)} change.`,
+          suggested_action: "Review what changed — check tax, NI, pension, or any new deductions compared to last month.",
         });
       }
     }
 
-    // Gross pay change
-    if (current.gross_pay != null && previous.gross_pay != null) {
-      const pctChange =
-        ((current.gross_pay - previous.gross_pay) / previous.gross_pay) * 100;
-      if (Math.abs(pctChange) > 10) {
-        const direction = pctChange > 0 ? "increased" : "decreased";
+    // Gross pay change (5% threshold)
+    if (current.gross_pay != null && previous.gross_pay != null && previous.gross_pay > 0) {
+      const change = pct(current.gross_pay, previous.gross_pay);
+      if (Math.abs(change) > 5) {
+        const direction = change > 0 ? "increased" : "decreased";
         anomalies.push({
           anomaly_type: "gross_pay_change",
-          severity: Math.abs(pctChange) > 20 ? "high" : "medium",
+          severity: Math.abs(change) > 15 ? "high" : "medium",
           confidence: "high",
-          title: `Gross pay ${direction} by ${Math.abs(pctChange).toFixed(1)}%`,
-          description: `Your gross pay changed from £${previous.gross_pay.toFixed(2)} to £${current.gross_pay.toFixed(2)}.`,
-          suggested_action:
-            "Check for pay rises, reduced hours, or changes in variable pay.",
+          title: `Gross pay ${direction} by ${Math.abs(change).toFixed(1)}%`,
+          description: `Your gross pay went from ${sym}${previous.gross_pay.toFixed(2)} to ${sym}${current.gross_pay.toFixed(2)}.`,
+          suggested_action: "Check for pay rises, overtime changes, reduced hours, or variable pay adjustments.",
         });
       }
     }
 
     // Same gross, different net
-    if (
-      current.gross_pay != null &&
-      previous.gross_pay != null &&
-      current.net_pay != null &&
-      previous.net_pay != null
-    ) {
-      const grossSame = Math.abs(current.gross_pay - previous.gross_pay) < 1;
+    if (current.gross_pay != null && previous.gross_pay != null && current.net_pay != null && previous.net_pay != null) {
+      const grossSame = Math.abs(current.gross_pay - previous.gross_pay) < 5;
       const netDiff = Math.abs(current.net_pay - previous.net_pay);
-      if (grossSame && netDiff > 20) {
+      if (grossSame && netDiff > 10) {
         anomalies.push({
           anomaly_type: "same_gross_different_net",
-          severity: "medium",
+          severity: netDiff > 50 ? "high" : "medium",
           confidence: "high",
           title: "Same gross pay but different net pay",
-          description: `Your gross pay is essentially unchanged but your net pay shifted by £${netDiff.toFixed(2)}.`,
-          suggested_action:
-            "Something changed in your deductions — review tax, NI, and pension lines.",
+          description: `Your gross pay is essentially unchanged but your net pay shifted by ${sym}${netDiff.toFixed(2)}. Something in your deductions changed.`,
+          suggested_action: "Compare the deduction lines — look for changes in tax, NI, pension, or any new items.",
         });
       }
     }
 
-    // New deduction appeared
-    const deductionFields: (keyof Extraction)[] = [
-      "pension_amount",
-      "student_loan_amount",
-    ];
-    for (const field of deductionFields) {
-      const label = field.replace("_amount", "").replace("_", " ");
-      if (
-        (previous[field] == null || previous[field] === 0) &&
-        current[field] != null &&
-        (current[field] as number) > 0
-      ) {
+    // Tax disproportionate to gross
+    if (current.tax_amount != null && previous.tax_amount != null && current.gross_pay != null && previous.gross_pay != null && previous.tax_amount > 0) {
+      const grossChange = pct(current.gross_pay, previous.gross_pay);
+      const taxChange = pct(current.tax_amount, previous.tax_amount);
+      // Tax changed more than twice the rate of gross
+      if (Math.abs(taxChange) > 5 && Math.abs(taxChange) > Math.abs(grossChange) * 2 + 5) {
         anomalies.push({
-          anomaly_type: "new_deduction",
-          severity: "medium",
-          confidence: "high",
-          title: `New ${label} deduction appeared`,
-          description: `A ${label} deduction of £${(current[field] as number).toFixed(2)} appeared this month but wasn't on the previous payslip.`,
-          suggested_action: `Check if you've been enrolled into a ${label} scheme.`,
+          anomaly_type: "tax_disproportionate",
+          severity: Math.abs(taxChange) > 20 ? "high" : "medium",
+          confidence: "medium",
+          title: "Tax increased more than expected",
+          description: `Your tax changed by ${Math.abs(taxChange).toFixed(1)}% while gross pay only changed by ${Math.abs(grossChange).toFixed(1)}%. This could indicate a tax code change.`,
+          suggested_action: "Check your tax code on this payslip — it may have changed from the previous month.",
         });
       }
-      // Deduction disappeared
-      if (
-        previous[field] != null &&
-        (previous[field] as number) > 0 &&
-        (current[field] == null || current[field] === 0)
-      ) {
+    }
+
+    // NI disproportionate to gross
+    if (current.national_insurance_amount != null && previous.national_insurance_amount != null && current.gross_pay != null && previous.gross_pay != null && previous.national_insurance_amount > 0) {
+      const grossChange = pct(current.gross_pay, previous.gross_pay);
+      const niChange = pct(current.national_insurance_amount, previous.national_insurance_amount);
+      if (Math.abs(niChange) > 5 && Math.abs(niChange) > Math.abs(grossChange) * 2 + 5) {
         anomalies.push({
-          anomaly_type: "deduction_disappeared",
+          anomaly_type: "ni_disproportionate",
           severity: "medium",
-          confidence: "high",
-          title: `${label.charAt(0).toUpperCase() + label.slice(1)} deduction disappeared`,
-          description: `A ${label} deduction of £${(previous[field] as number).toFixed(2)} was on the previous payslip but is missing now.`,
-          suggested_action: "This could be intentional, but confirm with payroll.",
+          confidence: "medium",
+          title: "National Insurance changed more than expected",
+          description: `Your NI changed by ${Math.abs(niChange).toFixed(1)}% while gross pay changed by ${Math.abs(grossChange).toFixed(1)}%.`,
+          suggested_action: "Check if your NI category has changed or if there's been a rate adjustment.",
         });
       }
     }
 
-    // --- UK-specific checks ---
-    if (country === "UK" || country === "uk") {
-      // NI change
-      if (
-        current.national_insurance_amount != null &&
-        previous.national_insurance_amount != null &&
-        current.gross_pay != null &&
-        previous.gross_pay != null
-      ) {
-        const grossSame = Math.abs(current.gross_pay - previous.gross_pay) < 5;
-        const niChange = Math.abs(
-          current.national_insurance_amount -
-            previous.national_insurance_amount
-        );
-        if (grossSame && niChange > 10) {
-          anomalies.push({
-            anomaly_type: "unusual_ni_change",
-            severity: "medium",
-            confidence: "medium",
-            title: "Unusual National Insurance change",
-            description: `Your NI changed by £${niChange.toFixed(2)} despite similar gross pay.`,
-            suggested_action:
-              "Check if your NI category has changed or if there's been a rate adjustment.",
-          });
-        }
-      }
-
-      // Tax change vs taxable pay
-      if (
-        current.tax_amount != null &&
-        previous.tax_amount != null &&
-        current.taxable_pay != null &&
-        previous.taxable_pay != null
-      ) {
-        const taxableSame =
-          Math.abs(current.taxable_pay - previous.taxable_pay) < 5;
-        const taxChange = Math.abs(current.tax_amount - previous.tax_amount);
-        if (taxableSame && taxChange > 20) {
-          anomalies.push({
-            anomaly_type: "unusual_tax_change",
-            severity: "high",
-            confidence: "medium",
-            title: "Unusual tax change",
-            description: `Your tax changed by £${taxChange.toFixed(2)} despite similar taxable pay. This may indicate a tax code change.`,
-            suggested_action:
-              "Check your tax code on the payslip and compare to previous months.",
-          });
-        }
+    // Pension material change
+    if (current.pension_amount != null && previous.pension_amount != null && previous.pension_amount > 0) {
+      const change = pct(current.pension_amount, previous.pension_amount);
+      if (Math.abs(change) > 5) {
+        const direction = change > 0 ? "increased" : "decreased";
+        anomalies.push({
+          anomaly_type: "pension_change",
+          severity: Math.abs(change) > 25 ? "high" : "low",
+          confidence: "high",
+          title: `Pension deduction ${direction}`,
+          description: `Your pension deduction changed from ${sym}${previous.pension_amount.toFixed(2)} to ${sym}${current.pension_amount.toFixed(2)} (${Math.abs(change).toFixed(1)}%).`,
+          suggested_action: "Check if your pension contribution rate or salary sacrifice amount has changed.",
+        });
       }
     }
 
-    // --- Ireland-specific checks ---
+    // Pension appeared or disappeared
+    if ((previous.pension_amount == null || previous.pension_amount === 0) && current.pension_amount != null && current.pension_amount > 0) {
+      anomalies.push({
+        anomaly_type: "new_deduction",
+        severity: "medium",
+        confidence: "high",
+        title: "Pension deduction appeared",
+        description: `A pension deduction of ${sym}${current.pension_amount.toFixed(2)} appeared this month but wasn't on the previous payslip.`,
+        suggested_action: "Check if you've been auto-enrolled or opted into a pension scheme.",
+      });
+    }
+    if (previous.pension_amount != null && previous.pension_amount > 0 && (current.pension_amount == null || current.pension_amount === 0)) {
+      anomalies.push({
+        anomaly_type: "deduction_disappeared",
+        severity: "medium",
+        confidence: "high",
+        title: "Pension deduction disappeared",
+        description: `A pension deduction of ${sym}${previous.pension_amount.toFixed(2)} was on the previous payslip but is missing now.`,
+        suggested_action: "Confirm with payroll whether this is intentional.",
+      });
+    }
+
+    // Student loan appeared/disappeared
+    if ((previous.student_loan_amount == null || previous.student_loan_amount === 0) && current.student_loan_amount != null && current.student_loan_amount > 0) {
+      anomalies.push({
+        anomaly_type: "new_deduction",
+        severity: "medium",
+        confidence: "high",
+        title: "Student loan deduction appeared",
+        description: `A student loan deduction of ${sym}${current.student_loan_amount.toFixed(2)} appeared this month.`,
+        suggested_action: "Check if HMRC has notified your employer to start student loan repayments.",
+      });
+    }
+    if (previous.student_loan_amount != null && previous.student_loan_amount > 0 && (current.student_loan_amount == null || current.student_loan_amount === 0)) {
+      anomalies.push({
+        anomaly_type: "deduction_disappeared",
+        severity: "low",
+        confidence: "high",
+        title: "Student loan deduction disappeared",
+        description: `A student loan deduction of ${sym}${previous.student_loan_amount.toFixed(2)} was on the previous payslip but is missing now.`,
+        suggested_action: "If your loan is fully repaid this is expected. Otherwise, check with payroll.",
+      });
+    }
+
+    // Total deductions material change
+    if (current.total_deductions != null && previous.total_deductions != null && previous.total_deductions > 0) {
+      const change = pct(current.total_deductions, previous.total_deductions);
+      if (Math.abs(change) > 10) {
+        const direction = change > 0 ? "increased" : "decreased";
+        anomalies.push({
+          anomaly_type: "total_deductions_change",
+          severity: Math.abs(change) > 25 ? "high" : "medium",
+          confidence: "high",
+          title: `Total deductions ${direction} by ${Math.abs(change).toFixed(1)}%`,
+          description: `Your total deductions went from ${sym}${previous.total_deductions.toFixed(2)} to ${sym}${current.total_deductions.toFixed(2)}.`,
+          suggested_action: "Review each deduction line to see which items changed.",
+        });
+      }
+    }
+
+    // ─── Ireland-specific ───
     if (country === "Ireland" || country === "ireland") {
-      // PRSI change
-      if (
-        current.prsi_amount != null &&
-        previous.prsi_amount != null &&
-        current.gross_pay != null &&
-        previous.gross_pay != null
-      ) {
-        const grossSame = Math.abs(current.gross_pay - previous.gross_pay) < 5;
-        const prsiChange = Math.abs(
-          current.prsi_amount - previous.prsi_amount
-        );
-        if (grossSame && prsiChange > 10) {
+      // PRSI disproportionate
+      if (current.prsi_amount != null && previous.prsi_amount != null && previous.prsi_amount > 0 && current.gross_pay != null && previous.gross_pay != null) {
+        const grossChange = pct(current.gross_pay, previous.gross_pay);
+        const prsiChange = pct(current.prsi_amount, previous.prsi_amount);
+        if (Math.abs(prsiChange) > 5 && Math.abs(prsiChange) > Math.abs(grossChange) * 2 + 5) {
           anomalies.push({
-            anomaly_type: "unusual_prsi_change",
+            anomaly_type: "prsi_disproportionate",
             severity: "medium",
             confidence: "medium",
-            title: "Unusual PRSI change",
-            description: `Your PRSI changed by €${prsiChange.toFixed(2)} despite similar gross pay.`,
-            suggested_action:
-              "Check if your PRSI class has changed.",
+            title: "PRSI changed more than expected",
+            description: `Your PRSI changed by ${Math.abs(prsiChange).toFixed(1)}% while gross pay changed by ${Math.abs(grossChange).toFixed(1)}%.`,
+            suggested_action: "Check if your PRSI class has changed.",
           });
         }
       }
 
-      // USC change
-      if (
-        current.usc_amount != null &&
-        previous.usc_amount != null &&
-        current.gross_pay != null &&
-        previous.gross_pay != null
-      ) {
-        const grossSame = Math.abs(current.gross_pay - previous.gross_pay) < 5;
-        const uscChange = Math.abs(current.usc_amount - previous.usc_amount);
-        if (grossSame && uscChange > 10) {
+      // USC disproportionate
+      if (current.usc_amount != null && previous.usc_amount != null && previous.usc_amount > 0 && current.gross_pay != null && previous.gross_pay != null) {
+        const grossChange = pct(current.gross_pay, previous.gross_pay);
+        const uscChange = pct(current.usc_amount, previous.usc_amount);
+        if (Math.abs(uscChange) > 5 && Math.abs(uscChange) > Math.abs(grossChange) * 2 + 5) {
           anomalies.push({
-            anomaly_type: "unusual_usc_change",
+            anomaly_type: "usc_disproportionate",
             severity: "medium",
             confidence: "medium",
-            title: "Unusual USC change",
-            description: `Your USC changed by €${uscChange.toFixed(2)} despite similar gross pay.`,
-            suggested_action:
-              "Check if your USC rate band or exemption has changed.",
+            title: "USC changed more than expected",
+            description: `Your USC changed by ${Math.abs(uscChange).toFixed(1)}% while gross pay changed by ${Math.abs(grossChange).toFixed(1)}%.`,
+            suggested_action: "Check if your USC rate band or exemption has changed.",
           });
         }
       }
@@ -632,21 +630,36 @@ serve(async (req) => {
       .eq("id", payslip_id);
 
     // 6. Get previous payslip extraction for anomaly comparison
+    // Include any payslip that has been processed (completed or needs_review)
     const { data: prevPayslips } = await supabase
       .from("payslips")
       .select("id")
       .eq("user_id", payslip.user_id)
       .neq("id", payslip_id)
-      .eq("status", "completed")
-      .order("pay_date", { ascending: false })
+      .in("status", ["completed", "needs_review"])
+      .order("pay_date", { ascending: false, nullsFirst: false })
       .limit(1);
 
+    // If no previous by pay_date, try by created_at
+    let prevId: string | null = prevPayslips?.[0]?.id ?? null;
+    if (!prevId) {
+      const { data: prevByCreated } = await supabase
+        .from("payslips")
+        .select("id")
+        .eq("user_id", payslip.user_id)
+        .neq("id", payslip_id)
+        .neq("status", "processing")
+        .order("created_at", { ascending: false })
+        .limit(1);
+      prevId = prevByCreated?.[0]?.id ?? null;
+    }
+
     let previousExtraction: Extraction | null = null;
-    if (prevPayslips && prevPayslips.length > 0) {
+    if (prevId) {
       const { data: prevExt } = await supabase
         .from("payslip_extractions")
         .select("*")
-        .eq("payslip_id", prevPayslips[0].id)
+        .eq("payslip_id", prevId)
         .eq("extraction_status", "completed")
         .single();
 
