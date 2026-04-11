@@ -48,6 +48,8 @@ const Settings = () => {
       .update({
         first_name: firstName,
         country,
+        currency: country === 'Ireland' ? 'EUR' : 'GBP',
+        annual_salary: annualSalary ? Number(annualSalary) : null,
         pay_frequency: frequency,
         employer_name: employer,
         payroll_email: payrollEmail || null,
