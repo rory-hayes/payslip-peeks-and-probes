@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import AppLayout from '@/components/layout/AppLayout';
 import { useAnomalies } from '@/hooks/use-payslip-data';
-import { formatDate } from '@/lib/demo-data';
+import { formatDate } from '@/lib/date-utils';
 import type { AnomalyStatus } from '@/lib/types';
 import { AlertTriangle, CheckCircle, Eye, MessageSquare } from 'lucide-react';
 

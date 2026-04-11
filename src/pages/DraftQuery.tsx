@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 import AppLayout from '@/components/layout/AppLayout';
 import { usePayslip, useAnomalies } from '@/hooks/use-payslip-data';
-import { formatDate } from '@/lib/demo-data';
+import { formatDate } from '@/lib/date-utils';
 import { ArrowLeft, Copy, Mail, CheckCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
