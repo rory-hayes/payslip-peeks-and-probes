@@ -606,15 +606,24 @@ serve(async (req) => {
       console.error("DB update error:", updateExtErr);
     }
 
-    // Update payslip record with normalised dates / country
+    // Determine if review is needed
     const normPayDate = normaliseDate(extracted.pay_date as string);
     const normPeriodStart = normaliseDate(extracted.pay_period_start as string);
     const normPeriodEnd = normaliseDate(extracted.pay_period_end as string);
+    const grossPay = extracted.gross_pay as number | null;
+    const netPay = extracted.net_pay as number | null;
+
+    const needsReview =
+      !normPayDate ||
+      grossPay == null ||
+      netPay == null ||
+      (netPay != null && grossPay != null && netPay > grossPay) ||
+      (extracted.confidence as string) === "low";
 
     await supabase
       .from("payslips")
       .update({
-        status: normPayDate ? "completed" : "needs_review",
+        status: needsReview ? "needs_review" : "completed",
         pay_date: normPayDate,
         pay_period_start: normPeriodStart,
         pay_period_end: normPeriodEnd,
