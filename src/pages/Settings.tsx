@@ -133,27 +133,19 @@ const Settings = () => {
     if (!user) return;
     setExporting(true);
     try {
-      const { data: payslips } = await supabase
-        .from('payslips')
-        .select('*, payslip_extractions(*)')
-        .eq('user_id', user.id);
-
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('user_id', user.id)
-        .single();
-
-      const { data: anomalies } = await supabase
-        .from('anomaly_results')
-        .select('*, payslips!inner(user_id)')
-        .order('created_at', { ascending: false });
+      const [{ data: payslips }, { data: profile }, { data: anomalies }, { data: notes }] = await Promise.all([
+        supabase.from('payslips').select('*, payslip_extractions(*)').eq('user_id', user.id),
+        supabase.from('profiles').select('*').eq('user_id', user.id).single(),
+        supabase.from('anomaly_results').select('*, payslips!inner(user_id)').order('created_at', { ascending: false }),
+        supabase.from('user_notes').select('*').eq('user_id', user.id),
+      ]);
 
       const exportData = {
         exported_at: new Date().toISOString(),
         profile,
         payslips,
         anomalies: anomalies?.filter((a: any) => a.payslips?.user_id === user.id) || [],
+        notes: notes || [],
       };
 
       const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
@@ -173,15 +165,20 @@ const Settings = () => {
   const handleDeleteAccount = async () => {
     if (deleteConfirm !== 'DELETE' || !user) return;
     setDeleting(true);
-    // Delete user data (payslips, extractions, anomalies handled by cascade)
-    await supabase.from('payslips').delete().eq('user_id', user.id);
-    await supabase.from('profiles').delete().eq('user_id', user.id);
-    await supabase.from('employers').delete().eq('user_id', user.id);
-    await supabase.from('issue_drafts').delete().eq('user_id', user.id);
-    await supabase.from('user_notes').delete().eq('user_id', user.id);
-    await signOut();
-    setDeleting(false);
-    setDeleteOpen(false);
+    try {
+      await supabase.from('user_notes').delete().eq('user_id', user.id);
+      await supabase.from('issue_drafts').delete().eq('user_id', user.id);
+      await supabase.from('employers').delete().eq('user_id', user.id);
+      // payslips cascade deletes extractions + anomalies
+      await supabase.from('payslips').delete().eq('user_id', user.id);
+      await supabase.from('profiles').delete().eq('user_id', user.id);
+      await signOut();
+      window.location.href = '/';
+    } catch {
+      toast({ title: 'Deletion failed', description: 'Something went wrong. Please try again or contact support.', variant: 'destructive' });
+      setDeleting(false);
+      setDeleteOpen(false);
+    }
   };
 
   return (
