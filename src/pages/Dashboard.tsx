@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import AppLayout from '@/components/layout/AppLayout';
 import { usePayslips, useAnomalies, usePayTrends } from '@/hooks/use-payslip-data';
+import ExpectedVsActual from '@/components/ExpectedVsActual';
 import { useCurrency } from '@/hooks/use-profile';
 import { formatDate } from '@/lib/demo-data';
 import {
