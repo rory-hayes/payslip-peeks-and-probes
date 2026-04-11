@@ -351,6 +351,8 @@ export type Database = {
           onboarding_complete: boolean | null
           pay_frequency: string | null
           payroll_email: string | null
+          pension_percent: number | null
+          student_loan_plan: string | null
           updated_at: string
           user_id: string
         }
@@ -369,6 +371,8 @@ export type Database = {
           onboarding_complete?: boolean | null
           pay_frequency?: string | null
           payroll_email?: string | null
+          pension_percent?: number | null
+          student_loan_plan?: string | null
           updated_at?: string
           user_id: string
         }
@@ -387,6 +391,8 @@ export type Database = {
           onboarding_complete?: boolean | null
           pay_frequency?: string | null
           payroll_email?: string | null
+          pension_percent?: number | null
+          student_loan_plan?: string | null
           updated_at?: string
           user_id?: string
         }

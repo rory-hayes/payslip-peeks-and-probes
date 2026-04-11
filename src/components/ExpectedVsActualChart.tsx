@@ -20,8 +20,9 @@ const ExpectedVsActualChart = ({ payslips }: Props) => {
   if (!profile?.annual_salary || payslips.length < 2) return null;
 
   const opts = {
-    pensionPercent: profile.has_pension ? 5 : 0,
+    pensionPercent: profile.has_pension ? (profile.pension_percent ?? 5) : 0,
     hasStudentLoan: profile.has_student_loan,
+    studentLoanPlan: (profile.student_loan_plan as any) ?? 'plan2',
   };
   const expected = calculateExpectedMonthly(profile.annual_salary, profile.country, opts);
 
