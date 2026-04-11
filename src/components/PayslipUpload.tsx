@@ -121,8 +121,11 @@ const PayslipUpload = ({ onUploadComplete }: PayslipUploadProps) => {
 
     setProgress(100);
     setState('success');
+    // Refresh dashboard & vault data
+    queryClient.invalidateQueries({ queryKey: ['payslips'] });
+    queryClient.invalidateQueries({ queryKey: ['anomalies'] });
     onUploadComplete?.(payslip.id);
-  }, [user, toast, onUploadComplete]);
+  }, [user, toast, onUploadComplete, queryClient]);
 
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
