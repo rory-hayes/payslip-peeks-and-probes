@@ -6,39 +6,38 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Progress } from '@/components/ui/progress';
-import { CheckCircle, ArrowRight, ArrowLeft, Upload, Sparkles, PoundSterling, Euro } from 'lucide-react';
+import { CheckCircle, ArrowRight, ArrowLeft, Upload, Sparkles } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
+import { useQueryClient } from '@tanstack/react-query';
 
-const steps = ['Welcome', 'Region', 'Salary', 'Pay profile', 'Payroll details', 'Ready'];
-
-const currencySymbol = (c: string) => (c === 'Ireland' ? '€' : '£');
-const currencyCode = (c: string) => (c === 'Ireland' ? 'EUR' : 'GBP');
+const STEPS = ['Welcome', 'Country', 'Pay profile', 'Payroll setup', 'Ready'] as const;
 
 const Onboarding = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const [step, setStep] = useState(0);
   const [country, setCountry] = useState<'UK' | 'Ireland' | ''>('');
-  const [annualSalary, setAnnualSalary] = useState('');
-  const [frequency, setFrequency] = useState('monthly');
+  const [frequency, setFrequency] = useState<string>('');
   const [employer, setEmployer] = useState('');
-  const [payrollEmail, setPayrollEmail] = useState('');
   const [flags, setFlags] = useState({ pension: false, studentLoan: false, bonus: false, benefits: false });
   const [saving, setSaving] = useState(false);
 
-  const progress = ((step + 1) / steps.length) * 100;
-  const canNext =
-    step === 0 ||
-    (step === 1 && country) ||
-    (step === 2 && annualSalary && Number(annualSalary) > 0) ||
-    (step === 3 && employer) ||
-    step === 4 ||
-    step === 5;
+  const progress = ((step + 1) / STEPS.length) * 100;
 
-  const next = () => { if (step < steps.length - 1) setStep(step + 1); };
+  const canNext = (() => {
+    if (step === 0) return true;
+    if (step === 1) return !!country;
+    if (step === 2) return !!frequency && employer.trim().length > 0;
+    if (step === 3) return true;
+    if (step === 4) return true;
+    return false;
+  })();
+
+  const next = () => { if (canNext && step < STEPS.length - 1) setStep(step + 1); };
   const back = () => { if (step > 0) setStep(step - 1); };
 
   const handleFinish = async () => {
@@ -49,11 +48,9 @@ const Onboarding = () => {
       .from('profiles')
       .update({
         country: country || null,
-        currency: country ? currencyCode(country) : 'GBP',
-        annual_salary: annualSalary ? Number(annualSalary) : null,
+        currency: country === 'Ireland' ? 'EUR' : 'GBP',
         pay_frequency: frequency,
-        employer_name: employer,
-        payroll_email: payrollEmail || null,
+        employer_name: employer.trim(),
         has_pension: flags.pension,
         has_student_loan: flags.studentLoan,
         has_bonus: flags.bonus,
@@ -62,67 +59,77 @@ const Onboarding = () => {
       })
       .eq('user_id', user.id);
 
-    if (employer) {
+    if (employer.trim()) {
       await supabase.from('employers').insert({
         user_id: user.id,
-        name: employer,
-        payroll_email: payrollEmail || null,
+        name: employer.trim(),
       });
     }
 
     setSaving(false);
+
     if (profileError) {
-      toast({ title: 'Error', description: profileError.message, variant: 'destructive' });
+      toast({ title: 'Something went wrong', description: profileError.message, variant: 'destructive' });
     } else {
-      navigate('/dashboard');
+      await queryClient.invalidateQueries({ queryKey: ['profile', user.id] });
+      navigate('/vault');
     }
   };
 
-  const formatSalaryPreview = () => {
-    const salary = Number(annualSalary);
-    if (!salary || !country) return null;
-    const sym = currencySymbol(country);
-    const monthly = salary / 12;
-    return `${sym}${monthly.toLocaleString(country === 'Ireland' ? 'en-IE' : 'en-GB', { minimumFractionDigits: 0, maximumFractionDigits: 0 })} / month gross`;
+  const handleSkip = async () => {
+    if (!user) return;
+    setSaving(true);
+    await supabase
+      .from('profiles')
+      .update({ onboarding_complete: true })
+      .eq('user_id', user.id);
+    await queryClient.invalidateQueries({ queryKey: ['profile', user.id] });
+    setSaving(false);
+    navigate('/dashboard');
   };
+
+  const countryLabel = country === 'Ireland' ? 'Ireland' : country === 'UK' ? 'United Kingdom' : '—';
+  const currencyLabel = country === 'Ireland' ? 'EUR (€)' : 'GBP (£)';
 
   return (
     <div className="flex min-h-screen flex-col bg-background">
+      {/* Header */}
       <div className="border-b border-border bg-card px-4 py-3">
-        <div className="container flex items-center justify-between">
+        <div className="mx-auto flex max-w-lg items-center justify-between">
           <div className="flex items-center gap-2">
             <div className="flex h-7 w-7 items-center justify-center rounded-md bg-primary">
               <CheckCircle className="h-4 w-4 text-primary-foreground" />
             </div>
             <span className="font-semibold text-foreground">PayCheck</span>
           </div>
-          <span className="text-xs text-muted-foreground">Step {step + 1} of {steps.length}</span>
+          <span className="text-xs text-muted-foreground">Step {step + 1} of {STEPS.length}</span>
         </div>
       </div>
       <Progress value={progress} className="h-1 rounded-none" />
 
-      <div className="flex flex-1 items-center justify-center px-4 py-12">
+      <div className="flex flex-1 items-center justify-center px-4 py-8 sm:py-12">
         <Card className="w-full max-w-lg border-0 shadow-lg">
-          <CardContent className="p-8">
-            {/* Step 0: Welcome */}
+          <CardContent className="p-6 sm:p-8">
+
+            {/* Step 0 — Welcome */}
             {step === 0 && (
-              <div className="text-center space-y-4 animate-fade-in">
+              <div className="text-center space-y-4">
                 <div className="flex h-16 w-16 mx-auto items-center justify-center rounded-2xl bg-primary/10">
                   <Sparkles className="h-8 w-8 text-primary" />
                 </div>
                 <h2 className="text-2xl font-bold text-foreground">Welcome to PayCheck</h2>
                 <p className="text-muted-foreground leading-relaxed">
-                  We'll help you understand your payslips, track changes month to month, and flag anything unusual. Let's set up your profile — it only takes a minute.
+                  Upload your payslips, track changes month to month, and get a heads-up when something looks off. Let's get your profile set up — it takes less than a minute.
                 </p>
               </div>
             )}
 
-            {/* Step 1: Region / Country */}
+            {/* Step 1 — Country */}
             {step === 1 && (
-              <div className="space-y-6 animate-fade-in">
+              <div className="space-y-6">
                 <div className="text-center">
                   <h2 className="text-2xl font-bold text-foreground">Where are you employed?</h2>
-                  <p className="mt-2 text-sm text-muted-foreground">This sets your currency and tax rules automatically.</p>
+                  <p className="mt-2 text-sm text-muted-foreground">This sets your currency and tax rules.</p>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   {([
@@ -132,7 +139,11 @@ const Onboarding = () => {
                     <button
                       key={c.key}
                       onClick={() => setCountry(c.key)}
-                      className={`flex flex-col items-center gap-2 rounded-xl border-2 p-6 transition-all ${country === c.key ? 'border-primary bg-primary/5' : 'border-border hover:border-muted-foreground/30'}`}
+                      className={`flex flex-col items-center gap-2 rounded-xl border-2 p-6 transition-all ${
+                        country === c.key
+                          ? 'border-primary bg-primary/5'
+                          : 'border-border hover:border-muted-foreground/30'
+                      }`}
                     >
                       <span className="text-4xl">{c.flag}</span>
                       <span className="font-medium text-foreground">{c.label}</span>
@@ -143,60 +154,26 @@ const Onboarding = () => {
               </div>
             )}
 
-            {/* Step 2: Annual salary */}
+            {/* Step 2 — Pay profile */}
             {step === 2 && (
-              <div className="space-y-6 animate-fade-in">
-                <div className="text-center">
-                  <h2 className="text-2xl font-bold text-foreground">What's your annual salary?</h2>
-                  <p className="mt-2 text-sm text-muted-foreground">
-                    We use this to estimate your expected tax and net pay each month, so we can spot discrepancies.
-                  </p>
-                </div>
-                <div className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="salary">Gross annual salary</Label>
-                    <div className="relative">
-                      <div className="absolute left-3 top-1/2 -translate-y-1/2 flex items-center text-muted-foreground">
-                        {country === 'Ireland' ? <Euro className="h-4 w-4" /> : <PoundSterling className="h-4 w-4" />}
-                      </div>
-                      <Input
-                        id="salary"
-                        type="number"
-                        min="0"
-                        step="500"
-                        placeholder={country === 'Ireland' ? '45,000' : '35,000'}
-                        className="pl-10 text-lg"
-                        value={annualSalary}
-                        onChange={(e) => setAnnualSalary(e.target.value)}
-                      />
-                    </div>
-                    {formatSalaryPreview() && (
-                      <p className="text-sm text-primary font-medium">{formatSalaryPreview()}</p>
-                    )}
-                  </div>
-                  <p className="text-xs text-muted-foreground leading-relaxed">
-                    This is kept private and only used to compare against your payslip figures. You can update it anytime in Settings.
-                  </p>
-                </div>
-              </div>
-            )}
-
-            {/* Step 3: Pay profile */}
-            {step === 3 && (
-              <div className="space-y-6 animate-fade-in">
+              <div className="space-y-6">
                 <div className="text-center">
                   <h2 className="text-2xl font-bold text-foreground">Your pay profile</h2>
-                  <p className="mt-2 text-sm text-muted-foreground">Tell us a bit about how you're paid.</p>
+                  <p className="mt-2 text-sm text-muted-foreground">Tell us how you're paid so we can run the right checks.</p>
                 </div>
                 <div className="space-y-4">
                   <div className="space-y-2">
-                    <Label>Pay frequency</Label>
+                    <Label>Pay frequency <span className="text-destructive">*</span></Label>
                     <div className="grid grid-cols-2 gap-2">
                       {['weekly', 'fortnightly', 'monthly', 'other'].map((f) => (
                         <button
                           key={f}
                           onClick={() => setFrequency(f)}
-                          className={`rounded-lg border px-3 py-2 text-sm capitalize transition-all ${frequency === f ? 'border-primary bg-primary/5 text-primary font-medium' : 'border-border text-muted-foreground hover:border-muted-foreground/30'}`}
+                          className={`rounded-lg border px-3 py-2.5 text-sm capitalize transition-all ${
+                            frequency === f
+                              ? 'border-primary bg-primary/5 text-primary font-medium'
+                              : 'border-border text-muted-foreground hover:border-muted-foreground/30'
+                          }`}
                         >
                           {f}
                         </button>
@@ -204,69 +181,114 @@ const Onboarding = () => {
                     </div>
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="employer">Employer name</Label>
-                    <Input id="employer" placeholder="e.g. Acme Technologies Ltd" value={employer} onChange={(e) => setEmployer(e.target.value)} required />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="payroll-email">Payroll / HR email <span className="text-muted-foreground">(optional)</span></Label>
-                    <Input id="payroll-email" type="email" placeholder="payroll@company.com" value={payrollEmail} onChange={(e) => setPayrollEmail(e.target.value)} />
+                    <Label htmlFor="employer">Employer name <span className="text-destructive">*</span></Label>
+                    <Input
+                      id="employer"
+                      placeholder="e.g. Acme Technologies Ltd"
+                      value={employer}
+                      onChange={(e) => setEmployer(e.target.value)}
+                      maxLength={200}
+                    />
                   </div>
                 </div>
               </div>
             )}
 
-            {/* Step 4: Payroll details */}
-            {step === 4 && (
-              <div className="space-y-6 animate-fade-in">
+            {/* Step 3 — Payroll setup */}
+            {step === 3 && (
+              <div className="space-y-6">
                 <div className="text-center">
                   <h2 className="text-2xl font-bold text-foreground">Payroll details</h2>
-                  <p className="mt-2 text-sm text-muted-foreground">Select any that apply — this helps us run smarter checks.</p>
+                  <p className="mt-2 text-sm text-muted-foreground">Tick anything that applies — this helps us run smarter checks on your payslips.</p>
                 </div>
                 <div className="space-y-3">
-                  {[
-                    { key: 'pension', label: 'Pension contributions' },
-                    { key: 'studentLoan', label: 'Student loan repayment' },
-                    { key: 'bonus', label: 'Bonus / commission' },
-                    { key: 'benefits', label: 'Benefits in kind' },
-                  ].map((item) => (
+                  {([
+                    { key: 'pension' as const, label: 'Pension contributions', desc: 'Workplace or personal pension deductions' },
+                    { key: 'studentLoan' as const, label: 'Student loan repayment', desc: 'UK Plan 1, 2, 4, 5, or postgrad' },
+                    { key: 'bonus' as const, label: 'Bonus / commission', desc: 'Regular or one-off performance pay' },
+                    { key: 'benefits' as const, label: 'Benefits in kind', desc: 'Company car, health insurance, etc.' },
+                  ]).map((item) => (
                     <label
                       key={item.key}
-                      className="flex items-center gap-3 rounded-lg border border-border p-4 cursor-pointer hover:bg-muted/50 transition-colors"
+                      className="flex items-start gap-3 rounded-lg border border-border p-4 cursor-pointer hover:bg-muted/50 transition-colors"
                     >
                       <Checkbox
-                        checked={flags[item.key as keyof typeof flags]}
+                        className="mt-0.5"
+                        checked={flags[item.key]}
                         onCheckedChange={(v) => setFlags({ ...flags, [item.key]: v === true })}
                       />
-                      <span className="text-sm font-medium text-foreground">{item.label}</span>
+                      <div>
+                        <span className="text-sm font-medium text-foreground">{item.label}</span>
+                        <p className="text-xs text-muted-foreground mt-0.5">{item.desc}</p>
+                      </div>
                     </label>
                   ))}
                 </div>
               </div>
             )}
 
-            {/* Step 5: Ready */}
-            {step === 5 && (
-              <div className="text-center space-y-6 animate-fade-in">
-                <div className="flex h-16 w-16 mx-auto items-center justify-center rounded-2xl bg-success/10">
-                  <Upload className="h-8 w-8 text-success" />
+            {/* Step 4 — Ready / Summary */}
+            {step === 4 && (
+              <div className="space-y-6">
+                <div className="text-center space-y-2">
+                  <div className="flex h-16 w-16 mx-auto items-center justify-center rounded-2xl bg-green-500/10">
+                    <Upload className="h-8 w-8 text-green-600" />
+                  </div>
+                  <h2 className="text-2xl font-bold text-foreground">You're all set!</h2>
+                  <p className="text-muted-foreground leading-relaxed">
+                    Here's what we captured. You can update any of this later in Settings.
+                  </p>
                 </div>
-                <h2 className="text-2xl font-bold text-foreground">You're all set!</h2>
-                <p className="text-muted-foreground leading-relaxed">
-                  Upload your first payslip and we'll extract the key figures, compare them against your {currencySymbol(country || 'UK')}{Number(annualSalary).toLocaleString()} salary, and flag anything that looks unusual.
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  Remember: PayCheck provides guidance and issue spotting — not formal tax or payroll advice.
+
+                <div className="rounded-lg border border-border divide-y divide-border text-sm">
+                  <div className="flex justify-between px-4 py-3">
+                    <span className="text-muted-foreground">Country</span>
+                    <span className="font-medium text-foreground">{countryLabel}</span>
+                  </div>
+                  <div className="flex justify-between px-4 py-3">
+                    <span className="text-muted-foreground">Currency</span>
+                    <span className="font-medium text-foreground">{currencyLabel}</span>
+                  </div>
+                  <div className="flex justify-between px-4 py-3">
+                    <span className="text-muted-foreground">Pay frequency</span>
+                    <span className="font-medium text-foreground capitalize">{frequency || '—'}</span>
+                  </div>
+                  <div className="flex justify-between px-4 py-3">
+                    <span className="text-muted-foreground">Employer</span>
+                    <span className="font-medium text-foreground">{employer.trim() || '—'}</span>
+                  </div>
+                  <div className="flex justify-between px-4 py-3">
+                    <span className="text-muted-foreground">Extras</span>
+                    <span className="font-medium text-foreground text-right">
+                      {[
+                        flags.pension && 'Pension',
+                        flags.studentLoan && 'Student loan',
+                        flags.bonus && 'Bonus',
+                        flags.benefits && 'Benefits',
+                      ].filter(Boolean).join(', ') || 'None'}
+                    </span>
+                  </div>
+                </div>
+
+                <p className="text-xs text-center text-muted-foreground">
+                  PayCheck provides guidance and issue spotting — not formal tax or payroll advice.
                 </p>
               </div>
             )}
 
+            {/* Navigation */}
             <div className="mt-8 flex items-center justify-between">
               {step > 0 ? (
                 <Button variant="ghost" onClick={back} className="gap-1">
                   <ArrowLeft className="h-4 w-4" /> Back
                 </Button>
-              ) : <div />}
-              {step < steps.length - 1 ? (
+              ) : (
+                <Button variant="ghost" onClick={handleSkip} disabled={saving} className="text-muted-foreground">
+                  Skip for now
+                </Button>
+              )}
+
+              {step < STEPS.length - 1 ? (
                 <Button onClick={next} disabled={!canNext} className="gap-1">
                   Continue <ArrowRight className="h-4 w-4" />
                 </Button>
