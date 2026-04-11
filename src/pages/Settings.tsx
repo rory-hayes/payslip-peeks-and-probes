@@ -140,7 +140,7 @@ const Settings = () => {
         { data: anomalies },
         { data: notes },
         { data: drafts },
-        { data: employers: empData },
+        { data: empData },
       ] = await Promise.all([
         supabase.from('profiles').select('*').eq('user_id', user.id).single(),
         supabase.from('payslips').select('*').eq('user_id', user.id).order('pay_date'),
