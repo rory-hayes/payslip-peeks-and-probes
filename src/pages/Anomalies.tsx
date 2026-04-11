@@ -5,10 +5,11 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import AppLayout from '@/components/layout/AppLayout';
+import AnomalyExplanation from '@/components/AnomalyExplanation';
 import { useAnomalies } from '@/hooks/use-payslip-data';
 import { formatDate } from '@/lib/date-utils';
 import type { AnomalyStatus } from '@/lib/types';
-import { AlertTriangle, CheckCircle, Eye, MessageSquare } from 'lucide-react';
+import { AlertTriangle, CheckCircle, ChevronDown, ChevronUp, Eye, MessageSquare } from 'lucide-react';
 
 const statusLabels: Record<AnomalyStatus, string> = {
   new: 'New',
@@ -19,6 +20,8 @@ const statusLabels: Record<AnomalyStatus, string> = {
 
 const Anomalies = () => {
   const [filter, setFilter] = useState<AnomalyStatus | 'all'>('all');
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
+  const { data: anomalies, isLoading } = useAnomalies();
   const { data: anomalies, isLoading } = useAnomalies();
   const all = anomalies || [];
   const filtered = filter === 'all' ? all : all.filter((a) => a.status === filter);
@@ -96,8 +99,22 @@ const Anomalies = () => {
                         </div>
                       </div>
                       <p className="mt-1 text-xs text-muted-foreground">{anomaly.employer_name} · {formatDate(anomaly.payslip_date)}</p>
-                      <p className="mt-2 text-sm text-muted-foreground leading-relaxed line-clamp-2">{anomaly.description}</p>
+                      
+                      {!expanded[anomaly.id] ? (
+                        <div className="mt-2">
+                          <AnomalyExplanation description={anomaly.description} suggestedAction={anomaly.suggested_action} compact />
+                        </div>
+                      ) : (
+                        <div className="mt-3">
+                          <AnomalyExplanation description={anomaly.description} suggestedAction={anomaly.suggested_action} />
+                        </div>
+                      )}
+                      
                       <div className="mt-3 flex gap-2">
+                        <Button variant="ghost" size="sm" className="gap-1 text-xs h-7" onClick={() => setExpanded(prev => ({ ...prev, [anomaly.id]: !prev[anomaly.id] }))}>
+                          {expanded[anomaly.id] ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+                          {expanded[anomaly.id] ? 'Less detail' : 'More detail'}
+                        </Button>
                         <Link to={`/payslip/${anomaly.payslip_id}`}>
                           <Button variant="ghost" size="sm" className="gap-1 text-xs h-7"><Eye className="h-3 w-3" /> View payslip</Button>
                         </Link>
