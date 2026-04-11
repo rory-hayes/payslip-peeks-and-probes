@@ -217,6 +217,11 @@ const Landing = () => {
               </CardContent>
             </Card>
           </div>
+          <div className="mt-8 text-center">
+            <Link to="/pricing" className="text-sm text-primary hover:underline">
+              View full pricing comparison →
+            </Link>
+          </div>
         </div>
       </section>
 
