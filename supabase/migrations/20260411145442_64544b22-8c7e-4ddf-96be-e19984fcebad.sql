@@ -1,0 +1,2 @@
+ALTER TABLE public.payslips DROP CONSTRAINT payslips_status_check;
+ALTER TABLE public.payslips ADD CONSTRAINT payslips_status_check CHECK (status = ANY (ARRAY['uploading'::text, 'processing'::text, 'extracted'::text, 'confirmed'::text, 'failed'::text, 'needs_review'::text, 'completed'::text]));
