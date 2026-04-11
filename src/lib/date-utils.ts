@@ -6,13 +6,6 @@ import { parse, isValid, format } from 'date-fns';
  * Always returns a Date in UTC-safe manner.
  */
 const DATE_FORMATS = [
-  'yyyy-MM-dd',
-  'dd/MM/yyyy',
-  'd/M/yyyy',
-  'dd-MM-yyyy',
-  'd-M-yyyy',
-  'dd.MM.yyyy',
-  'd.M.yyyy',
   'dd MMMM yyyy',
   'd MMMM yyyy',
   'dd MMM yyyy',
