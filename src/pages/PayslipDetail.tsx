@@ -6,7 +6,8 @@ import { Separator } from '@/components/ui/separator';
 import { Skeleton } from '@/components/ui/skeleton';
 import AppLayout from '@/components/layout/AppLayout';
 import { usePayslip, usePayslips, useAnomalies } from '@/hooks/use-payslip-data';
-import { formatCurrency, formatDate } from '@/lib/demo-data';
+import { useCurrency } from '@/hooks/use-profile';
+import { formatDate } from '@/lib/demo-data';
 import { AlertTriangle, ArrowLeft, FileText, GitCompare, MessageSquare } from 'lucide-react';
 
 const PayslipDetail = () => {
@@ -14,6 +15,7 @@ const PayslipDetail = () => {
   const { data: slip, isLoading } = usePayslip(id);
   const { data: payslips } = usePayslips();
   const { data: allAnomalies } = useAnomalies();
+  const { format: formatCurrency } = useCurrency();
 
   const anomalies = allAnomalies?.filter((a) => a.payslip_id === id) || [];
   const idx = payslips?.findIndex((s) => s.id === id) ?? -1;

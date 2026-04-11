@@ -5,7 +5,8 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import AppLayout from '@/components/layout/AppLayout';
 import { usePayslips, useAnomalies, usePayTrends } from '@/hooks/use-payslip-data';
-import { formatCurrency, formatDate } from '@/lib/demo-data';
+import { useCurrency } from '@/hooks/use-profile';
+import { formatDate } from '@/lib/demo-data';
 import {
   Upload, TrendingUp, TrendingDown, AlertTriangle, FileText, ArrowRight, BarChart3,
 } from 'lucide-react';
@@ -17,6 +18,7 @@ const Dashboard = () => {
   const { data: payslips, isLoading: loadingSlips } = usePayslips();
   const { data: anomalies, isLoading: loadingAnomalies } = useAnomalies();
   const { data: trends } = usePayTrends();
+  const { format: formatCurrency, symbol: currSym } = useCurrency();
 
   const latest = payslips?.[payslips.length - 1];
   const previous = payslips && payslips.length > 1 ? payslips[payslips.length - 2] : null;
@@ -137,8 +139,8 @@ const Dashboard = () => {
                         <LineChart data={trends} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
                           <CartesianGrid strokeDasharray="3 3" stroke="hsl(220, 13%, 88%)" />
                           <XAxis dataKey="month" tick={{ fontSize: 12 }} stroke="hsl(220, 10%, 46%)" />
-                          <YAxis tick={{ fontSize: 12 }} stroke="hsl(220, 10%, 46%)" tickFormatter={(v) => `£${v}`} />
-                          <Tooltip formatter={(val: number) => [`£${val.toFixed(2)}`, '']} />
+                          <YAxis tick={{ fontSize: 12 }} stroke="hsl(220, 10%, 46%)" tickFormatter={(v) => `${currSym}${v}`} />
+                          <Tooltip formatter={(val: number) => [formatCurrency(val), '']} />
                           <Line type="monotone" dataKey="net" stroke="hsl(217, 72%, 30%)" strokeWidth={2} dot={{ r: 4 }} name="Net pay" />
                           <Line type="monotone" dataKey="gross" stroke="hsl(172, 50%, 36%)" strokeWidth={2} dot={{ r: 4 }} name="Gross pay" />
                         </LineChart>
