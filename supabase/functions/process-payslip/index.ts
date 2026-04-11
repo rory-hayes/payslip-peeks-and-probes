@@ -205,8 +205,8 @@ function runAnomalyChecks(
         severity: diff > 50 ? "high" : "medium",
         confidence: "medium",
         title: "Deductions don't add up",
-        description: `Gross pay (${sym}${current.gross_pay.toFixed(2)}) minus total deductions (${sym}${current.total_deductions.toFixed(2)}) should equal net pay, but there's a ${sym}${diff.toFixed(2)} gap.`,
-        suggested_action: "Check if all deductions are shown — there may be hidden items not listed on the payslip.",
+        description: `What changed: Your gross pay (${sym}${current.gross_pay.toFixed(2)}) minus total deductions (${sym}${current.total_deductions.toFixed(2)}) should equal your net pay (${sym}${current.net_pay.toFixed(2)}), but there's a ${sym}${diff.toFixed(2)} gap.\n\nWhy it matters: This could mean a deduction is missing from the breakdown, or there's a rounding or processing error. It's worth understanding where the difference comes from.\n\nThis may be perfectly valid, but it's worth checking.`,
+        suggested_action: "Review each deduction line on your payslip. If any items seem missing, ask your payroll team to provide a full breakdown of all deductions applied this period.",
       });
     }
   }
@@ -218,13 +218,14 @@ function runAnomalyChecks(
       const change = pct(current.net_pay, previous.net_pay);
       if (Math.abs(change) > 5) {
         const direction = change > 0 ? "increased" : "dropped";
+        const absDiff = Math.abs(current.net_pay - previous.net_pay);
         anomalies.push({
           anomaly_type: "net_pay_change",
           severity: Math.abs(change) > 15 ? "high" : "medium",
           confidence: "high",
-          title: `Net pay ${direction} by ${Math.abs(change).toFixed(1)}%`,
-          description: `Your net pay ${direction} from ${sym}${previous.net_pay.toFixed(2)} to ${sym}${current.net_pay.toFixed(2)}. That's a ${sym}${Math.abs(current.net_pay - previous.net_pay).toFixed(2)} change.`,
-          suggested_action: "Review what changed — check tax, NI, pension, or any new deductions compared to last month.",
+          title: `Net pay ${direction} noticeably`,
+          description: `What changed: Your take-home pay ${direction} from ${sym}${previous.net_pay.toFixed(2)} to ${sym}${current.net_pay.toFixed(2)} — a ${sym}${absDiff.toFixed(2)} difference (${Math.abs(change).toFixed(1)}%).\n\nWhy it matters: ${change < 0 ? "A drop in net pay means less money reaching your account. This could be due to a tax code change, new deduction, or reduced hours." : "An increase is usually positive, but it's good to confirm it matches what you expect — for example, a pay rise, bonus, or reduced deductions."}\n\nHere's what changed and why it may need review.`,
+          suggested_action: `Compare this payslip's deductions line by line against last month. Look specifically at tax, ${country === "Ireland" || country === "ireland" ? "PRSI, USC" : "National Insurance"}, and pension contributions to find what shifted.`,
         });
       }
     }
@@ -234,13 +235,20 @@ function runAnomalyChecks(
       const change = pct(current.gross_pay, previous.gross_pay);
       if (Math.abs(change) > 5) {
         const direction = change > 0 ? "increased" : "decreased";
+        const absDiff = Math.abs(current.gross_pay - previous.gross_pay);
+        const hasBonus = current.bonus_amount != null && current.bonus_amount > 0;
+        const hasOvertime = current.overtime_amount != null && current.overtime_amount > 0;
+        let context = "";
+        if (hasBonus && hasOvertime) context = " This payslip includes both a bonus and overtime, which may explain the change.";
+        else if (hasBonus) context = " This payslip includes a bonus payment, which may explain the change.";
+        else if (hasOvertime) context = " This payslip includes overtime, which may explain the change.";
         anomalies.push({
           anomaly_type: "gross_pay_change",
           severity: Math.abs(change) > 15 ? "high" : "medium",
           confidence: "high",
-          title: `Gross pay ${direction} by ${Math.abs(change).toFixed(1)}%`,
-          description: `Your gross pay went from ${sym}${previous.gross_pay.toFixed(2)} to ${sym}${current.gross_pay.toFixed(2)}.`,
-          suggested_action: "Check for pay rises, overtime changes, reduced hours, or variable pay adjustments.",
+          title: `Gross pay ${direction} noticeably`,
+          description: `What changed: Your gross pay went from ${sym}${previous.gross_pay.toFixed(2)} to ${sym}${current.gross_pay.toFixed(2)} — a ${sym}${absDiff.toFixed(2)} difference (${Math.abs(change).toFixed(1)}%).${context}\n\nWhy it matters: ${change > 0 ? "An increase could reflect overtime, a bonus, a pay rise, or an error. It's worth confirming the reason." : "A decrease could mean reduced hours, loss of allowances, or a payroll error."}\n\nThis may be perfectly valid, but it's worth checking.`,
+          suggested_action: `${hasBonus || hasOvertime ? "Check if the bonus or overtime amount explains the full difference." : "Check whether you had a pay rise, overtime, or any variable pay this period."} If the change is unexpected, ask your payroll team to clarify.`,
         });
       }
     }
@@ -250,13 +258,14 @@ function runAnomalyChecks(
       const grossSame = Math.abs(current.gross_pay - previous.gross_pay) < 5;
       const netDiff = Math.abs(current.net_pay - previous.net_pay);
       if (grossSame && netDiff > 10) {
+        const netDir = current.net_pay > previous.net_pay ? "up" : "down";
         anomalies.push({
           anomaly_type: "same_gross_different_net",
           severity: netDiff > 50 ? "high" : "medium",
           confidence: "high",
-          title: "Same gross pay but different net pay",
-          description: `Your gross pay is essentially unchanged but your net pay shifted by ${sym}${netDiff.toFixed(2)}. Something in your deductions changed.`,
-          suggested_action: "Compare the deduction lines — look for changes in tax, NI, pension, or any new items.",
+          title: "Same gross pay but different take-home",
+          description: `What changed: Your gross pay is essentially the same, but your take-home pay shifted ${netDir} by ${sym}${netDiff.toFixed(2)}. This means something in your deductions changed.\n\nWhy it matters: When gross pay stays the same but net pay moves, it usually means a deduction was added, removed, or adjusted — such as a tax code change, pension rate update, or new deduction.\n\nHere's what changed and why it may need review.`,
+          suggested_action: `Compare each deduction line against last month's payslip. Focus on tax, ${country === "Ireland" || country === "ireland" ? "PRSI, USC" : "National Insurance"}, and pension to identify what shifted.`,
         });
       }
     }
@@ -265,15 +274,15 @@ function runAnomalyChecks(
     if (current.tax_amount != null && previous.tax_amount != null && current.gross_pay != null && previous.gross_pay != null && previous.tax_amount > 0) {
       const grossChange = pct(current.gross_pay, previous.gross_pay);
       const taxChange = pct(current.tax_amount, previous.tax_amount);
-      // Tax changed more than twice the rate of gross
       if (Math.abs(taxChange) > 5 && Math.abs(taxChange) > Math.abs(grossChange) * 2 + 5) {
+        const taxDiff = Math.abs(current.tax_amount - previous.tax_amount);
         anomalies.push({
           anomaly_type: "tax_disproportionate",
           severity: Math.abs(taxChange) > 20 ? "high" : "medium",
           confidence: "medium",
-          title: "Tax increased more than expected",
-          description: `Your tax changed by ${Math.abs(taxChange).toFixed(1)}% while gross pay only changed by ${Math.abs(grossChange).toFixed(1)}%. This could indicate a tax code change.`,
-          suggested_action: "Check your tax code on this payslip — it may have changed from the previous month.",
+          title: "Tax changed more than expected",
+          description: `What changed: Your tax went from ${sym}${previous.tax_amount.toFixed(2)} to ${sym}${current.tax_amount.toFixed(2)} (${Math.abs(taxChange).toFixed(1)}% change), while your gross pay only moved by ${Math.abs(grossChange).toFixed(1)}%. That's a ${sym}${taxDiff.toFixed(2)} difference in tax.\n\nWhy it matters: Tax usually moves roughly in line with gross pay. A disproportionate change often signals a tax code update, a one-off adjustment by HMRC, or a cumulative catch-up from a previous month.\n\nThis may be perfectly valid, but it's worth checking.`,
+          suggested_action: "Compare the tax code shown on this payslip with last month's. If it's different, check your HMRC online account to confirm it's correct. If it's the same, ask payroll if a tax adjustment was applied.",
         });
       }
     }
@@ -283,13 +292,14 @@ function runAnomalyChecks(
       const grossChange = pct(current.gross_pay, previous.gross_pay);
       const niChange = pct(current.national_insurance_amount, previous.national_insurance_amount);
       if (Math.abs(niChange) > 5 && Math.abs(niChange) > Math.abs(grossChange) * 2 + 5) {
+        const niDiff = Math.abs(current.national_insurance_amount - previous.national_insurance_amount);
         anomalies.push({
           anomaly_type: "ni_disproportionate",
           severity: "medium",
           confidence: "medium",
           title: "National Insurance changed more than expected",
-          description: `Your NI changed by ${Math.abs(niChange).toFixed(1)}% while gross pay changed by ${Math.abs(grossChange).toFixed(1)}%.`,
-          suggested_action: "Check if your NI category has changed or if there's been a rate adjustment.",
+          description: `What changed: Your NI contributions went from ${sym}${previous.national_insurance_amount.toFixed(2)} to ${sym}${current.national_insurance_amount.toFixed(2)} (${Math.abs(niChange).toFixed(1)}% change), while gross pay only moved by ${Math.abs(grossChange).toFixed(1)}%. That's a ${sym}${niDiff.toFixed(2)} difference.\n\nWhy it matters: NI is calculated as a percentage of earnings above certain thresholds. A disproportionate change could indicate your NI category letter has changed, or that a salary sacrifice arrangement started or stopped.\n\nThis may be perfectly valid, but it's worth checking.`,
+          suggested_action: "Check the NI category letter on your payslip (usually A, B, C, etc.). If it changed from last month, ask your payroll team why. You can also verify your NI record on the HMRC website.",
         });
       }
     }
@@ -299,26 +309,26 @@ function runAnomalyChecks(
       const change = pct(current.pension_amount, previous.pension_amount);
       if (Math.abs(change) > 5) {
         const direction = change > 0 ? "increased" : "decreased";
+        const diff = Math.abs(current.pension_amount - previous.pension_amount);
         anomalies.push({
           anomaly_type: "pension_change",
           severity: Math.abs(change) > 25 ? "high" : "low",
           confidence: "high",
-          title: `Pension deduction ${direction}`,
-          description: `Your pension deduction changed from ${sym}${previous.pension_amount.toFixed(2)} to ${sym}${current.pension_amount.toFixed(2)} (${Math.abs(change).toFixed(1)}%).`,
-          suggested_action: "Check if your pension contribution rate or salary sacrifice amount has changed.",
+          title: `Pension contribution ${direction}`,
+          description: `What changed: Your pension deduction went from ${sym}${previous.pension_amount.toFixed(2)} to ${sym}${current.pension_amount.toFixed(2)} — a ${sym}${diff.toFixed(2)} difference (${Math.abs(change).toFixed(1)}%).\n\nWhy it matters: Pension contributions can change if your contribution rate was updated, your employer changed their scheme terms, or if salary sacrifice arrangements were adjusted. ${change > 0 ? "A higher contribution means more going into your pension but less take-home pay." : "A lower contribution means more take-home pay but less going into your pension."}\n\nThis may be perfectly valid, but it's worth checking.`,
+          suggested_action: "Ask your payroll team whether your pension contribution rate has changed. If you're on salary sacrifice, check if the arrangement was updated.",
         });
       }
     }
 
-    // Pension appeared or disappeared
     if ((previous.pension_amount == null || previous.pension_amount === 0) && current.pension_amount != null && current.pension_amount > 0) {
       anomalies.push({
         anomaly_type: "new_deduction",
         severity: "medium",
         confidence: "high",
         title: "Pension deduction appeared",
-        description: `A pension deduction of ${sym}${current.pension_amount.toFixed(2)} appeared this month but wasn't on the previous payslip.`,
-        suggested_action: "Check if you've been auto-enrolled or opted into a pension scheme.",
+        description: `What changed: A pension deduction of ${sym}${current.pension_amount.toFixed(2)} appeared this month but wasn't on your previous payslip.\n\nWhy it matters: This could mean you've been auto-enrolled into a workplace pension scheme (which is normal and often required by law), or you may have opted in. Either way, it's good to confirm.\n\nThis may be perfectly valid, but it's worth checking.`,
+        suggested_action: "Check with your employer whether you've been auto-enrolled into a pension. If so, review the contribution rate and confirm it matches what you agreed to.",
       });
     }
     if (previous.pension_amount != null && previous.pension_amount > 0 && (current.pension_amount == null || current.pension_amount === 0)) {
@@ -327,8 +337,8 @@ function runAnomalyChecks(
         severity: "medium",
         confidence: "high",
         title: "Pension deduction disappeared",
-        description: `A pension deduction of ${sym}${previous.pension_amount.toFixed(2)} was on the previous payslip but is missing now.`,
-        suggested_action: "Confirm with payroll whether this is intentional.",
+        description: `What changed: A pension deduction of ${sym}${previous.pension_amount.toFixed(2)} was on your previous payslip but is missing from this one.\n\nWhy it matters: If you opted out of your pension, this is expected. But if you didn't, the deduction may have been removed in error — which could affect your retirement savings.\n\nHere's what changed and why it may need review.`,
+        suggested_action: "Confirm with your payroll team whether the pension deduction was intentionally removed. If you didn't opt out, ask them to reinstate it.",
       });
     }
 
@@ -339,8 +349,8 @@ function runAnomalyChecks(
         severity: "medium",
         confidence: "high",
         title: "Student loan deduction appeared",
-        description: `A student loan deduction of ${sym}${current.student_loan_amount.toFixed(2)} appeared this month.`,
-        suggested_action: "Check if HMRC has notified your employer to start student loan repayments.",
+        description: `What changed: A student loan repayment of ${sym}${current.student_loan_amount.toFixed(2)} appeared this month but wasn't on your previous payslip.\n\nWhy it matters: HMRC may have notified your employer to begin deductions. This is normal if you're earning above the repayment threshold, but it's worth confirming the amount and plan type are correct.\n\nThis may be perfectly valid, but it's worth checking.`,
+        suggested_action: "Log into your Student Loans Company account to check your repayment plan and threshold. Compare the deduction amount with what you'd expect based on your plan type.",
       });
     }
     if (previous.student_loan_amount != null && previous.student_loan_amount > 0 && (current.student_loan_amount == null || current.student_loan_amount === 0)) {
@@ -349,57 +359,57 @@ function runAnomalyChecks(
         severity: "low",
         confidence: "high",
         title: "Student loan deduction disappeared",
-        description: `A student loan deduction of ${sym}${previous.student_loan_amount.toFixed(2)} was on the previous payslip but is missing now.`,
-        suggested_action: "If your loan is fully repaid this is expected. Otherwise, check with payroll.",
+        description: `What changed: A student loan deduction of ${sym}${previous.student_loan_amount.toFixed(2)} was on your previous payslip but is missing from this one.\n\nWhy it matters: If your loan has been fully repaid, this is expected and good news. However, if it hasn't, repayments may have stopped in error, which could lead to a larger deduction later to catch up.\n\nThis may be perfectly valid, but it's worth checking.`,
+        suggested_action: "Check your Student Loans Company account to see if your loan is marked as repaid. If it's not, ask your payroll team why the deduction was removed.",
       });
     }
 
-    // Total deductions material change
     if (current.total_deductions != null && previous.total_deductions != null && previous.total_deductions > 0) {
       const change = pct(current.total_deductions, previous.total_deductions);
       if (Math.abs(change) > 10) {
         const direction = change > 0 ? "increased" : "decreased";
+        const dedDiff = Math.abs(current.total_deductions - previous.total_deductions);
         anomalies.push({
           anomaly_type: "total_deductions_change",
           severity: Math.abs(change) > 25 ? "high" : "medium",
           confidence: "high",
-          title: `Total deductions ${direction} by ${Math.abs(change).toFixed(1)}%`,
-          description: `Your total deductions went from ${sym}${previous.total_deductions.toFixed(2)} to ${sym}${current.total_deductions.toFixed(2)}.`,
-          suggested_action: "Review each deduction line to see which items changed.",
+          title: `Total deductions ${direction} materially`,
+          description: `What changed: Your total deductions went from ${sym}${previous.total_deductions.toFixed(2)} to ${sym}${current.total_deductions.toFixed(2)} — a ${sym}${dedDiff.toFixed(2)} difference (${Math.abs(change).toFixed(1)}%).\n\nWhy it matters: ${direction === "increased" ? "Higher deductions mean less take-home pay. This could be due to tax, NI, pension, or a new deduction being added." : "Lower deductions could mean a deduction was removed or reduced. Make sure nothing important (like pension) was accidentally dropped."}\n\nHere's what changed and why it may need review.`,
+          suggested_action: "Go through each deduction line on this payslip and compare it to last month. Identify which specific item(s) changed and whether the change was expected.",
         });
       }
     }
 
     // ─── Ireland-specific ───
     if (country === "Ireland" || country === "ireland") {
-      // PRSI disproportionate
       if (current.prsi_amount != null && previous.prsi_amount != null && previous.prsi_amount > 0 && current.gross_pay != null && previous.gross_pay != null) {
         const grossChange = pct(current.gross_pay, previous.gross_pay);
         const prsiChange = pct(current.prsi_amount, previous.prsi_amount);
         if (Math.abs(prsiChange) > 5 && Math.abs(prsiChange) > Math.abs(grossChange) * 2 + 5) {
+          const prsiDiff = Math.abs(current.prsi_amount - previous.prsi_amount);
           anomalies.push({
             anomaly_type: "prsi_disproportionate",
             severity: "medium",
             confidence: "medium",
             title: "PRSI changed more than expected",
-            description: `Your PRSI changed by ${Math.abs(prsiChange).toFixed(1)}% while gross pay changed by ${Math.abs(grossChange).toFixed(1)}%.`,
-            suggested_action: "Check if your PRSI class has changed.",
+            description: `What changed: Your PRSI went from €${previous.prsi_amount.toFixed(2)} to €${current.prsi_amount.toFixed(2)} (${Math.abs(prsiChange).toFixed(1)}% change), while gross pay only moved by ${Math.abs(grossChange).toFixed(1)}%. That's a €${prsiDiff.toFixed(2)} difference.\n\nWhy it matters: PRSI is normally a fixed percentage based on your PRSI class. A disproportionate change could mean your class changed, or there was an adjustment by Revenue.\n\nThis may be perfectly valid, but it's worth checking.`,
+            suggested_action: "Check your PRSI class on this payslip and compare it to the previous one. If it changed, confirm with your employer or Revenue why.",
           });
         }
       }
 
-      // USC disproportionate
       if (current.usc_amount != null && previous.usc_amount != null && previous.usc_amount > 0 && current.gross_pay != null && previous.gross_pay != null) {
         const grossChange = pct(current.gross_pay, previous.gross_pay);
         const uscChange = pct(current.usc_amount, previous.usc_amount);
         if (Math.abs(uscChange) > 5 && Math.abs(uscChange) > Math.abs(grossChange) * 2 + 5) {
+          const uscDiff = Math.abs(current.usc_amount - previous.usc_amount);
           anomalies.push({
             anomaly_type: "usc_disproportionate",
             severity: "medium",
             confidence: "medium",
             title: "USC changed more than expected",
-            description: `Your USC changed by ${Math.abs(uscChange).toFixed(1)}% while gross pay changed by ${Math.abs(grossChange).toFixed(1)}%.`,
-            suggested_action: "Check if your USC rate band or exemption has changed.",
+            description: `What changed: Your USC went from €${previous.usc_amount.toFixed(2)} to €${current.usc_amount.toFixed(2)} (${Math.abs(uscChange).toFixed(1)}% change), while gross pay only moved by ${Math.abs(grossChange).toFixed(1)}%. That's a €${uscDiff.toFixed(2)} difference.\n\nWhy it matters: USC is calculated in bands based on your income. A disproportionate change could mean your rate bands shifted, you crossed a threshold, or an exemption status changed.\n\nThis may be perfectly valid, but it's worth checking.`,
+            suggested_action: "Check your Revenue online account to confirm your USC rate bands and exemption status. If the rate seems wrong, raise it with your payroll team.",
           });
         }
       }
