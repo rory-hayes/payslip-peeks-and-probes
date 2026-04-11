@@ -1,6 +1,7 @@
 import { useState, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Card, CardContent } from '@/components/ui/card';
@@ -16,6 +17,7 @@ interface PayslipUploadProps {
 const PayslipUpload = ({ onUploadComplete }: PayslipUploadProps) => {
   const { user } = useAuth();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [state, setState] = useState<UploadState>('idle');
   const [progress, setProgress] = useState(0);
@@ -119,8 +121,11 @@ const PayslipUpload = ({ onUploadComplete }: PayslipUploadProps) => {
 
     setProgress(100);
     setState('success');
+    // Refresh dashboard & vault data
+    queryClient.invalidateQueries({ queryKey: ['payslips'] });
+    queryClient.invalidateQueries({ queryKey: ['anomalies'] });
     onUploadComplete?.(payslip.id);
-  }, [user, toast, onUploadComplete]);
+  }, [user, toast, onUploadComplete, queryClient]);
 
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
