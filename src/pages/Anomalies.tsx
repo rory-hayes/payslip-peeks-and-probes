@@ -1,10 +1,12 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
 import AppLayout from '@/components/layout/AppLayout';
-import { demoAnomalies, formatDate } from '@/lib/demo-data';
+import { useAnomalies } from '@/hooks/use-payslip-data';
+import { formatDate } from '@/lib/demo-data';
 import type { AnomalyStatus } from '@/lib/types';
 import { AlertTriangle, CheckCircle, Eye, MessageSquare } from 'lucide-react';
 
@@ -17,15 +19,17 @@ const statusLabels: Record<AnomalyStatus, string> = {
 
 const Anomalies = () => {
   const [filter, setFilter] = useState<AnomalyStatus | 'all'>('all');
-  const filtered = filter === 'all' ? demoAnomalies : demoAnomalies.filter((a) => a.status === filter);
-  const highCount = demoAnomalies.filter((a) => a.severity === 'high' && a.status === 'new').length;
+  const { data: anomalies, isLoading } = useAnomalies();
+  const all = anomalies || [];
+  const filtered = filter === 'all' ? all : all.filter((a) => a.status === filter);
+  const highCount = all.filter((a) => a.severity === 'high' && a.status === 'new').length;
 
   return (
     <AppLayout>
       <div className="space-y-6 max-w-4xl">
         <div>
           <h1 className="text-2xl font-bold text-foreground">Anomalies</h1>
-          <p className="text-sm text-muted-foreground">{demoAnomalies.length} flagged items across your payslips</p>
+          <p className="text-sm text-muted-foreground">{all.length} flagged items across your payslips</p>
         </div>
 
         {highCount > 0 && (
@@ -40,23 +44,25 @@ const Anomalies = () => {
           </Card>
         )}
 
-        {/* Filter tabs */}
         <div className="flex gap-2 flex-wrap">
           {(['all', 'new', 'reviewed', 'raised', 'resolved'] as const).map((s) => (
-            <Button
-              key={s}
-              variant={filter === s ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setFilter(s)}
-              className="capitalize text-xs"
-            >
-              {s === 'all' ? `All (${demoAnomalies.length})` : `${statusLabels[s]} (${demoAnomalies.filter((a) => a.status === s).length})`}
+            <Button key={s} variant={filter === s ? 'default' : 'outline'} size="sm" onClick={() => setFilter(s)} className="capitalize text-xs">
+              {s === 'all' ? `All (${all.length})` : `${statusLabels[s]} (${all.filter((a) => a.status === s).length})`}
             </Button>
           ))}
         </div>
 
-        {/* List */}
-        {filtered.length === 0 ? (
+        {isLoading ? (
+          <div className="space-y-3">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <Card key={i} className="border-0 shadow-sm"><CardContent className="p-5 space-y-3">
+                <Skeleton className="h-5 w-3/4" />
+                <Skeleton className="h-4 w-full" />
+                <Skeleton className="h-4 w-1/2" />
+              </CardContent></Card>
+            ))}
+          </div>
+        ) : filtered.length === 0 ? (
           <Card className="border-0 shadow-sm">
             <CardContent className="flex flex-col items-center justify-center py-16">
               <CheckCircle className="h-12 w-12 text-success/40" />

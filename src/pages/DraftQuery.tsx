@@ -5,17 +5,19 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Skeleton } from '@/components/ui/skeleton';
 import AppLayout from '@/components/layout/AppLayout';
-import { demoPayslips, demoIssueDrafts, demoAnomalies, formatDate } from '@/lib/demo-data';
+import { usePayslip, useAnomalies } from '@/hooks/use-payslip-data';
+import { formatDate } from '@/lib/demo-data';
 import { ArrowLeft, Copy, Mail, CheckCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 const DraftQuery = () => {
   const { id } = useParams();
   const { toast } = useToast();
-  const slip = demoPayslips.find((s) => s.id === id);
-  const existingDraft = demoIssueDrafts.find((d) => d.payslip_id === id);
-  const anomalies = demoAnomalies.filter((a) => a.payslip_id === id);
+  const { data: slip, isLoading } = usePayslip(id);
+  const { data: allAnomalies } = useAnomalies();
+  const anomalies = allAnomalies?.filter((a) => a.payslip_id === id) || [];
 
   const defaultSubject = slip ? `Query about my ${formatDate(slip.pay_date)} payslip` : '';
   const defaultBody = slip
@@ -26,9 +28,17 @@ const DraftQuery = () => {
       }\n\nI'd appreciate any clarification. Happy to discuss further if needed.\n\nKind regards`
     : '';
 
-  const [subject, setSubject] = useState(existingDraft?.subject || defaultSubject);
-  const [body, setBody] = useState(existingDraft?.body || defaultBody);
+  const [subject, setSubject] = useState('');
+  const [body, setBody] = useState('');
   const [copied, setCopied] = useState(false);
+  const [initialized, setInitialized] = useState(false);
+
+  // Initialize once data loads
+  if (slip && !initialized) {
+    setSubject(defaultSubject);
+    setBody(defaultBody);
+    setInitialized(true);
+  }
 
   const handleCopy = () => {
     navigator.clipboard.writeText(`Subject: ${subject}\n\n${body}`);
@@ -38,6 +48,20 @@ const DraftQuery = () => {
   };
 
   const mailtoLink = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+
+  if (isLoading) {
+    return (
+      <AppLayout>
+        <div className="space-y-6 max-w-2xl">
+          <Skeleton className="h-8 w-48" />
+          <Card className="border-0 shadow-sm"><CardContent className="p-6 space-y-4">
+            <Skeleton className="h-10 w-full" />
+            <Skeleton className="h-48 w-full" />
+          </CardContent></Card>
+        </div>
+      </AppLayout>
+    );
+  }
 
   if (!slip) {
     return (
@@ -62,9 +86,7 @@ const DraftQuery = () => {
         </div>
 
         <Card className="border-0 shadow-sm">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base">Your message</CardTitle>
-          </CardHeader>
+          <CardHeader className="pb-2"><CardTitle className="text-base">Your message</CardTitle></CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
               <Label>Subject</Label>

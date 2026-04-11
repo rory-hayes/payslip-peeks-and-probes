@@ -3,15 +3,18 @@ import { Link } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
+import { Skeleton } from '@/components/ui/skeleton';
 import AppLayout from '@/components/layout/AppLayout';
 import PayslipUpload from '@/components/PayslipUpload';
-import { demoPayslips, formatCurrency, formatDate } from '@/lib/demo-data';
+import { usePayslips } from '@/hooks/use-payslip-data';
+import { formatCurrency, formatDate } from '@/lib/demo-data';
 import { FileText, Search, AlertTriangle } from 'lucide-react';
 
 const PayslipVault = () => {
   const [search, setSearch] = useState('');
-  const [showUpload, setShowUpload] = useState(false);
-  const filtered = demoPayslips.filter(
+  const { data: payslips, isLoading } = usePayslips();
+
+  const filtered = (payslips || []).filter(
     (s) =>
       s.employer_name.toLowerCase().includes(search.toLowerCase()) ||
       s.pay_date.includes(search)
@@ -23,18 +26,33 @@ const PayslipVault = () => {
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h1 className="text-2xl font-bold text-foreground">Payslip Vault</h1>
-            <p className="text-sm text-muted-foreground">{demoPayslips.length} payslips stored securely</p>
+            <p className="text-sm text-muted-foreground">{payslips?.length ?? 0} payslips stored securely</p>
           </div>
         </div>
 
-        <PayslipUpload onUploadComplete={() => setShowUpload(false)} />
+        <PayslipUpload onUploadComplete={() => {}} />
 
         <div className="relative">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input placeholder="Search by employer or date…" className="pl-10" value={search} onChange={(e) => setSearch(e.target.value)} />
         </div>
 
-        {filtered.length === 0 ? (
+        {isLoading ? (
+          <div className="space-y-3">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <Card key={i} className="border-0 shadow-sm">
+                <CardContent className="flex items-center gap-4 p-4">
+                  <Skeleton className="h-12 w-12 rounded-xl" />
+                  <div className="flex-1 space-y-2">
+                    <Skeleton className="h-4 w-32" />
+                    <Skeleton className="h-3 w-48" />
+                  </div>
+                  <Skeleton className="h-4 w-20" />
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        ) : filtered.length === 0 ? (
           <Card className="border-0 shadow-sm">
             <CardContent className="flex flex-col items-center justify-center py-16 text-center">
               <FileText className="h-12 w-12 text-muted-foreground/40" />

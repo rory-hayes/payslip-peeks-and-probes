@@ -1,14 +1,46 @@
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
 import AppLayout from '@/components/layout/AppLayout';
-import { demoPayslips, formatCurrency, formatDate } from '@/lib/demo-data';
+import { usePayslips } from '@/hooks/use-payslip-data';
+import { formatCurrency, formatDate } from '@/lib/demo-data';
 import { ArrowLeft, TrendingUp, TrendingDown, Minus, ArrowRight } from 'lucide-react';
 
 const ComparePayslips = () => {
-  const current = demoPayslips[demoPayslips.length - 1];
-  const previous = demoPayslips[demoPayslips.length - 2];
+  const [searchParams] = useSearchParams();
+  const { data: payslips, isLoading } = usePayslips();
+
+  const currentId = searchParams.get('current');
+  const previousId = searchParams.get('previous');
+
+  const current = payslips?.find((s) => s.id === currentId) || (payslips && payslips.length > 0 ? payslips[payslips.length - 1] : null);
+  const previous = payslips?.find((s) => s.id === previousId) || (payslips && payslips.length > 1 ? payslips[payslips.length - 2] : null);
+
+  if (isLoading) {
+    return (
+      <AppLayout>
+        <div className="space-y-6 max-w-3xl">
+          <Skeleton className="h-8 w-48" />
+          <Card className="border-0 shadow-sm"><CardContent className="p-6 space-y-4">
+            {Array.from({ length: 7 }).map((_, i) => <Skeleton key={i} className="h-5 w-full" />)}
+          </CardContent></Card>
+        </div>
+      </AppLayout>
+    );
+  }
+
+  if (!current || !previous) {
+    return (
+      <AppLayout>
+        <div className="flex flex-col items-center justify-center py-20 text-center">
+          <h2 className="text-lg font-semibold text-foreground">Need at least 2 payslips to compare</h2>
+          <p className="mt-2 text-sm text-muted-foreground">Upload more payslips to unlock comparison.</p>
+          <Link to="/vault"><Button variant="outline" className="mt-4 gap-2"><ArrowLeft className="h-4 w-4" /> Back to vault</Button></Link>
+        </div>
+      </AppLayout>
+    );
+  }
 
   const diffs = [
     { label: 'Gross pay', curr: current.gross_pay, prev: previous.gross_pay },
@@ -31,11 +63,9 @@ const ComparePayslips = () => {
           </div>
         </div>
 
-        {/* Comparison table */}
         <Card className="border-0 shadow-sm overflow-hidden">
           <CardContent className="p-0">
             <div className="grid grid-cols-4 gap-0 text-sm">
-              {/* Header */}
               <div className="border-b border-border bg-muted/50 p-4 font-medium text-muted-foreground"></div>
               <div className="border-b border-border bg-muted/50 p-4 text-center font-medium text-muted-foreground">{formatDate(previous.pay_date).split(' ').slice(1).join(' ')}</div>
               <div className="border-b border-border bg-muted/50 p-4 text-center font-medium text-muted-foreground">{formatDate(current.pay_date).split(' ').slice(1).join(' ')}</div>
@@ -54,7 +84,7 @@ const ComparePayslips = () => {
                         <span className="inline-flex items-center gap-1 text-muted-foreground"><Minus className="h-3 w-3" /> —</span>
                       ) : (
                         <span className={`inline-flex items-center gap-1 ${
-                          (row.label === 'Net pay' || row.label === 'Gross pay') 
+                          (row.label === 'Net pay' || row.label === 'Gross pay')
                             ? (change > 0 ? 'text-success' : 'text-destructive')
                             : (change > 0 ? 'text-destructive' : 'text-success')
                         }`}>
@@ -70,18 +100,19 @@ const ComparePayslips = () => {
           </CardContent>
         </Card>
 
-        {/* Summary */}
         <Card className="border-0 shadow-sm">
           <CardHeader className="pb-2">
             <CardTitle className="text-base">What changed</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3 text-sm text-muted-foreground leading-relaxed">
-            <p>Your net pay decreased by <strong className="text-foreground">{formatCurrency(Math.abs(current.net_pay - previous.net_pay))}</strong> from {formatDate(previous.pay_date).split(' ').slice(1).join(' ')} to {formatDate(current.pay_date).split(' ').slice(1).join(' ')}.</p>
+            {current.net_pay !== previous.net_pay && (
+              <p>Your net pay {current.net_pay > previous.net_pay ? 'increased' : 'decreased'} by <strong className="text-foreground">{formatCurrency(Math.abs(current.net_pay - previous.net_pay))}</strong>.</p>
+            )}
             {current.student_loan_amount && !previous.student_loan_amount && (
-              <p>A <strong className="text-foreground">student loan repayment</strong> of {formatCurrency(current.student_loan_amount)} appeared for the first time. This is a new deduction that wasn't on your previous payslip.</p>
+              <p>A <strong className="text-foreground">student loan repayment</strong> of {formatCurrency(current.student_loan_amount)} appeared for the first time.</p>
             )}
             {current.ni_amount !== previous.ni_amount && (
-              <p>National Insurance returned to <strong className="text-foreground">{formatCurrency(current.ni_amount || 0)}</strong> (was {formatCurrency(previous.ni_amount || 0)} last month).</p>
+              <p>National Insurance changed to <strong className="text-foreground">{formatCurrency(current.ni_amount || 0)}</strong> (was {formatCurrency(previous.ni_amount || 0)}).</p>
             )}
             <p className="text-xs">This comparison is for guidance only. Please verify with your payroll team if anything looks incorrect.</p>
           </CardContent>
