@@ -6,12 +6,15 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Progress } from '@/components/ui/progress';
-import { CheckCircle, ArrowRight, ArrowLeft, Upload, Sparkles } from 'lucide-react';
+import { CheckCircle, ArrowRight, ArrowLeft, Upload, Sparkles, PoundSterling, Euro } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 
-const steps = ['Welcome', 'Country', 'Pay profile', 'Payroll details', 'Ready'];
+const steps = ['Welcome', 'Region', 'Salary', 'Pay profile', 'Payroll details', 'Ready'];
+
+const currencySymbol = (c: string) => (c === 'Ireland' ? '€' : '£');
+const currencyCode = (c: string) => (c === 'Ireland' ? 'EUR' : 'GBP');
 
 const Onboarding = () => {
   const navigate = useNavigate();
@@ -19,6 +22,7 @@ const Onboarding = () => {
   const { toast } = useToast();
   const [step, setStep] = useState(0);
   const [country, setCountry] = useState<'UK' | 'Ireland' | ''>('');
+  const [annualSalary, setAnnualSalary] = useState('');
   const [frequency, setFrequency] = useState('monthly');
   const [employer, setEmployer] = useState('');
   const [payrollEmail, setPayrollEmail] = useState('');
@@ -26,7 +30,13 @@ const Onboarding = () => {
   const [saving, setSaving] = useState(false);
 
   const progress = ((step + 1) / steps.length) * 100;
-  const canNext = step === 0 || (step === 1 && country) || (step === 2 && employer) || step === 3 || step === 4;
+  const canNext =
+    step === 0 ||
+    (step === 1 && country) ||
+    (step === 2 && annualSalary && Number(annualSalary) > 0) ||
+    (step === 3 && employer) ||
+    step === 4 ||
+    step === 5;
 
   const next = () => { if (step < steps.length - 1) setStep(step + 1); };
   const back = () => { if (step > 0) setStep(step - 1); };
@@ -34,12 +44,13 @@ const Onboarding = () => {
   const handleFinish = async () => {
     if (!user) return;
     setSaving(true);
-    
-    // Update profile
+
     const { error: profileError } = await supabase
       .from('profiles')
       .update({
         country: country || null,
+        currency: country ? currencyCode(country) : 'GBP',
+        annual_salary: annualSalary ? Number(annualSalary) : null,
         pay_frequency: frequency,
         employer_name: employer,
         payroll_email: payrollEmail || null,
@@ -51,7 +62,6 @@ const Onboarding = () => {
       })
       .eq('user_id', user.id);
 
-    // Create employer record
     if (employer) {
       await supabase.from('employers').insert({
         user_id: user.id,
@@ -66,6 +76,14 @@ const Onboarding = () => {
     } else {
       navigate('/dashboard');
     }
+  };
+
+  const formatSalaryPreview = () => {
+    const salary = Number(annualSalary);
+    if (!salary || !country) return null;
+    const sym = currencySymbol(country);
+    const monthly = salary / 12;
+    return `${sym}${monthly.toLocaleString(country === 'Ireland' ? 'en-IE' : 'en-GB', { minimumFractionDigits: 0, maximumFractionDigits: 0 })} / month gross`;
   };
 
   return (
@@ -86,6 +104,7 @@ const Onboarding = () => {
       <div className="flex flex-1 items-center justify-center px-4 py-12">
         <Card className="w-full max-w-lg border-0 shadow-lg">
           <CardContent className="p-8">
+            {/* Step 0: Welcome */}
             {step === 0 && (
               <div className="text-center space-y-4 animate-fade-in">
                 <div className="flex h-16 w-16 mx-auto items-center justify-center rounded-2xl bg-primary/10">
@@ -93,33 +112,77 @@ const Onboarding = () => {
                 </div>
                 <h2 className="text-2xl font-bold text-foreground">Welcome to PayCheck</h2>
                 <p className="text-muted-foreground leading-relaxed">
-                  We'll help you understand your payslips, track changes month to month, and raise issues quickly. Let's set up your profile — it only takes a minute.
+                  We'll help you understand your payslips, track changes month to month, and flag anything unusual. Let's set up your profile — it only takes a minute.
                 </p>
               </div>
             )}
 
+            {/* Step 1: Region / Country */}
             {step === 1 && (
               <div className="space-y-6 animate-fade-in">
                 <div className="text-center">
                   <h2 className="text-2xl font-bold text-foreground">Where are you employed?</h2>
-                  <p className="mt-2 text-sm text-muted-foreground">We tailor checks based on your country's tax system.</p>
+                  <p className="mt-2 text-sm text-muted-foreground">This sets your currency and tax rules automatically.</p>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
-                  {(['UK', 'Ireland'] as const).map((c) => (
+                  {([
+                    { key: 'UK' as const, label: 'United Kingdom', flag: '🇬🇧', currency: 'GBP (£)' },
+                    { key: 'Ireland' as const, label: 'Ireland', flag: '🇮🇪', currency: 'EUR (€)' },
+                  ]).map((c) => (
                     <button
-                      key={c}
-                      onClick={() => setCountry(c)}
-                      className={`flex flex-col items-center gap-3 rounded-xl border-2 p-6 transition-all ${country === c ? 'border-primary bg-primary/5' : 'border-border hover:border-muted-foreground/30'}`}
+                      key={c.key}
+                      onClick={() => setCountry(c.key)}
+                      className={`flex flex-col items-center gap-2 rounded-xl border-2 p-6 transition-all ${country === c.key ? 'border-primary bg-primary/5' : 'border-border hover:border-muted-foreground/30'}`}
                     >
-                      <span className="text-4xl">{c === 'UK' ? '🇬🇧' : '🇮🇪'}</span>
-                      <span className="font-medium text-foreground">{c === 'UK' ? 'United Kingdom' : 'Ireland'}</span>
+                      <span className="text-4xl">{c.flag}</span>
+                      <span className="font-medium text-foreground">{c.label}</span>
+                      <span className="text-xs text-muted-foreground">{c.currency}</span>
                     </button>
                   ))}
                 </div>
               </div>
             )}
 
+            {/* Step 2: Annual salary */}
             {step === 2 && (
+              <div className="space-y-6 animate-fade-in">
+                <div className="text-center">
+                  <h2 className="text-2xl font-bold text-foreground">What's your annual salary?</h2>
+                  <p className="mt-2 text-sm text-muted-foreground">
+                    We use this to estimate your expected tax and net pay each month, so we can spot discrepancies.
+                  </p>
+                </div>
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="salary">Gross annual salary</Label>
+                    <div className="relative">
+                      <div className="absolute left-3 top-1/2 -translate-y-1/2 flex items-center text-muted-foreground">
+                        {country === 'Ireland' ? <Euro className="h-4 w-4" /> : <PoundSterling className="h-4 w-4" />}
+                      </div>
+                      <Input
+                        id="salary"
+                        type="number"
+                        min="0"
+                        step="500"
+                        placeholder={country === 'Ireland' ? '45,000' : '35,000'}
+                        className="pl-10 text-lg"
+                        value={annualSalary}
+                        onChange={(e) => setAnnualSalary(e.target.value)}
+                      />
+                    </div>
+                    {formatSalaryPreview() && (
+                      <p className="text-sm text-primary font-medium">{formatSalaryPreview()}</p>
+                    )}
+                  </div>
+                  <p className="text-xs text-muted-foreground leading-relaxed">
+                    This is kept private and only used to compare against your payslip figures. You can update it anytime in Settings.
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* Step 3: Pay profile */}
+            {step === 3 && (
               <div className="space-y-6 animate-fade-in">
                 <div className="text-center">
                   <h2 className="text-2xl font-bold text-foreground">Your pay profile</h2>
@@ -152,7 +215,8 @@ const Onboarding = () => {
               </div>
             )}
 
-            {step === 3 && (
+            {/* Step 4: Payroll details */}
+            {step === 4 && (
               <div className="space-y-6 animate-fade-in">
                 <div className="text-center">
                   <h2 className="text-2xl font-bold text-foreground">Payroll details</h2>
@@ -180,14 +244,15 @@ const Onboarding = () => {
               </div>
             )}
 
-            {step === 4 && (
+            {/* Step 5: Ready */}
+            {step === 5 && (
               <div className="text-center space-y-6 animate-fade-in">
                 <div className="flex h-16 w-16 mx-auto items-center justify-center rounded-2xl bg-success/10">
                   <Upload className="h-8 w-8 text-success" />
                 </div>
                 <h2 className="text-2xl font-bold text-foreground">You're all set!</h2>
                 <p className="text-muted-foreground leading-relaxed">
-                  Upload your first payslip and we'll extract the key figures, compare them with previous months, and flag anything that looks unusual.
+                  Upload your first payslip and we'll extract the key figures, compare them against your {currencySymbol(country || 'UK')}{Number(annualSalary).toLocaleString()} salary, and flag anything that looks unusual.
                 </p>
                 <p className="text-xs text-muted-foreground">
                   Remember: PayCheck provides guidance and issue spotting — not formal tax or payroll advice.
