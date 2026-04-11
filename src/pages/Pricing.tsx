@@ -6,6 +6,8 @@ import { Badge } from '@/components/ui/badge';
 import { CheckCircle, ArrowLeft, X } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useProfile } from '@/hooks/use-profile';
+import { useSubscription } from '@/hooks/use-subscription';
+import { useToast } from '@/hooks/use-toast';
 
 type Currency = 'GBP' | 'EUR';
 
@@ -34,7 +36,9 @@ const plusFeatures = [
 const Pricing = () => {
   const { user } = useAuth();
   const { data: profile } = useProfile();
+  const { subscription } = useSubscription();
   const navigate = useNavigate();
+  const { toast } = useToast();
 
   const defaultCurrency: Currency = profile?.country === 'Ireland' ? 'EUR' : 'GBP';
   const [currency, setCurrency] = useState<Currency>(defaultCurrency);
@@ -119,7 +123,11 @@ const Pricing = () => {
                   ))}
                 </ul>
                 {isLoggedIn ? (
-                  <Button variant="outline" className="w-full mt-8" disabled>Current plan</Button>
+                  subscription.isPremium ? (
+                    <Button variant="outline" className="w-full mt-8" disabled>Current plan</Button>
+                  ) : (
+                    <Button variant="outline" className="w-full mt-8" disabled>Current plan</Button>
+                  )
                 ) : (
                   <Link to="/sign-up" className="mt-8 block">
                     <Button variant="outline" className="w-full">Get started free</Button>
@@ -150,7 +158,21 @@ const Pricing = () => {
                   ))}
                 </ul>
                 {isLoggedIn ? (
-                  <Button className="w-full mt-8">Upgrade to Plus</Button>
+                  subscription.isPremium ? (
+                    <Button variant="outline" className="w-full mt-8" disabled>Current plan</Button>
+                  ) : (
+                    <Button
+                      className="w-full mt-8"
+                      onClick={() => {
+                        toast({
+                          title: 'Coming soon',
+                          description: 'Stripe checkout is being set up. You\'ll be able to upgrade shortly.',
+                        });
+                      }}
+                    >
+                      Upgrade to Plus
+                    </Button>
+                  )
                 ) : (
                   <Link to="/sign-up" className="mt-8 block">
                     <Button className="w-full">Start free trial</Button>
