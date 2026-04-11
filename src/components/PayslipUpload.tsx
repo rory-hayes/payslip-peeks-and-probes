@@ -18,7 +18,6 @@ const PayslipUpload = ({ onUploadComplete }: PayslipUploadProps) => {
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [state, setState] = useState<UploadState>('idle');
   const [progress, setProgress] = useState(0);
