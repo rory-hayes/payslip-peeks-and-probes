@@ -14,10 +14,12 @@ const Settings = () => {
   const { user, signOut } = useAuth();
   const [firstName, setFirstName] = useState('');
   const [country, setCountry] = useState<'UK' | 'Ireland'>('UK');
+  const [annualSalary, setAnnualSalary] = useState('');
   const [frequency, setFrequency] = useState('monthly');
   const [employer, setEmployer] = useState('');
   const [payrollEmail, setPayrollEmail] = useState('');
   const [loading, setLoading] = useState(false);
+  const currencySymbol = country === 'Ireland' ? '€' : '£';
 
   useEffect(() => {
     if (!user) return;
@@ -30,6 +32,7 @@ const Settings = () => {
         if (data) {
           setFirstName(data.first_name || '');
           setCountry((data.country as 'UK' | 'Ireland') || 'UK');
+          setAnnualSalary(data.annual_salary ? String(data.annual_salary) : '');
           setFrequency(data.pay_frequency || 'monthly');
           setEmployer(data.employer_name || '');
           setPayrollEmail(data.payroll_email || '');
@@ -45,6 +48,8 @@ const Settings = () => {
       .update({
         first_name: firstName,
         country,
+        currency: country === 'Ireland' ? 'EUR' : 'GBP',
+        annual_salary: annualSalary ? Number(annualSalary) : null,
         pay_frequency: frequency,
         employer_name: employer,
         payroll_email: payrollEmail || null,
@@ -102,6 +107,18 @@ const Settings = () => {
                   </button>
                 ))}
               </div>
+            </div>
+            <div className="space-y-2">
+              <Label>Annual gross salary ({currencySymbol})</Label>
+              <Input
+                type="number"
+                min="0"
+                step="500"
+                placeholder="e.g. 45000"
+                value={annualSalary}
+                onChange={(e) => setAnnualSalary(e.target.value)}
+              />
+              <p className="text-xs text-muted-foreground">Used to estimate expected tax and net pay. Kept private.</p>
             </div>
           </CardContent>
         </Card>

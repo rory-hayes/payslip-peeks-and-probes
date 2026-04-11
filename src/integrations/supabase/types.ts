@@ -337,8 +337,10 @@ export type Database = {
       }
       profiles: {
         Row: {
+          annual_salary: number | null
           country: string | null
           created_at: string
+          currency: string | null
           employer_name: string | null
           first_name: string | null
           has_benefits: boolean | null
@@ -353,8 +355,10 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          annual_salary?: number | null
           country?: string | null
           created_at?: string
+          currency?: string | null
           employer_name?: string | null
           first_name?: string | null
           has_benefits?: boolean | null
@@ -369,8 +373,10 @@ export type Database = {
           user_id: string
         }
         Update: {
+          annual_salary?: number | null
           country?: string | null
           created_at?: string
+          currency?: string | null
           employer_name?: string | null
           first_name?: string | null
           has_benefits?: boolean | null
