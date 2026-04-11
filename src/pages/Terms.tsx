@@ -4,23 +4,23 @@ import { ArrowLeft, CheckCircle } from 'lucide-react';
 
 const Terms = () => (
   <div className="min-h-screen bg-background">
-    <nav className="sticky top-0 z-50 border-b border-border bg-card/95 backdrop-blur">
+    <nav className="sticky top-0 z-50 border-b border-border bg-card/95 backdrop-blur" role="navigation" aria-label="Main navigation">
       <div className="container flex h-16 items-center justify-between">
-        <Link to="/" className="flex items-center gap-2">
+        <Link to="/" className="flex items-center gap-2" aria-label="PayCheck home">
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
-            <CheckCircle className="h-5 w-5 text-primary-foreground" />
+            <CheckCircle className="h-5 w-5 text-primary-foreground" aria-hidden="true" />
           </div>
           <span className="text-xl font-bold text-foreground">PayCheck</span>
         </Link>
         <Link to="/">
           <Button variant="ghost" size="sm" className="gap-1">
-            <ArrowLeft className="h-4 w-4" /> Back
+            <ArrowLeft className="h-4 w-4" aria-hidden="true" /> Back
           </Button>
         </Link>
       </div>
     </nav>
 
-    <div className="container max-w-3xl py-16 space-y-8">
+    <main className="container max-w-3xl py-16 space-y-8">
       <h1 className="text-3xl font-bold text-foreground">Terms of Service</h1>
       <p className="text-sm text-muted-foreground">Last updated: April 2026</p>
 
@@ -51,26 +51,39 @@ const Terms = () => (
         </section>
 
         <section className="space-y-3">
-          <h2 className="text-lg font-semibold text-foreground">6. Limitation of liability</h2>
+          <h2 className="text-lg font-semibold text-foreground">6. Data retention and record keeping</h2>
+          <p>UK employers are legally required to keep PAYE records for at least three years after the end of the tax year they relate to. While PayCheck is not your employer, we retain your uploaded payslip data for as long as your account is active to support your personal record keeping.</p>
+          <p>We recommend keeping payslip records for at least three years to align with HMRC's record-keeping requirements, which may be relevant if you need to query a past payslip or file a complaint.</p>
+          <p>You can export all your data at any time. On account deletion, all data is permanently removed within 30 days.</p>
+        </section>
+
+        <section className="space-y-3">
+          <h2 className="text-lg font-semibold text-foreground">7. Your data rights</h2>
+          <p>You have the right to access, correct, and delete any information PayCheck holds about you. You can exercise these rights at any time through the Settings page. We will keep your data secure, accurate, and up to date in accordance with UK and EU data protection law.</p>
+          <p>PayCheck does not collect more information than is necessary to provide its service. We process your data only for the purposes described in our <Link to="/privacy" className="text-primary hover:underline">Privacy Policy</Link>.</p>
+        </section>
+
+        <section className="space-y-3">
+          <h2 className="text-lg font-semibold text-foreground">8. Limitation of liability</h2>
           <p>PayCheck is provided "as is" without warranty of any kind. We are not liable for any financial decisions you make based on PayCheck's analysis or suggestions. Our total liability is limited to the amount you've paid us in the 12 months preceding any claim.</p>
         </section>
 
         <section className="space-y-3">
-          <h2 className="text-lg font-semibold text-foreground">7. Termination</h2>
+          <h2 className="text-lg font-semibold text-foreground">9. Termination</h2>
           <p>You can delete your account at any time. We reserve the right to suspend or terminate accounts that violate these terms. Upon deletion, all your data will be permanently removed within 30 days.</p>
         </section>
 
         <section className="space-y-3">
-          <h2 className="text-lg font-semibold text-foreground">8. Changes to terms</h2>
+          <h2 className="text-lg font-semibold text-foreground">10. Changes to terms</h2>
           <p>We may update these terms from time to time. We'll notify you of material changes via email. Continued use of PayCheck after changes constitutes acceptance of the updated terms.</p>
         </section>
 
         <section className="space-y-3">
-          <h2 className="text-lg font-semibold text-foreground">9. Contact</h2>
+          <h2 className="text-lg font-semibold text-foreground">11. Contact</h2>
           <p>Questions about these terms? Contact us at <span className="text-primary">support@paycheck.app</span>.</p>
         </section>
       </div>
-    </div>
+    </main>
 
     <footer className="border-t border-border bg-card py-8">
       <div className="container text-center text-xs text-muted-foreground">
