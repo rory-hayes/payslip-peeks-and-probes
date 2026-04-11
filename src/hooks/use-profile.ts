@@ -38,6 +38,7 @@ export function useProfile() {
         has_student_loan: !!data.has_student_loan,
         pension_percent: data.pension_percent ? Number(data.pension_percent) : null,
         student_loan_plan: data.student_loan_plan ?? null,
+        onboarding_complete: !!data.onboarding_complete,
       };
     },
     enabled: !!user,
