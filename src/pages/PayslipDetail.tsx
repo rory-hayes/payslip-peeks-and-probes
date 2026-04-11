@@ -15,6 +15,7 @@ const PayslipDetail = () => {
   const { data: slip, isLoading } = usePayslip(id);
   const { data: payslips } = usePayslips();
   const { data: allAnomalies } = useAnomalies();
+  const { format: formatCurrency } = useCurrency();
 
   const anomalies = allAnomalies?.filter((a) => a.payslip_id === id) || [];
   const idx = payslips?.findIndex((s) => s.id === id) ?? -1;

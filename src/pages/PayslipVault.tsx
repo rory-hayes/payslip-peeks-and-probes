@@ -14,6 +14,7 @@ import { FileText, Search, AlertTriangle } from 'lucide-react';
 const PayslipVault = () => {
   const [search, setSearch] = useState('');
   const { data: payslips, isLoading } = usePayslips();
+  const { format: formatCurrency } = useCurrency();
 
   const filtered = (payslips || []).filter(
     (s) =>

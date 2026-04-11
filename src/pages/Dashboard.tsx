@@ -18,6 +18,7 @@ const Dashboard = () => {
   const { data: payslips, isLoading: loadingSlips } = usePayslips();
   const { data: anomalies, isLoading: loadingAnomalies } = useAnomalies();
   const { data: trends } = usePayTrends();
+  const { format: formatCurrency, symbol: currSym } = useCurrency();
 
   const latest = payslips?.[payslips.length - 1];
   const previous = payslips && payslips.length > 1 ? payslips[payslips.length - 2] : null;
