@@ -1,16 +1,17 @@
-import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import AppLayout from '@/components/layout/AppLayout';
+import DemoBanner from '@/components/DemoBanner';
 import { usePayslips, useAnomalies, usePayTrends } from '@/hooks/use-payslip-data';
 import ExpectedVsActual from '@/components/ExpectedVsActual';
 import ExpectedVsActualChart from '@/components/ExpectedVsActualChart';
 import YearToDateSummary from '@/components/YearToDateSummary';
 import YearToDateChart from '@/components/YearToDateChart';
 import { useCurrency, useProfile } from '@/hooks/use-profile';
+import { useDemoMode } from '@/contexts/DemoContext';
 import { formatDate } from '@/lib/date-utils';
 import { demoPayslips, demoAnomalies, demoPayTrends } from '@/lib/demo-data';
 import { generatePaySummaryPdf } from '@/lib/generate-pay-summary-pdf';
@@ -29,11 +30,11 @@ const Dashboard = () => {
   const { data: realTrends } = usePayTrends();
   const { data: profile } = useProfile();
   const { format: formatCurrency, symbol: currSym, currency } = useCurrency();
-  const [demoMode, setDemoMode] = useState(false);
+  const { isDemoMode, enableDemo } = useDemoMode();
 
   const isLoading = loadingSlips || loadingAnomalies;
   const hasRealData = !isLoading && realPayslips && realPayslips.length > 0;
-  const showDemo = demoMode && !hasRealData;
+  const showDemo = isDemoMode && !hasRealData;
 
   const payslips: Payslip[] = showDemo ? demoPayslips : (realPayslips || []);
   const anomalies: AnomalyResult[] = showDemo ? demoAnomalies : (realAnomalies || []);
@@ -45,7 +46,7 @@ const Dashboard = () => {
   const unresolvedCount = anomalies.filter((a) => a.status === 'new').length;
   const isEmpty = !isLoading && !hasRealData && !showDemo;
 
-  const greeting = profile?.first_name ? `Hi, ${profile.first_name}` : 'Good morning';
+  const greeting = profile?.first_name ? `Hi, ${profile.first_name}` : 'Welcome';
 
   const handleExportPdf = () => {
     if (!payslips || payslips.length === 0) return;
@@ -71,7 +72,7 @@ const Dashboard = () => {
           <div>
             <h1 className="text-2xl font-bold text-foreground md:text-3xl">{greeting} 👋</h1>
             <p className="mt-1 text-muted-foreground">
-              {isEmpty ? 'Upload your first payslip to get started.' : showDemo ? 'You\'re exploring demo data. Upload a payslip to see your own.' : 'Here\'s your pay overview.'}
+              {isEmpty ? 'Let\'s get started with your first payslip.' : showDemo ? 'Exploring sample data — upload a payslip to see your own.' : 'Here\'s your pay overview.'}
             </p>
           </div>
           <div className="flex gap-2 flex-wrap">
@@ -87,18 +88,7 @@ const Dashboard = () => {
         </div>
 
         {/* Demo mode banner */}
-        {showDemo && (
-          <Card className="border-primary/20 bg-primary/5 shadow-sm">
-            <CardContent className="flex items-center gap-3 p-4">
-              <Eye className="h-5 w-5 text-primary shrink-0" />
-              <div className="flex-1">
-                <p className="text-sm font-medium text-foreground">Demo mode</p>
-                <p className="text-xs text-muted-foreground">You're viewing sample data. Upload your own payslip to see real insights.</p>
-              </div>
-              <Button variant="outline" size="sm" onClick={() => setDemoMode(false)}>Exit demo</Button>
-            </CardContent>
-          </Card>
-        )}
+        {showDemo && <DemoBanner />}
 
         {/* Loading state */}
         {isLoading && (
@@ -122,15 +112,15 @@ const Dashboard = () => {
               <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10 mb-6">
                 <Sparkles className="h-8 w-8 text-primary" />
               </div>
-              <h3 className="text-xl font-bold text-foreground">Welcome to PayCheck</h3>
+              <h3 className="text-xl font-bold text-foreground">Your pay dashboard</h3>
               <p className="mt-3 max-w-md text-muted-foreground leading-relaxed">
-                Upload your payslip and we'll extract the key figures, compare them against your profile, and flag anything that looks unusual. Your data stays private and secure.
+                Upload a payslip and PayCheck will extract the key figures, compare them against your profile, and flag anything that looks unusual. Your data stays private and secure.
               </p>
               <div className="mt-6 flex flex-col sm:flex-row gap-3">
                 <Link to="/vault">
                   <Button className="gap-2 w-full sm:w-auto"><Upload className="h-4 w-4" /> Upload your first payslip</Button>
                 </Link>
-                <Button variant="outline" className="gap-2" onClick={() => setDemoMode(true)}>
+                <Button variant="outline" className="gap-2" onClick={enableDemo}>
                   <Eye className="h-4 w-4" /> Try demo mode
                 </Button>
               </div>
@@ -206,7 +196,7 @@ const Dashboard = () => {
                     <FileText className="h-4 w-4 text-muted-foreground" />
                   </div>
                   <div className="mt-2 text-2xl font-bold text-foreground">{payslips.length}</div>
-                  <div className="mt-1 text-xs text-muted-foreground">Stored securely</div>
+                  <div className="mt-1 text-xs text-muted-foreground">{showDemo ? 'Sample data' : 'Stored securely'}</div>
                 </CardContent>
               </Card>
             </div>
@@ -256,7 +246,7 @@ const Dashboard = () => {
                   <CardContent>
                     <div className="space-y-3">
                       {anomalies.filter((a) => a.status === 'new').slice(0, 4).map((anomaly) => (
-                        <Link key={anomaly.id} to={showDemo ? '#' : `/payslip/${anomaly.payslip_id}`} className="flex items-start gap-3 rounded-lg p-2 -mx-2 hover:bg-muted/50 transition-colors">
+                        <Link key={anomaly.id} to={showDemo ? `/payslip/${anomaly.payslip_id}` : `/payslip/${anomaly.payslip_id}`} className="flex items-start gap-3 rounded-lg p-2 -mx-2 hover:bg-muted/50 transition-colors">
                           <div className={`mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full ${
                             anomaly.severity === 'high' ? 'bg-destructive/10 text-destructive' :
                             anomaly.severity === 'medium' ? 'bg-anomaly/10 text-anomaly' :
@@ -282,13 +272,13 @@ const Dashboard = () => {
               <CardHeader className="pb-2">
                 <div className="flex items-center justify-between">
                   <CardTitle className="text-base">Recent payslips</CardTitle>
-                  {!showDemo && <Link to="/vault" className="text-xs text-primary hover:underline">View all</Link>}
+                  <Link to="/vault" className="text-xs text-primary hover:underline">View all</Link>
                 </div>
               </CardHeader>
               <CardContent>
                 <div className="divide-y divide-border">
                   {payslips.slice().reverse().slice(0, 4).map((slip) => (
-                    <Link key={slip.id} to={showDemo ? '#' : `/payslip/${slip.id}`} className="flex items-center gap-4 py-3 hover:bg-muted/30 -mx-2 px-2 rounded-lg transition-colors">
+                    <Link key={slip.id} to={`/payslip/${slip.id}`} className="flex items-center gap-4 py-3 hover:bg-muted/30 -mx-2 px-2 rounded-lg transition-colors">
                       <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10">
                         <FileText className="h-5 w-5 text-primary" />
                       </div>

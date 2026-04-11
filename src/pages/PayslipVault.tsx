@@ -5,18 +5,26 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import AppLayout from '@/components/layout/AppLayout';
+import DemoBanner from '@/components/DemoBanner';
 import PayslipUpload from '@/components/PayslipUpload';
 import { usePayslips } from '@/hooks/use-payslip-data';
 import { useCurrency } from '@/hooks/use-profile';
+import { useDemoMode } from '@/contexts/DemoContext';
 import { formatDate } from '@/lib/date-utils';
+import { demoPayslips } from '@/lib/demo-data';
 import { FileText, Search, AlertTriangle } from 'lucide-react';
 
 const PayslipVault = () => {
   const [search, setSearch] = useState('');
-  const { data: payslips, isLoading } = usePayslips();
+  const { data: realPayslips, isLoading } = usePayslips();
   const { format: formatCurrency } = useCurrency();
+  const { isDemoMode } = useDemoMode();
 
-  const filtered = (payslips || []).filter(
+  const hasRealData = !isLoading && realPayslips && realPayslips.length > 0;
+  const showDemo = isDemoMode && !hasRealData;
+  const payslips = showDemo ? demoPayslips : (realPayslips || []);
+
+  const filtered = payslips.filter(
     (s) =>
       s.employer_name.toLowerCase().includes(search.toLowerCase()) ||
       s.pay_date.includes(search)
@@ -28,11 +36,15 @@ const PayslipVault = () => {
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h1 className="text-2xl font-bold text-foreground">Payslip Vault</h1>
-            <p className="text-sm text-muted-foreground">{payslips?.length ?? 0} payslips stored securely</p>
+            <p className="text-sm text-muted-foreground">
+              {showDemo ? `${payslips.length} sample payslips` : `${realPayslips?.length ?? 0} payslips stored securely`}
+            </p>
           </div>
         </div>
 
-        <PayslipUpload onUploadComplete={() => {}} />
+        {showDemo && <DemoBanner />}
+
+        {!showDemo && <PayslipUpload onUploadComplete={() => {}} />}
 
         <div className="relative">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
