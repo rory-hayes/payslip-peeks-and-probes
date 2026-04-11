@@ -7,7 +7,8 @@ import { Skeleton } from '@/components/ui/skeleton';
 import AppLayout from '@/components/layout/AppLayout';
 import PayslipUpload from '@/components/PayslipUpload';
 import { usePayslips } from '@/hooks/use-payslip-data';
-import { formatCurrency, formatDate } from '@/lib/demo-data';
+import { useCurrency } from '@/hooks/use-profile';
+import { formatDate } from '@/lib/demo-data';
 import { FileText, Search, AlertTriangle } from 'lucide-react';
 
 const PayslipVault = () => {

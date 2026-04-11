@@ -5,7 +5,8 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import AppLayout from '@/components/layout/AppLayout';
 import { usePayslips, useAnomalies, usePayTrends } from '@/hooks/use-payslip-data';
-import { formatCurrency, formatDate } from '@/lib/demo-data';
+import { useCurrency } from '@/hooks/use-profile';
+import { formatDate } from '@/lib/demo-data';
 import {
   Upload, TrendingUp, TrendingDown, AlertTriangle, FileText, ArrowRight, BarChart3,
 } from 'lucide-react';

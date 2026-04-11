@@ -6,7 +6,8 @@ import { Separator } from '@/components/ui/separator';
 import { Skeleton } from '@/components/ui/skeleton';
 import AppLayout from '@/components/layout/AppLayout';
 import { usePayslip, usePayslips, useAnomalies } from '@/hooks/use-payslip-data';
-import { formatCurrency, formatDate } from '@/lib/demo-data';
+import { useCurrency } from '@/hooks/use-profile';
+import { formatDate } from '@/lib/demo-data';
 import { AlertTriangle, ArrowLeft, FileText, GitCompare, MessageSquare } from 'lucide-react';
 
 const PayslipDetail = () => {
