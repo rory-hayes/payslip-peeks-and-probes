@@ -189,6 +189,7 @@ const Landing = () => {
               <CardContent className="p-8">
                 <h3 className="font-semibold text-foreground">Free</h3>
                 <div className="mt-4"><span className="text-4xl font-bold text-foreground">£0</span><span className="text-muted-foreground">/month</span></div>
+                <p className="mt-2 text-sm text-muted-foreground">Great for getting started.</p>
                 <ul className="mt-6 space-y-3 text-sm text-muted-foreground">
                   {['3 payslip uploads/month', 'Basic anomaly checks', '1 month comparison', '2 issue drafts/month'].map((f, i) => (
                     <li key={i} className="flex items-start gap-2"><CheckCircle className="h-4 w-4 text-success mt-0.5 shrink-0" />{f}</li>
@@ -206,6 +207,7 @@ const Landing = () => {
               <CardContent className="p-8">
                 <h3 className="font-semibold text-foreground">Plus</h3>
                 <div className="mt-4"><span className="text-4xl font-bold text-foreground">£4.99</span><span className="text-muted-foreground">/month</span></div>
+                <p className="mt-2 text-sm text-muted-foreground">Full access. Peace of mind, every pay day.</p>
                 <ul className="mt-6 space-y-3 text-sm text-muted-foreground">
                   {['Unlimited payslip uploads', 'Full anomaly detection suite', 'Compare any two payslips', 'Unlimited issue drafts', 'Historical trends & insights', 'Priority support'].map((f, i) => (
                     <li key={i} className="flex items-start gap-2"><CheckCircle className="h-4 w-4 text-success mt-0.5 shrink-0" />{f}</li>
@@ -277,6 +279,7 @@ const Landing = () => {
               <span className="font-semibold text-foreground">PayCheck</span>
             </div>
             <div className="flex gap-6 text-sm text-muted-foreground">
+              <Link to="/pricing" className="hover:text-foreground transition-colors">Pricing</Link>
               <Link to="/privacy" className="hover:text-foreground transition-colors">Privacy</Link>
               <Link to="/terms" className="hover:text-foreground transition-colors">Terms</Link>
               <a href="mailto:support@paycheck.app" className="hover:text-foreground transition-colors">Contact</a>
