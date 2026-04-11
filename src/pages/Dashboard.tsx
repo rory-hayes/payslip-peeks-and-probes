@@ -139,8 +139,8 @@ const Dashboard = () => {
                         <LineChart data={trends} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
                           <CartesianGrid strokeDasharray="3 3" stroke="hsl(220, 13%, 88%)" />
                           <XAxis dataKey="month" tick={{ fontSize: 12 }} stroke="hsl(220, 10%, 46%)" />
-                          <YAxis tick={{ fontSize: 12 }} stroke="hsl(220, 10%, 46%)" tickFormatter={(v) => `£${v}`} />
-                          <Tooltip formatter={(val: number) => [`£${val.toFixed(2)}`, '']} />
+                          <YAxis tick={{ fontSize: 12 }} stroke="hsl(220, 10%, 46%)" tickFormatter={(v) => `${currSym}${v}`} />
+                          <Tooltip formatter={(val: number) => [formatCurrency(val), '']} />
                           <Line type="monotone" dataKey="net" stroke="hsl(217, 72%, 30%)" strokeWidth={2} dot={{ r: 4 }} name="Net pay" />
                           <Line type="monotone" dataKey="gross" stroke="hsl(172, 50%, 36%)" strokeWidth={2} dot={{ r: 4 }} name="Gross pay" />
                         </LineChart>
