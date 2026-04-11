@@ -6,13 +6,6 @@ import { parse, isValid, format } from 'date-fns';
  * Always returns a Date in UTC-safe manner.
  */
 const DATE_FORMATS = [
-  'yyyy-MM-dd',
-  'dd/MM/yyyy',
-  'd/M/yyyy',
-  'dd-MM-yyyy',
-  'd-M-yyyy',
-  'dd.MM.yyyy',
-  'd.M.yyyy',
   'dd MMMM yyyy',
   'd MMMM yyyy',
   'dd MMM yyyy',
@@ -30,14 +23,28 @@ export function parsePayDate(input: string | null | undefined): Date | null {
   const trimmed = input.trim();
   if (!trimmed) return null;
 
-  // ISO with optional time — construct via UTC to avoid timezone shift
+  // ISO with optional time — construct via local time to keep date-fns format() consistent
   const isoMatch = trimmed.match(/^(\d{4})-(\d{2})-(\d{2})/);
   if (isoMatch) {
-    const d = new Date(Date.UTC(+isoMatch[1], +isoMatch[2] - 1, +isoMatch[3]));
-    if (isValid(d) && d.getUTCDate() === +isoMatch[3]) return d;
+    const y = +isoMatch[1], m = +isoMatch[2] - 1, day = +isoMatch[3];
+    const d = new Date(y, m, day);
+    if (isValid(d) && d.getDate() === day && d.getMonth() === m) return d;
   }
 
-  // Try each date-fns format
+  // DD/MM/YYYY or DD-MM-YYYY or DD.MM.YYYY — explicit parse to avoid US/UK ambiguity
+  const dmyMatch = trimmed.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})$/);
+  if (dmyMatch) {
+    let year = parseInt(dmyMatch[3]);
+    if (year < 100) year += 2000;
+    const month = parseInt(dmyMatch[2]);
+    const day = parseInt(dmyMatch[1]);
+    if (month >= 1 && month <= 12 && day >= 1 && day <= 31) {
+      const d = new Date(year, month - 1, day);
+      if (d.getDate() === day && d.getMonth() === month - 1) return d;
+    }
+  }
+
+  // Try each date-fns format for textual dates
   for (const fmt of DATE_FORMATS) {
     const parsed = parse(trimmed, fmt, new Date(2000, 0, 1));
     if (isValid(parsed) && parsed.getFullYear() > 1900 && parsed.getFullYear() < 2100) {
@@ -78,7 +85,7 @@ export function formatDate(dateStr: string | null | undefined): string {
 export function formatMonth(dateStr: string): string {
   const d = parsePayDate(dateStr);
   if (!d) return '—';
-  return format(d, 'MMM');
+  return format(d, 'MMM yyyy');
 }
 
 /**
