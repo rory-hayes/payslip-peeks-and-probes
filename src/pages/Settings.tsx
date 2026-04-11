@@ -133,19 +133,42 @@ const Settings = () => {
     if (!user) return;
     setExporting(true);
     try {
-      const [{ data: payslips }, { data: profile }, { data: anomalies }, { data: notes }] = await Promise.all([
-        supabase.from('payslips').select('*, payslip_extractions(*)').eq('user_id', user.id),
+      const [
+        { data: profile },
+        { data: payslips },
+        { data: extractions },
+        { data: anomalies },
+        { data: notes },
+        { data: drafts },
+        { data: employers: empData },
+      ] = await Promise.all([
         supabase.from('profiles').select('*').eq('user_id', user.id).single(),
-        supabase.from('anomaly_results').select('*, payslips!inner(user_id)').order('created_at', { ascending: false }),
+        supabase.from('payslips').select('*').eq('user_id', user.id).order('pay_date'),
+        supabase.from('payslip_extractions').select('*, payslips!inner(user_id)'),
+        supabase.from('anomaly_results').select('*, payslips!inner(user_id)'),
         supabase.from('user_notes').select('*').eq('user_id', user.id),
+        supabase.from('issue_drafts').select('*').eq('user_id', user.id),
+        supabase.from('employers').select('*').eq('user_id', user.id),
       ]);
+
+      // Strip the join column used for RLS filtering
+      const cleanExtractions = (extractions ?? [])
+        .filter((e: any) => e.payslips?.user_id === user.id)
+        .map(({ payslips: _j, ...rest }: any) => rest);
+      const cleanAnomalies = (anomalies ?? [])
+        .filter((a: any) => a.payslips?.user_id === user.id)
+        .map(({ payslips: _j, ...rest }: any) => rest);
 
       const exportData = {
         exported_at: new Date().toISOString(),
+        account_email: user.email,
         profile,
-        payslips,
-        anomalies: anomalies?.filter((a: any) => a.payslips?.user_id === user.id) || [],
-        notes: notes || [],
+        employers: empData ?? [],
+        payslips: payslips ?? [],
+        extractions: cleanExtractions,
+        anomalies: cleanAnomalies,
+        notes: notes ?? [],
+        issue_drafts: drafts ?? [],
       };
 
       const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
@@ -166,12 +189,36 @@ const Settings = () => {
     if (deleteConfirm !== 'DELETE' || !user) return;
     setDeleting(true);
     try {
-      await supabase.from('user_notes').delete().eq('user_id', user.id);
-      await supabase.from('issue_drafts').delete().eq('user_id', user.id);
-      await supabase.from('employers').delete().eq('user_id', user.id);
-      // payslips cascade deletes extractions + anomalies
+      // 1. Get payslip file paths so we can delete from storage
+      const { data: payslipFiles } = await supabase
+        .from('payslips')
+        .select('file_path')
+        .eq('user_id', user.id);
+
+      // 2. Delete storage files
+      const paths = (payslipFiles ?? [])
+        .map((p) => p.file_path)
+        .filter(Boolean) as string[];
+      if (paths.length > 0) {
+        await supabase.storage.from('payslips').remove(paths);
+      }
+
+      // 3. Delete database records (cascades handle extractions + anomalies)
+      await Promise.all([
+        supabase.from('user_notes').delete().eq('user_id', user.id),
+        supabase.from('issue_drafts').delete().eq('user_id', user.id),
+        supabase.from('audit_events').delete().eq('user_id', user.id),
+        supabase.from('billing_subscriptions').delete().eq('user_id', user.id),
+        supabase.from('employers').delete().eq('user_id', user.id),
+      ]);
+
+      // Payslips (cascade deletes extractions + anomaly_results)
       await supabase.from('payslips').delete().eq('user_id', user.id);
+
+      // Profile last
       await supabase.from('profiles').delete().eq('user_id', user.id);
+
+      // 4. Sign out and redirect
       await signOut();
       window.location.href = '/';
     } catch {
