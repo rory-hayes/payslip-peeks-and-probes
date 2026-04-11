@@ -632,21 +632,36 @@ serve(async (req) => {
       .eq("id", payslip_id);
 
     // 6. Get previous payslip extraction for anomaly comparison
+    // Include any payslip that has been processed (completed or needs_review)
     const { data: prevPayslips } = await supabase
       .from("payslips")
       .select("id")
       .eq("user_id", payslip.user_id)
       .neq("id", payslip_id)
-      .eq("status", "completed")
-      .order("pay_date", { ascending: false })
+      .in("status", ["completed", "needs_review"])
+      .order("pay_date", { ascending: false, nullsFirst: false })
       .limit(1);
 
+    // If no previous by pay_date, try by created_at
+    let prevId: string | null = prevPayslips?.[0]?.id ?? null;
+    if (!prevId) {
+      const { data: prevByCreated } = await supabase
+        .from("payslips")
+        .select("id")
+        .eq("user_id", payslip.user_id)
+        .neq("id", payslip_id)
+        .neq("status", "processing")
+        .order("created_at", { ascending: false })
+        .limit(1);
+      prevId = prevByCreated?.[0]?.id ?? null;
+    }
+
     let previousExtraction: Extraction | null = null;
-    if (prevPayslips && prevPayslips.length > 0) {
+    if (prevId) {
       const { data: prevExt } = await supabase
         .from("payslip_extractions")
         .select("*")
-        .eq("payslip_id", prevPayslips[0].id)
+        .eq("payslip_id", prevId)
         .eq("extraction_status", "completed")
         .single();
 
