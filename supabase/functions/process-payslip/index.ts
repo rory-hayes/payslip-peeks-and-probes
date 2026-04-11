@@ -195,6 +195,47 @@ function runAnomalyChecks(
     });
   }
 
+  // Missing tax deduction (standalone — no comparison needed)
+  if (current.gross_pay != null && current.gross_pay > 0 && (current.tax_amount == null || current.tax_amount === 0)) {
+    anomalies.push({
+      anomaly_type: "missing_tax",
+      severity: "medium",
+      confidence: "medium",
+      title: "No tax deduction found",
+      description: `What changed: Your payslip shows gross pay of ${sym}${current.gross_pay.toFixed(2)} but no income tax deduction.\n\nWhy it matters: Most employees pay income tax. A missing tax deduction could mean you're on an emergency tax code, your employer hasn't applied the correct code, or there's an extraction error. In rare cases it may be correct (e.g. your personal allowance covers your full salary).\n\nThis may be perfectly valid, but it's worth checking.`,
+      suggested_action: country === "Ireland" || country === "ireland"
+        ? "Log into Revenue's myAccount and check your tax credits and rate bands. Confirm with payroll that the correct tax credit certificate has been applied."
+        : "Check your tax code on this payslip and verify it against your HMRC personal tax account at gov.uk. If the code is wrong, ask payroll to update it.",
+    });
+  }
+
+  // Missing NI (UK) or PRSI (Ireland) deduction
+  if (current.gross_pay != null && current.gross_pay > 0) {
+    if (country === "Ireland" || country === "ireland") {
+      if (current.prsi_amount == null || current.prsi_amount === 0) {
+        anomalies.push({
+          anomaly_type: "missing_prsi",
+          severity: "medium",
+          confidence: "medium",
+          title: "No PRSI deduction found",
+          description: `What changed: Your payslip shows gross pay of €${current.gross_pay.toFixed(2)} but no PRSI contribution.\n\nWhy it matters: Most employees pay PRSI. Missing PRSI could affect your social insurance record and future entitlements (e.g. State Pension, Jobseeker's Benefit). It may be correct if you're exempt, but it's worth confirming.\n\nThis may be perfectly valid, but it's worth checking.`,
+          suggested_action: "Check your PRSI class with your employer. If you believe you should be paying PRSI, ask payroll to verify your classification with Revenue.",
+        });
+      }
+    } else {
+      if (current.national_insurance_amount == null || current.national_insurance_amount === 0) {
+        anomalies.push({
+          anomaly_type: "missing_ni",
+          severity: "medium",
+          confidence: "medium",
+          title: "No National Insurance deduction found",
+          description: `What changed: Your payslip shows gross pay of ${sym}${current.gross_pay.toFixed(2)} but no National Insurance contribution.\n\nWhy it matters: Most employees earning above the NI threshold pay National Insurance. Missing NI could mean you're below the threshold, have an NI exemption, or your employer hasn't applied the correct NI category. Missing NI payments can affect your State Pension entitlement.\n\nThis may be perfectly valid, but it's worth checking.`,
+          suggested_action: "Check the NI category letter on your payslip. If it's missing or shows category X (exempt), confirm with your employer that this is correct. You can also check your NI record at gov.uk.",
+        });
+      }
+    }
+  }
+
   // Deductions reconciliation
   if (current.gross_pay != null && current.net_pay != null && current.total_deductions != null) {
     const expectedNet = current.gross_pay - current.total_deductions;
