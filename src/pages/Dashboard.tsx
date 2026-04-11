@@ -127,6 +127,9 @@ const Dashboard = () => {
               </Card>
             </div>
 
+            {/* Expected vs Actual comparison */}
+            <ExpectedVsActual latestPayslip={latest} />
+
             {/* Chart + anomalies */}
             <div className="grid gap-6 lg:grid-cols-5">
               {trends && trends.length > 1 && (
