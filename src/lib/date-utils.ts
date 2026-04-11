@@ -78,7 +78,7 @@ export function formatDate(dateStr: string | null | undefined): string {
 export function formatMonth(dateStr: string): string {
   const d = parsePayDate(dateStr);
   if (!d) return '—';
-  return format(d, 'MMM');
+  return format(d, 'MMM yyyy');
 }
 
 /**
