@@ -6,6 +6,7 @@ import { Separator } from '@/components/ui/separator';
 import { Skeleton } from '@/components/ui/skeleton';
 import AppLayout from '@/components/layout/AppLayout';
 import { usePayslip, usePayslips, useAnomalies } from '@/hooks/use-payslip-data';
+import AnomalyExplanation from '@/components/AnomalyExplanation';
 import { useCurrency } from '@/hooks/use-profile';
 import { formatDate } from '@/lib/date-utils';
 import { AlertTriangle, ArrowLeft, FileText, GitCompare, MessageSquare } from 'lucide-react';
@@ -113,8 +114,9 @@ const PayslipDetail = () => {
                       'border-warning text-warning'
                     }`}>{a.severity}</Badge>
                   </div>
-                  <p className="mt-2 text-sm text-muted-foreground leading-relaxed">{a.description}</p>
-                  <p className="mt-3 text-xs text-primary font-medium">💡 {a.suggested_action}</p>
+                  <div className="mt-3">
+                    <AnomalyExplanation description={a.description} suggestedAction={a.suggested_action} />
+                  </div>
                 </div>
               ))}
             </CardContent>
