@@ -108,6 +108,18 @@ const Settings = () => {
                 ))}
               </div>
             </div>
+            <div className="space-y-2">
+              <Label>Annual gross salary ({currencySymbol})</Label>
+              <Input
+                type="number"
+                min="0"
+                step="500"
+                placeholder="e.g. 45000"
+                value={annualSalary}
+                onChange={(e) => setAnnualSalary(e.target.value)}
+              />
+              <p className="text-xs text-muted-foreground">Used to estimate expected tax and net pay. Kept private.</p>
+            </div>
           </CardContent>
         </Card>
 
