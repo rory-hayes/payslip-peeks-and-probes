@@ -19,7 +19,11 @@ const ExpectedVsActualChart = ({ payslips }: Props) => {
 
   if (!profile?.annual_salary || payslips.length < 2) return null;
 
-  const expected = calculateExpectedMonthly(profile.annual_salary, profile.country);
+  const opts = {
+    pensionPercent: profile.has_pension ? 5 : 0,
+    hasStudentLoan: profile.has_student_loan,
+  };
+  const expected = calculateExpectedMonthly(profile.annual_salary, profile.country, opts);
 
   const chartData = payslips.slice(-12).map((slip) => {
     const month = new Date(slip.pay_date).toLocaleDateString('en-GB', { month: 'short', year: '2-digit' });
