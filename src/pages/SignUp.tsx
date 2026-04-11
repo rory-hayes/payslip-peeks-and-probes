@@ -111,7 +111,7 @@ const SignUp = () => {
               <div className="flex items-start gap-2">
                 <Checkbox id="terms" checked={agreed} onCheckedChange={(v) => setAgreed(v === true)} />
                 <label htmlFor="terms" className="text-xs text-muted-foreground leading-relaxed cursor-pointer">
-                  I agree to the <a href="#" className="text-primary hover:underline">Privacy Policy</a> and <a href="#" className="text-primary hover:underline">Terms of Service</a>. I understand PayCheck provides guidance, not formal tax or legal advice.
+                  I agree to the <Link to="/privacy" className="text-primary hover:underline">Privacy Policy</Link> and <Link to="/terms" className="text-primary hover:underline">Terms of Service</Link>. I understand PayCheck provides guidance, not formal tax or legal advice.
                 </label>
               </div>
               <Button type="submit" className="w-full" disabled={loading || !agreed}>

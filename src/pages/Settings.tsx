@@ -1,3 +1,28 @@
+/**
+ * IMPLEMENTATION NOTES (internal / admin reference):
+ *
+ * Custom Domain:
+ *   - This app is intended to run on a custom primary domain (e.g. paycheck.app).
+ *   - Configure the domain via Project Settings → Domains in the Lovable dashboard.
+ *   - All internal references use the "PayCheck" brand — no platform references leak to users.
+ *
+ * Branded Sender Email Domain:
+ *   - Auth and transactional emails should be sent from a branded domain (e.g. notify@paycheck.app).
+ *   - Configure via Cloud → Emails in the Lovable dashboard.
+ *
+ * Google OAuth Credentials:
+ *   - For full branding control on the Google consent screen, use your own Google OAuth
+ *     client ID and secret. Configure via Cloud → Users → Auth Settings → Google.
+ *   - This ensures users see "PayCheck" (not a third-party name) on the Google sign-in prompt.
+ *
+ * Stripe Billing:
+ *   - When enabling Stripe, configure the PayCheck brand name, logo, and colours
+ *     in the Stripe dashboard so checkout and invoices are fully branded.
+ *
+ * Favicon / Logo:
+ *   - Replace /public/favicon.ico and add logo assets under /src/assets/ when ready.
+ *   - Update the CheckCircle icon placeholder across all pages with the final logo component.
+ */
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -225,6 +250,21 @@ const Settings = () => {
         <Button onClick={handleSave} disabled={loading}>
           {loading ? 'Saving…' : 'Save changes'}
         </Button>
+
+        <Separator />
+
+        <Card className="border-0 shadow-sm">
+          <CardHeader className="pb-2"><CardTitle className="text-base">Privacy & security</CardTitle></CardHeader>
+          <CardContent className="space-y-3">
+            <p className="text-sm text-muted-foreground leading-relaxed">
+              Your payslip data is encrypted and stored securely. Only you can access it. PayCheck provides guidance and issue spotting — not formal tax, legal, or payroll advice.
+            </p>
+            <div className="flex gap-4 text-xs">
+              <a href="/privacy" className="text-primary hover:underline">Privacy Policy</a>
+              <a href="/terms" className="text-primary hover:underline">Terms of Service</a>
+            </div>
+          </CardContent>
+        </Card>
 
         <Separator />
 
