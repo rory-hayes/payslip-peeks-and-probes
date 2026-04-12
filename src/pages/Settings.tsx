@@ -49,7 +49,10 @@ import AppLayout from '@/components/layout/AppLayout';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { Download, Trash2, HelpCircle } from 'lucide-react';
+import { useUsage } from '@/hooks/use-usage';
+import { useSubscription } from '@/hooks/use-subscription';
+import { Download, Trash2, HelpCircle, Sparkles } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 const STUDENT_LOAN_PLANS = [
   { value: 'plan1', label: 'Plan 1', desc: 'Started before Sep 2012 (England/Wales)' },
