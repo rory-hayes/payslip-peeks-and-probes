@@ -101,7 +101,12 @@ const PayslipUpload = ({ onUploadComplete }: PayslipUploadProps) => {
       .from('payslips')
       .upload(filePath, file, { contentType: file.type });
 
-    if (storageError) { setErrorMsg(storageError.message); setState('error'); return; }
+    if (storageError) {
+      console.error('Storage upload error:', storageError.message);
+      setErrorMsg('Upload failed. Please check your file and try again.');
+      setState('error');
+      return;
+    }
     setProgress(60);
 
     const { data: payslip, error: dbError } = await supabase
@@ -110,7 +115,12 @@ const PayslipUpload = ({ onUploadComplete }: PayslipUploadProps) => {
       .select('id')
       .single();
 
-    if (dbError || !payslip) { setErrorMsg(dbError?.message || 'Failed to create record.'); setState('error'); return; }
+    if (dbError || !payslip) {
+      console.error('Payslip record error:', dbError?.message);
+      setErrorMsg('Something went wrong saving your payslip. Please try again.');
+      setState('error');
+      return;
+    }
 
     setProgress(80);
     setState('processing');
