@@ -6,10 +6,12 @@ import { Skeleton } from '@/components/ui/skeleton';
 import AppLayout from '@/components/layout/AppLayout';
 import DemoBanner from '@/components/DemoBanner';
 import { usePayslips, useAnomalies, usePayTrends } from '@/hooks/use-payslip-data';
+import { useUsage } from '@/hooks/use-usage';
 import ExpectedVsActual from '@/components/ExpectedVsActual';
 import ExpectedVsActualChart from '@/components/ExpectedVsActualChart';
 import YearToDateSummary from '@/components/YearToDateSummary';
 import YearToDateChart from '@/components/YearToDateChart';
+import UpgradePrompt from '@/components/UpgradePrompt';
 import { useCurrency, useProfile } from '@/hooks/use-profile';
 import { useDemoMode } from '@/contexts/DemoContext';
 import { formatDate } from '@/lib/date-utils';
@@ -31,6 +33,7 @@ const Dashboard = () => {
   const { data: profile } = useProfile();
   const { format: formatCurrency, symbol: currSym, currency } = useCurrency();
   const { isDemoMode, enableDemo } = useDemoMode();
+  const { uploadsRemaining, draftsRemaining, isPremium, limits } = useUsage();
 
   const isLoading = loadingSlips || loadingAnomalies;
   const hasRealData = !isLoading && realPayslips && realPayslips.length > 0;
@@ -200,6 +203,55 @@ const Dashboard = () => {
                 </CardContent>
               </Card>
             </div>
+
+            {/* Free tier usage indicator */}
+            {!isPremium && !showDemo && (
+              <Card className="border-0 shadow-sm">
+                <CardContent className="p-5">
+                  <div className="flex items-center justify-between mb-3">
+                    <span className="text-sm font-medium text-foreground">Free plan usage this month</span>
+                    <Link to="/pricing">
+                      <Button variant="outline" size="sm" className="gap-1.5 text-xs h-7">
+                        <Sparkles className="h-3 w-3" /> Upgrade
+                      </Button>
+                    </Link>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <div className="flex justify-between text-xs text-muted-foreground mb-1">
+                        <span>Uploads</span>
+                        <span>{limits.uploads_per_month - uploadsRemaining}/{limits.uploads_per_month}</span>
+                      </div>
+                      <div className="h-2 rounded-full bg-muted overflow-hidden">
+                        <div
+                          className={`h-full rounded-full transition-all ${uploadsRemaining === 0 ? 'bg-destructive' : 'bg-primary'}`}
+                          style={{ width: `${((limits.uploads_per_month - uploadsRemaining) / limits.uploads_per_month) * 100}%` }}
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <div className="flex justify-between text-xs text-muted-foreground mb-1">
+                        <span>Drafts</span>
+                        <span>{limits.drafts_per_month - draftsRemaining}/{limits.drafts_per_month}</span>
+                      </div>
+                      <div className="h-2 rounded-full bg-muted overflow-hidden">
+                        <div
+                          className={`h-full rounded-full transition-all ${draftsRemaining === 0 ? 'bg-destructive' : 'bg-primary'}`}
+                          style={{ width: `${((limits.drafts_per_month - draftsRemaining) / limits.drafts_per_month) * 100}%` }}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {!isPremium && !showDemo && (uploadsRemaining === 0 || draftsRemaining === 0) && (
+              <UpgradePrompt
+                title="You've hit your free limit"
+                description="Upgrade to Plus for unlimited uploads, drafts, and full anomaly detection."
+              />
+            )}
 
             {/* Expected vs Actual comparison */}
             {!showDemo && (

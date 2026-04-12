@@ -49,7 +49,10 @@ import AppLayout from '@/components/layout/AppLayout';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { Download, Trash2, HelpCircle } from 'lucide-react';
+import { useUsage } from '@/hooks/use-usage';
+import { useSubscription } from '@/hooks/use-subscription';
+import { Download, Trash2, HelpCircle, Sparkles } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 const STUDENT_LOAN_PLANS = [
   { value: 'plan1', label: 'Plan 1', desc: 'Started before Sep 2012 (England/Wales)' },
@@ -62,6 +65,8 @@ const STUDENT_LOAN_PLANS = [
 const Settings = () => {
   const { toast } = useToast();
   const { user, signOut } = useAuth();
+  const { subscription } = useSubscription();
+  const { uploadsRemaining, draftsRemaining, isPremium, limits } = useUsage();
   const [firstName, setFirstName] = useState('');
   const [country, setCountry] = useState<'UK' | 'Ireland'>('UK');
   const [annualSalary, setAnnualSalary] = useState('');
@@ -235,6 +240,58 @@ const Settings = () => {
           <h1 className="text-2xl font-bold text-foreground">Settings</h1>
           <p className="text-sm text-muted-foreground">Manage your profile, preferences, and data</p>
         </div>
+
+        {/* Plan & Usage */}
+        <Card className="border-0 shadow-sm">
+          <CardHeader className="pb-2"><CardTitle className="text-base">Plan & usage</CardTitle></CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-foreground">
+                  {isPremium ? 'Plus' : 'Free'} plan
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {isPremium ? 'Unlimited uploads and drafts' : 'Limited uploads and drafts per month'}
+                </p>
+              </div>
+              {!isPremium && (
+                <Link to="/pricing">
+                  <Button size="sm" className="gap-1.5">
+                    <Sparkles className="h-3.5 w-3.5" /> Upgrade
+                  </Button>
+                </Link>
+              )}
+            </div>
+            {!isPremium && (
+              <div className="grid grid-cols-2 gap-4 pt-2">
+                <div>
+                  <div className="flex justify-between text-xs text-muted-foreground mb-1">
+                    <span>Uploads</span>
+                    <span>{limits.uploads_per_month - uploadsRemaining}/{limits.uploads_per_month} used</span>
+                  </div>
+                  <div className="h-2 rounded-full bg-muted overflow-hidden">
+                    <div
+                      className={`h-full rounded-full transition-all ${uploadsRemaining === 0 ? 'bg-destructive' : 'bg-primary'}`}
+                      style={{ width: `${((limits.uploads_per_month - uploadsRemaining) / limits.uploads_per_month) * 100}%` }}
+                    />
+                  </div>
+                </div>
+                <div>
+                  <div className="flex justify-between text-xs text-muted-foreground mb-1">
+                    <span>Drafts</span>
+                    <span>{limits.drafts_per_month - draftsRemaining}/{limits.drafts_per_month} used</span>
+                  </div>
+                  <div className="h-2 rounded-full bg-muted overflow-hidden">
+                    <div
+                      className={`h-full rounded-full transition-all ${draftsRemaining === 0 ? 'bg-destructive' : 'bg-primary'}`}
+                      style={{ width: `${((limits.drafts_per_month - draftsRemaining) / limits.drafts_per_month) * 100}%` }}
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
         <Card className="border-0 shadow-sm">
           <CardHeader className="pb-2"><CardTitle className="text-base">Profile</CardTitle></CardHeader>

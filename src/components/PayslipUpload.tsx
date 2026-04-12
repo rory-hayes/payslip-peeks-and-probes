@@ -1,4 +1,5 @@
 import { useState, useCallback, useRef } from 'react';
+import { Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useQueryClient } from '@tanstack/react-query';
@@ -8,9 +9,10 @@ import { Label } from '@/components/ui/label';
 import { Progress } from '@/components/ui/progress';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Upload, FileText, CheckCircle, AlertCircle, ClipboardCheck } from 'lucide-react';
+import { Upload, FileText, CheckCircle, AlertCircle, ClipboardCheck, Sparkles } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { formatDate } from '@/lib/date-utils';
+import { useUsage } from '@/hooks/use-usage';
 
 type UploadState = 'idle' | 'uploading' | 'processing' | 'review' | 'success' | 'error';
 
@@ -40,6 +42,7 @@ const PayslipUpload = ({ onUploadComplete }: PayslipUploadProps) => {
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { canUpload, uploadsRemaining, isPremium } = useUsage();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [state, setState] = useState<UploadState>('idle');
   const [progress, setProgress] = useState(0);
@@ -79,6 +82,12 @@ const PayslipUpload = ({ onUploadComplete }: PayslipUploadProps) => {
 
   const uploadFile = useCallback(async (file: File) => {
     if (!user) return;
+
+    if (!canUpload) {
+      setErrorMsg('You\'ve reached your free upload limit this month. Upgrade to Plus for unlimited uploads.');
+      setState('error');
+      return;
+    }
 
     const allowedTypes = ['application/pdf', 'image/png', 'image/jpeg', 'image/webp'];
     if (!allowedTypes.includes(file.type)) {
@@ -194,8 +203,9 @@ const PayslipUpload = ({ onUploadComplete }: PayslipUploadProps) => {
 
     queryClient.invalidateQueries({ queryKey: ['payslips'] });
     queryClient.invalidateQueries({ queryKey: ['anomalies'] });
+    queryClient.invalidateQueries({ queryKey: ['usage'] });
     onUploadComplete?.(payslip.id);
-  }, [user, toast, onUploadComplete, queryClient]);
+  }, [user, toast, onUploadComplete, queryClient, canUpload]);
 
   const handleReviewSave = async () => {
     if (!reviewPayslipId) return;
@@ -262,6 +272,7 @@ const PayslipUpload = ({ onUploadComplete }: PayslipUploadProps) => {
       toast({ title: 'Payslip confirmed', description: `Saved with pay date ${formatDate(reviewFields.pay_date)}.` });
       queryClient.invalidateQueries({ queryKey: ['payslips'] });
       queryClient.invalidateQueries({ queryKey: ['anomalies'] });
+      queryClient.invalidateQueries({ queryKey: ['usage'] });
       setProgress(100);
       setState('success');
     }
@@ -312,7 +323,23 @@ const PayslipUpload = ({ onUploadComplete }: PayslipUploadProps) => {
           className="hidden"
         />
 
-        {state === 'idle' && (
+        {state === 'idle' && !canUpload && (
+          <>
+            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10 mb-4">
+              <Sparkles className="h-7 w-7 text-primary" />
+            </div>
+            <h3 className="text-lg font-semibold text-foreground">Upload limit reached</h3>
+            <p className="mt-1 text-sm text-muted-foreground">
+              You've used all 3 free uploads this month. Upgrade to Plus for unlimited uploads.
+            </p>
+            <Link to="/pricing">
+              <Button className="mt-4">Upgrade to Plus</Button>
+            </Link>
+            <p className="mt-2 text-xs text-muted-foreground">Limits reset at the start of each month</p>
+          </>
+        )}
+
+        {state === 'idle' && canUpload && (
           <>
             <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10 mb-4">
               <Upload className="h-7 w-7 text-primary" />
@@ -321,6 +348,11 @@ const PayslipUpload = ({ onUploadComplete }: PayslipUploadProps) => {
             <p className="mt-1 text-sm text-muted-foreground">Drag and drop a PDF or image, or click to browse</p>
             <Button className="mt-4" onClick={() => fileInputRef.current?.click()}>Choose file</Button>
             <p className="mt-2 text-xs text-muted-foreground">PDF, PNG, JPG up to 10 MB</p>
+            {!isPremium && (
+              <p className="mt-1 text-xs text-muted-foreground">
+                {uploadsRemaining} upload{uploadsRemaining !== 1 ? 's' : ''} remaining this month
+              </p>
+            )}
           </>
         )}
 

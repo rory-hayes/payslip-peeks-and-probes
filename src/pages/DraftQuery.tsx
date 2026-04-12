@@ -7,8 +7,10 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 import AppLayout from '@/components/layout/AppLayout';
+import UpgradePrompt from '@/components/UpgradePrompt';
 import { usePayslip, useAnomalies } from '@/hooks/use-payslip-data';
 import { useProfile } from '@/hooks/use-profile';
+import { useUsage } from '@/hooks/use-usage';
 import { formatDate } from '@/lib/date-utils';
 import { ArrowLeft, Copy, Mail, CheckCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
@@ -71,6 +73,7 @@ const DraftQuery = () => {
   const { data: slip, isLoading } = usePayslip(id);
   const { data: allAnomalies } = useAnomalies();
   const { data: profile } = useProfile();
+  const { canDraft, draftsRemaining, isPremium } = useUsage();
   const anomalies = allAnomalies?.filter((a) => a.payslip_id === id) || [];
 
   const [subject, setSubject] = useState('');
@@ -136,52 +139,70 @@ const DraftQuery = () => {
           </div>
         </div>
 
-        <Card className="border-0 shadow-sm">
-          <CardHeader className="pb-2"><CardTitle className="text-base">Your message</CardTitle></CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label>To</Label>
-              <Input
-                type="email"
-                placeholder="payroll@company.com"
-                value={toEmail}
-                onChange={(e) => setToEmail(e.target.value)}
-              />
-              {!toEmail && (
+        {!canDraft ? (
+          <UpgradePrompt
+            title="Draft limit reached"
+            description={`You've used your ${2} free drafts this month. Upgrade to Plus for unlimited drafts.`}
+          />
+        ) : (
+          <>
+            {!isPremium && (
+              <p className="text-xs text-muted-foreground">
+                {draftsRemaining} draft{draftsRemaining !== 1 ? 's' : ''} remaining this month
+              </p>
+            )}
+            <Card className="border-0 shadow-sm">
+              <CardHeader className="pb-2"><CardTitle className="text-base">Your message</CardTitle></CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <Label>To</Label>
+                  <Input
+                    type="email"
+                    placeholder="payroll@company.com"
+                    value={toEmail}
+                    onChange={(e) => setToEmail(e.target.value)}
+                  />
+                  {!toEmail && (
+                    <p className="text-xs text-muted-foreground">
+                      Add your payroll email in <Link to="/settings" className="text-primary hover:underline">Settings</Link> to prefill this.
+                    </p>
+                  )}
+                </div>
+                <div className="space-y-2">
+                  <Label>Subject</Label>
+                  <Input value={subject} onChange={(e) => setSubject(e.target.value)} />
+                </div>
+                <div className="space-y-2">
+                  <Label>Message</Label>
+                  <Textarea value={body} onChange={(e) => setBody(e.target.value)} rows={14} className="resize-y" />
+                </div>
                 <p className="text-xs text-muted-foreground">
-                  Add your payroll email in <Link to="/settings" className="text-primary hover:underline">Settings</Link> to prefill this.
+                  Edit this message before sending. {anomalies.length > 0
+                    ? "We've drafted it based on the issues flagged on this payslip."
+                    : "We've prepared a general clarification request for this payslip."}
                 </p>
-              )}
+              </CardContent>
+            </Card>
+          </>
+        )}
+
+        {canDraft && (
+          <>
+            <div className="flex flex-wrap gap-3">
+              <Button onClick={handleCopy} className="gap-2">
+                {copied ? <CheckCircle className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                {copied ? 'Copied!' : 'Copy to clipboard'}
+              </Button>
+              <a href={mailtoLink}>
+                <Button variant="outline" className="gap-2"><Mail className="h-4 w-4" /> Open in email</Button>
+              </a>
             </div>
-            <div className="space-y-2">
-              <Label>Subject</Label>
-              <Input value={subject} onChange={(e) => setSubject(e.target.value)} />
-            </div>
-            <div className="space-y-2">
-              <Label>Message</Label>
-              <Textarea value={body} onChange={(e) => setBody(e.target.value)} rows={14} className="resize-y" />
-            </div>
+
             <p className="text-xs text-muted-foreground">
-              Edit this message before sending. {anomalies.length > 0
-                ? "We've drafted it based on the issues flagged on this payslip."
-                : "We've prepared a general clarification request for this payslip."}
+              This draft is a starting point. Review and personalise it before sending. PayCheck does not send emails on your behalf.
             </p>
-          </CardContent>
-        </Card>
-
-        <div className="flex flex-wrap gap-3">
-          <Button onClick={handleCopy} className="gap-2">
-            {copied ? <CheckCircle className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-            {copied ? 'Copied!' : 'Copy to clipboard'}
-          </Button>
-          <a href={mailtoLink}>
-            <Button variant="outline" className="gap-2"><Mail className="h-4 w-4" /> Open in email</Button>
-          </a>
-        </div>
-
-        <p className="text-xs text-muted-foreground">
-          This draft is a starting point. Review and personalise it before sending. PayCheck does not send emails on your behalf.
-        </p>
+          </>
+        )}
       </div>
     </AppLayout>
   );
