@@ -40,7 +40,8 @@ export function useSubscription() {
       };
     },
     enabled: !!user,
-    staleTime: 5 * 60 * 1000,
+    staleTime: 60_000, // Re-check plan every minute for quick upgrade reflection
+    refetchOnWindowFocus: true,
   });
 
   return {
