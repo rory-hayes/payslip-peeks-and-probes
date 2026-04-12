@@ -33,6 +33,7 @@ const Dashboard = () => {
   const { data: profile } = useProfile();
   const { format: formatCurrency, symbol: currSym, currency } = useCurrency();
   const { isDemoMode, enableDemo } = useDemoMode();
+  const { uploadsRemaining, draftsRemaining, isPremium, limits } = useUsage();
 
   const isLoading = loadingSlips || loadingAnomalies;
   const hasRealData = !isLoading && realPayslips && realPayslips.length > 0;
