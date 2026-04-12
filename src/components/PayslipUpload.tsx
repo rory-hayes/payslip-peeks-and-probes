@@ -205,7 +205,7 @@ const PayslipUpload = ({ onUploadComplete }: PayslipUploadProps) => {
     queryClient.invalidateQueries({ queryKey: ['anomalies'] });
     queryClient.invalidateQueries({ queryKey: ['usage'] });
     onUploadComplete?.(payslip.id);
-  }, [user, toast, onUploadComplete, queryClient]);
+  }, [user, toast, onUploadComplete, queryClient, canUpload]);
 
   const handleReviewSave = async () => {
     if (!reviewPayslipId) return;
