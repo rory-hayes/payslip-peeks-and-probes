@@ -83,6 +83,12 @@ const PayslipUpload = ({ onUploadComplete }: PayslipUploadProps) => {
   const uploadFile = useCallback(async (file: File) => {
     if (!user) return;
 
+    if (!canUpload) {
+      setErrorMsg('You\'ve reached your free upload limit this month. Upgrade to Plus for unlimited uploads.');
+      setState('error');
+      return;
+    }
+
     const allowedTypes = ['application/pdf', 'image/png', 'image/jpeg', 'image/webp'];
     if (!allowedTypes.includes(file.type)) {
       setErrorMsg('Please upload a PDF or image file (PNG, JPG, WebP).');
