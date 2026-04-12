@@ -65,6 +65,8 @@ const STUDENT_LOAN_PLANS = [
 const Settings = () => {
   const { toast } = useToast();
   const { user, signOut } = useAuth();
+  const { subscription } = useSubscription();
+  const { uploadsRemaining, draftsRemaining, isPremium, limits } = useUsage();
   const [firstName, setFirstName] = useState('');
   const [country, setCountry] = useState<'UK' | 'Ireland'>('UK');
   const [annualSalary, setAnnualSalary] = useState('');
