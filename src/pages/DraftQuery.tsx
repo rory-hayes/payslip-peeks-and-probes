@@ -7,8 +7,10 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 import AppLayout from '@/components/layout/AppLayout';
+import UpgradePrompt from '@/components/UpgradePrompt';
 import { usePayslip, useAnomalies } from '@/hooks/use-payslip-data';
 import { useProfile } from '@/hooks/use-profile';
+import { useUsage } from '@/hooks/use-usage';
 import { formatDate } from '@/lib/date-utils';
 import { ArrowLeft, Copy, Mail, CheckCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
@@ -71,6 +73,7 @@ const DraftQuery = () => {
   const { data: slip, isLoading } = usePayslip(id);
   const { data: allAnomalies } = useAnomalies();
   const { data: profile } = useProfile();
+  const { canDraft, draftsRemaining, isPremium } = useUsage();
   const anomalies = allAnomalies?.filter((a) => a.payslip_id === id) || [];
 
   const [subject, setSubject] = useState('');
