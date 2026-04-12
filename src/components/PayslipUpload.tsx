@@ -203,6 +203,7 @@ const PayslipUpload = ({ onUploadComplete }: PayslipUploadProps) => {
 
     queryClient.invalidateQueries({ queryKey: ['payslips'] });
     queryClient.invalidateQueries({ queryKey: ['anomalies'] });
+    queryClient.invalidateQueries({ queryKey: ['usage'] });
     onUploadComplete?.(payslip.id);
   }, [user, toast, onUploadComplete, queryClient]);
 
@@ -271,6 +272,7 @@ const PayslipUpload = ({ onUploadComplete }: PayslipUploadProps) => {
       toast({ title: 'Payslip confirmed', description: `Saved with pay date ${formatDate(reviewFields.pay_date)}.` });
       queryClient.invalidateQueries({ queryKey: ['payslips'] });
       queryClient.invalidateQueries({ queryKey: ['anomalies'] });
+      queryClient.invalidateQueries({ queryKey: ['usage'] });
       setProgress(100);
       setState('success');
     }
