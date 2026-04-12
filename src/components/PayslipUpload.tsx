@@ -115,7 +115,12 @@ const PayslipUpload = ({ onUploadComplete }: PayslipUploadProps) => {
       .select('id')
       .single();
 
-    if (dbError || !payslip) { setErrorMsg(dbError?.message || 'Failed to create record.'); setState('error'); return; }
+    if (dbError || !payslip) {
+      console.error('Payslip record error:', dbError?.message);
+      setErrorMsg('Something went wrong saving your payslip. Please try again.');
+      setState('error');
+      return;
+    }
 
     setProgress(80);
     setState('processing');
