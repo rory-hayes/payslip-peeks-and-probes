@@ -186,19 +186,23 @@ const DraftQuery = () => {
           </>
         )}
 
-        <div className="flex flex-wrap gap-3">
-          <Button onClick={handleCopy} className="gap-2">
-            {copied ? <CheckCircle className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-            {copied ? 'Copied!' : 'Copy to clipboard'}
-          </Button>
-          <a href={mailtoLink}>
-            <Button variant="outline" className="gap-2"><Mail className="h-4 w-4" /> Open in email</Button>
-          </a>
-        </div>
+        {canDraft && (
+          <>
+            <div className="flex flex-wrap gap-3">
+              <Button onClick={handleCopy} className="gap-2">
+                {copied ? <CheckCircle className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                {copied ? 'Copied!' : 'Copy to clipboard'}
+              </Button>
+              <a href={mailtoLink}>
+                <Button variant="outline" className="gap-2"><Mail className="h-4 w-4" /> Open in email</Button>
+              </a>
+            </div>
 
-        <p className="text-xs text-muted-foreground">
-          This draft is a starting point. Review and personalise it before sending. PayCheck does not send emails on your behalf.
-        </p>
+            <p className="text-xs text-muted-foreground">
+              This draft is a starting point. Review and personalise it before sending. PayCheck does not send emails on your behalf.
+            </p>
+          </>
+        )}
       </div>
     </AppLayout>
   );
