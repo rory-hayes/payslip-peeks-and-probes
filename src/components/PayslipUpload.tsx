@@ -1,4 +1,5 @@
 import { useState, useCallback, useRef } from 'react';
+import { Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useQueryClient } from '@tanstack/react-query';
@@ -8,9 +9,10 @@ import { Label } from '@/components/ui/label';
 import { Progress } from '@/components/ui/progress';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Upload, FileText, CheckCircle, AlertCircle, ClipboardCheck } from 'lucide-react';
+import { Upload, FileText, CheckCircle, AlertCircle, ClipboardCheck, Sparkles } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { formatDate } from '@/lib/date-utils';
+import { useUsage } from '@/hooks/use-usage';
 
 type UploadState = 'idle' | 'uploading' | 'processing' | 'review' | 'success' | 'error';
 
@@ -40,6 +42,7 @@ const PayslipUpload = ({ onUploadComplete }: PayslipUploadProps) => {
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { canUpload, uploadsRemaining, isPremium } = useUsage();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [state, setState] = useState<UploadState>('idle');
   const [progress, setProgress] = useState(0);
