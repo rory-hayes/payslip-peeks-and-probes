@@ -51,7 +51,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useUsage } from '@/hooks/use-usage';
 import { useSubscription } from '@/hooks/use-subscription';
-import { Download, Trash2, HelpCircle, Sparkles } from 'lucide-react';
+import { getStripeEnvironment } from '@/lib/stripe';
+import { Download, Trash2, HelpCircle, Sparkles, ExternalLink } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 const STUDENT_LOAN_PLANS = [
