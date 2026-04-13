@@ -6,7 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Separator } from '@/components/ui/separator';
-import { CheckCircle, ArrowRight, Sparkles } from 'lucide-react';
+import { CheckCircle } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { lovable } from '@/integrations/lovable/index';
@@ -21,69 +21,8 @@ const SignUp = () => {
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [agreed, setAgreed] = useState(false);
-  const [success, setSuccess] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    const { error } = await signUp(email, password, firstName);
-    setLoading(false);
-    if (error) {
-      toast({ title: 'Sign up failed', description: error.message, variant: 'destructive' });
-    } else {
-      navigate('/onboarding');
-    }
-  };
-
-  const handleGoogleSignUp = async () => {
-    setGoogleLoading(true);
-    try {
-      const result = await lovable.auth.signInWithOAuth("google", {
-        redirect_uri: window.location.origin,
-      });
-
-      if (result.error) {
-        toast({ title: 'Google sign up failed', description: String(result.error), variant: 'destructive' });
-        setGoogleLoading(false);
-        return;
-      }
-
-      if (result.redirected) {
-        return;
-      }
-
-      navigate('/onboarding');
-    } catch (err) {
-      toast({ title: 'Google sign up failed', description: 'Something went wrong. Please try again.', variant: 'destructive' });
-      setGoogleLoading(false);
-    }
-  };
-
-  if (success) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-background px-4 py-8">
-        <div className="w-full max-w-md">
-          <Card className="border-0 shadow-lg">
-            <CardContent className="flex flex-col items-center justify-center p-10 text-center">
-              <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-success/10 mb-6">
-                <Sparkles className="h-8 w-8 text-success" />
-              </div>
-              <h2 className="text-2xl font-bold text-foreground">Your account is ready</h2>
-              <p className="mt-3 text-muted-foreground leading-relaxed">
-                Welcome to PayCheck, {firstName || 'there'}! Let's set up your pay profile so we can start checking your payslips.
-              </p>
-              <Button className="mt-8 gap-2 w-full" onClick={() => navigate('/onboarding')}>
-                Set up your profile <ArrowRight className="h-4 w-4" />
-              </Button>
-              <Button variant="ghost" className="mt-2 w-full" onClick={() => navigate('/dashboard')}>
-                Skip for now
-              </Button>
-            </CardContent>
-          </Card>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4 py-8">
