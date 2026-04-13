@@ -272,19 +272,30 @@ const Settings = () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-foreground">
-                  {isPremium ? 'Plus' : 'Free'} plan
+                  {planLabel} plan
                 </p>
                 <p className="text-xs text-muted-foreground">
-                  {isPremium ? 'Unlimited uploads and drafts' : 'Limited uploads and drafts per month'}
+                  {isPremium
+                    ? subscription.cancelAtPeriodEnd
+                      ? `Access until ${subscription.currentPeriodEnd ? new Date(subscription.currentPeriodEnd).toLocaleDateString() : 'period end'}`
+                      : subscription.plan === 'lifetime' ? 'Lifetime access — no renewal needed' : 'Unlimited uploads and drafts'
+                    : 'Limited uploads and drafts per month'}
                 </p>
               </div>
-              {!isPremium && (
-                <Link to="/pricing">
-                  <Button size="sm" className="gap-1.5">
-                    <Sparkles className="h-3.5 w-3.5" /> Upgrade
+              <div className="flex gap-2">
+                {isPremium && subscription.plan !== 'lifetime' && (
+                  <Button variant="outline" size="sm" className="gap-1.5" onClick={handleManageBilling} disabled={managingBilling}>
+                    <ExternalLink className="h-3.5 w-3.5" /> {managingBilling ? 'Opening…' : 'Manage billing'}
                   </Button>
-                </Link>
-              )}
+                )}
+                {!isPremium && (
+                  <Link to="/pricing">
+                    <Button size="sm" className="gap-1.5">
+                      <Sparkles className="h-3.5 w-3.5" /> Upgrade
+                    </Button>
+                  </Link>
+                )}
+              </div>
             </div>
             {!isPremium && (
               <div className="grid grid-cols-2 gap-4 pt-2">
