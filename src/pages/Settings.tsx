@@ -83,7 +83,30 @@ const Settings = () => {
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [exporting, setExporting] = useState(false);
+  const [managingBilling, setManagingBilling] = useState(false);
   const currencySymbol = country === 'Ireland' ? '€' : '£';
+
+  const planLabel = subscription.plan === 'lifetime' ? 'Lifetime' : subscription.plan === 'plus' ? 'Plus' : 'Free';
+
+  const handleManageBilling = async () => {
+    setManagingBilling(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('create-portal-session', {
+        body: {
+          returnUrl: window.location.href,
+          environment: getStripeEnvironment(),
+        },
+      });
+      if (error || !data?.url) {
+        toast({ title: 'Error', description: 'Unable to open billing portal. Please try again.', variant: 'destructive' });
+      } else {
+        window.open(data.url, '_blank');
+      }
+    } catch {
+      toast({ title: 'Error', description: 'Something went wrong. Please try again.', variant: 'destructive' });
+    }
+    setManagingBilling(false);
+  };
 
   useEffect(() => {
     if (!user) return;
