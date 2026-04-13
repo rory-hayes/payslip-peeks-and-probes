@@ -26,27 +26,34 @@ export function useSubscription() {
   const query = useQuery({
     queryKey: ['subscription', user?.id, env],
     queryFn: async (): Promise<Subscription> => {
-      // Check new subscriptions table first
-      const { data: sub, error } = await supabase
+      // Check subscriptions table — include canceled subs that still have time remaining
+      const { data: subs, error } = await supabase
         .from('subscriptions')
         .select('*')
         .eq('user_id', user!.id)
         .eq('environment', env)
-        .in('status', ['active', 'trialing'])
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
+        .order('created_at', { ascending: false });
 
       if (error) throw error;
 
-      if (sub) {
-        const isLifetime = sub.price_id === 'lifetime_once' || sub.product_id === 'lifetime_plan';
+      // Find an active or still-valid subscription
+      const now = new Date().toISOString();
+      const activeSub = (subs ?? []).find(sub => {
+        if (sub.status === 'active' || sub.status === 'trialing') return true;
+        // Canceled but period hasn't ended yet — still has access
+        if (sub.status === 'canceled' && sub.current_period_end && sub.current_period_end > now) return true;
+        return false;
+      });
+
+      if (activeSub) {
+        const isLifetime = activeSub.price_id === 'lifetime_once' || activeSub.price_id === 'lifetime_once_gbp' || activeSub.product_id === 'lifetime_plan';
+        const isCanceled = activeSub.status === 'canceled' || activeSub.cancel_at_period_end;
         return {
           plan: isLifetime ? 'lifetime' : 'plus',
-          status: sub.status,
+          status: activeSub.status,
           isPremium: true,
-          cancelAtPeriodEnd: sub.cancel_at_period_end ?? false,
-          currentPeriodEnd: sub.current_period_end,
+          cancelAtPeriodEnd: isCanceled ?? false,
+          currentPeriodEnd: activeSub.current_period_end,
         };
       }
 
@@ -64,7 +71,7 @@ export function useSubscription() {
       return { plan: 'free', status: 'active', isPremium: false };
     },
     enabled: !!user,
-    staleTime: 60_000,
+    staleTime: 30_000,
     refetchOnWindowFocus: true,
   });
 

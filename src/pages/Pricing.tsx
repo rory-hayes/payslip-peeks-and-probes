@@ -12,6 +12,11 @@ import { PaymentTestModeBanner } from '@/components/PaymentTestModeBanner';
 type Currency = 'GBP' | 'EUR';
 type Billing = 'yearly' | 'monthly';
 
+const priceIds: Record<Currency, { yearly: string; monthly: string; lifetime: string }> = {
+  EUR: { yearly: 'plus_yearly', monthly: 'plus_monthly', lifetime: 'lifetime_once' },
+  GBP: { yearly: 'plus_yearly_gbp', monthly: 'plus_monthly_gbp', lifetime: 'lifetime_once_gbp' },
+};
+
 const prices: Record<Currency, { symbol: string; yearly: string; yearlyPerMonth: string; monthly: string; lifetime: string }> = {
   GBP: { symbol: '£', yearly: '14.99', yearlyPerMonth: '1.25', monthly: '2.49', lifetime: '24.99' },
   EUR: { symbol: '€', yearly: '16.99', yearlyPerMonth: '1.42', monthly: '2.99', lifetime: '29.99' },
@@ -43,6 +48,7 @@ const Pricing = () => {
   const [currency, setCurrency] = useState<Currency>('EUR');
   const [billing, setBilling] = useState<Billing>('yearly');
   const p = prices[currency];
+  const ids = priceIds[currency];
 
   const isLoggedIn = !!user;
 
@@ -51,8 +57,12 @@ const Pricing = () => {
       navigate('/sign-up');
       return;
     }
+    // Prevent duplicate purchase
+    if (subscription.isPremium) return;
     navigate(`/checkout?price=${priceId}`);
   };
+
+  const planLabel = subscription.plan === 'lifetime' ? 'Lifetime' : subscription.plan === 'plus' ? 'Plus' : 'Free';
 
   return (
     <div className="min-h-screen bg-card">
@@ -190,14 +200,16 @@ const Pricing = () => {
                 </ul>
                 {isLoggedIn ? (
                   subscription.isPremium ? (
-                    <Button variant="outline" className="w-full mt-8" disabled>Current plan</Button>
+                    <Button variant="outline" className="w-full mt-8" disabled>
+                      Current plan ({planLabel})
+                    </Button>
                   ) : (
-                    <Button className="w-full mt-8" onClick={() => handleCheckout(billing === 'yearly' ? 'plus_yearly' : 'plus_monthly')}>
+                    <Button className="w-full mt-8" onClick={() => handleCheckout(billing === 'yearly' ? ids.yearly : ids.monthly)}>
                       Upgrade to Plus
                     </Button>
                   )
                 ) : (
-                  <Button className="w-full mt-8" onClick={() => handleCheckout(billing === 'yearly' ? 'plus_yearly' : 'plus_monthly')}>
+                  <Button className="w-full mt-8" onClick={() => handleCheckout(billing === 'yearly' ? ids.yearly : ids.monthly)}>
                     Start free trial
                   </Button>
                 )}
@@ -229,14 +241,16 @@ const Pricing = () => {
                 </ul>
                 {isLoggedIn ? (
                   subscription.isPremium ? (
-                    <Button variant="outline" className="w-full mt-8" disabled>Current plan</Button>
+                    <Button variant="outline" className="w-full mt-8" disabled>
+                      Current plan ({planLabel})
+                    </Button>
                   ) : (
-                    <Button variant="outline" className="w-full mt-8 border-amber-300 text-amber-700 hover:bg-amber-50" onClick={() => handleCheckout('lifetime_once')}>
+                    <Button variant="outline" className="w-full mt-8 border-amber-300 text-amber-700 hover:bg-amber-50" onClick={() => handleCheckout(ids.lifetime)}>
                       Get lifetime access
                     </Button>
                   )
                 ) : (
-                  <Button variant="outline" className="w-full mt-8 border-amber-300 text-amber-700 hover:bg-amber-50" onClick={() => handleCheckout('lifetime_once')}>
+                  <Button variant="outline" className="w-full mt-8 border-amber-300 text-amber-700 hover:bg-amber-50" onClick={() => handleCheckout(ids.lifetime)}>
                     Claim founder deal
                   </Button>
                 )}
