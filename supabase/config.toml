@@ -11,3 +11,6 @@ verify_jwt = false
 
 [functions.create-portal-session]
 verify_jwt = false
+
+[functions.cancel-subscription-on-delete]
+verify_jwt = false

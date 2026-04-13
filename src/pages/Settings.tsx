@@ -51,7 +51,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useUsage } from '@/hooks/use-usage';
 import { useSubscription } from '@/hooks/use-subscription';
-import { Download, Trash2, HelpCircle, Sparkles } from 'lucide-react';
+import { getStripeEnvironment } from '@/lib/stripe';
+import { Download, Trash2, HelpCircle, Sparkles, ExternalLink } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 const STUDENT_LOAN_PLANS = [
@@ -82,7 +83,30 @@ const Settings = () => {
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [exporting, setExporting] = useState(false);
+  const [managingBilling, setManagingBilling] = useState(false);
   const currencySymbol = country === 'Ireland' ? '€' : '£';
+
+  const planLabel = subscription.plan === 'lifetime' ? 'Lifetime' : subscription.plan === 'plus' ? 'Plus' : 'Free';
+
+  const handleManageBilling = async () => {
+    setManagingBilling(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('create-portal-session', {
+        body: {
+          returnUrl: window.location.href,
+          environment: getStripeEnvironment(),
+        },
+      });
+      if (error || !data?.url) {
+        toast({ title: 'Error', description: 'Unable to open billing portal. Please try again.', variant: 'destructive' });
+      } else {
+        window.open(data.url, '_blank');
+      }
+    } catch {
+      toast({ title: 'Error', description: 'Something went wrong. Please try again.', variant: 'destructive' });
+    }
+    setManagingBilling(false);
+  };
 
   useEffect(() => {
     if (!user) return;
@@ -194,6 +218,18 @@ const Settings = () => {
     if (deleteConfirm !== 'DELETE' || !user) return;
     setDeleting(true);
     try {
+      // 0. Cancel any active Stripe subscriptions before deleting data
+      if (subscription.isPremium && subscription.plan !== 'lifetime') {
+        try {
+          await supabase.functions.invoke('cancel-subscription-on-delete', {
+            body: { environment: getStripeEnvironment() },
+          });
+        } catch (e) {
+          console.error('Failed to cancel Stripe subscription:', e);
+          // Continue with deletion even if Stripe cancel fails
+        }
+      }
+
       // 1. Get payslip file paths so we can delete from storage
       const { data: payslipFiles } = await supabase
         .from('payslips')
@@ -248,19 +284,30 @@ const Settings = () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-foreground">
-                  {isPremium ? 'Plus' : 'Free'} plan
+                  {planLabel} plan
                 </p>
                 <p className="text-xs text-muted-foreground">
-                  {isPremium ? 'Unlimited uploads and drafts' : 'Limited uploads and drafts per month'}
+                  {isPremium
+                    ? subscription.cancelAtPeriodEnd
+                      ? `Access until ${subscription.currentPeriodEnd ? new Date(subscription.currentPeriodEnd).toLocaleDateString() : 'period end'}`
+                      : subscription.plan === 'lifetime' ? 'Lifetime access — no renewal needed' : 'Unlimited uploads and drafts'
+                    : 'Limited uploads and drafts per month'}
                 </p>
               </div>
-              {!isPremium && (
-                <Link to="/pricing">
-                  <Button size="sm" className="gap-1.5">
-                    <Sparkles className="h-3.5 w-3.5" /> Upgrade
+              <div className="flex gap-2">
+                {isPremium && subscription.plan !== 'lifetime' && (
+                  <Button variant="outline" size="sm" className="gap-1.5" onClick={handleManageBilling} disabled={managingBilling}>
+                    <ExternalLink className="h-3.5 w-3.5" /> {managingBilling ? 'Opening…' : 'Manage billing'}
                   </Button>
-                </Link>
-              )}
+                )}
+                {!isPremium && (
+                  <Link to="/pricing">
+                    <Button size="sm" className="gap-1.5">
+                      <Sparkles className="h-3.5 w-3.5" /> Upgrade
+                    </Button>
+                  </Link>
+                )}
+              </div>
             </div>
             {!isPremium && (
               <div className="grid grid-cols-2 gap-4 pt-2">
