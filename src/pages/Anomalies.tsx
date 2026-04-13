@@ -5,12 +5,9 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import AppLayout from '@/components/layout/AppLayout';
-import DemoBanner from '@/components/DemoBanner';
 import AnomalyExplanation from '@/components/AnomalyExplanation';
 import { useAnomalies } from '@/hooks/use-payslip-data';
-import { useDemoMode } from '@/contexts/DemoContext';
 import { formatDate } from '@/lib/date-utils';
-import { demoAnomalies } from '@/lib/demo-data';
 import type { AnomalyStatus } from '@/lib/types';
 import { AlertTriangle, CheckCircle, ChevronDown, ChevronUp, Eye, MessageSquare } from 'lucide-react';
 
@@ -25,12 +22,8 @@ const Anomalies = () => {
   const [filter, setFilter] = useState<AnomalyStatus | 'all'>('all');
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const { data: realAnomalies, isLoading } = useAnomalies();
-  const { isDemoMode } = useDemoMode();
 
-  const hasRealData = !isLoading && realAnomalies && realAnomalies.length > 0;
-  const showDemo = isDemoMode && !hasRealData;
-  const all = showDemo ? demoAnomalies : (realAnomalies || []);
-
+  const all = realAnomalies || [];
   const filtered = filter === 'all' ? all : all.filter((a) => a.status === filter);
   const highCount = all.filter((a) => a.severity === 'high' && a.status === 'new').length;
 
@@ -41,8 +34,6 @@ const Anomalies = () => {
           <h1 className="text-2xl font-bold text-foreground">Anomalies</h1>
           <p className="text-sm text-muted-foreground">{all.length} flagged items across your payslips</p>
         </div>
-
-        {showDemo && <DemoBanner />}
 
         {highCount > 0 && (
           <Card className="border-destructive/20 bg-destructive/5 shadow-sm">

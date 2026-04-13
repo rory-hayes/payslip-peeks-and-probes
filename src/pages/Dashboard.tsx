@@ -4,7 +4,6 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import AppLayout from '@/components/layout/AppLayout';
-import DemoBanner from '@/components/DemoBanner';
 import { usePayslips, useAnomalies, usePayTrends } from '@/hooks/use-payslip-data';
 import { useUsage } from '@/hooks/use-usage';
 import ExpectedVsActual from '@/components/ExpectedVsActual';
@@ -13,48 +12,42 @@ import YearToDateSummary from '@/components/YearToDateSummary';
 import YearToDateChart from '@/components/YearToDateChart';
 import UpgradePrompt from '@/components/UpgradePrompt';
 import { useCurrency, useProfile } from '@/hooks/use-profile';
-import { useDemoMode } from '@/contexts/DemoContext';
 import { formatDate } from '@/lib/date-utils';
-import { demoPayslips, demoAnomalies, demoPayTrends } from '@/lib/demo-data';
 import { generatePaySummaryPdf } from '@/lib/generate-pay-summary-pdf';
 import type { Payslip, AnomalyResult, PayTrend } from '@/lib/types';
 import {
   Upload, TrendingUp, TrendingDown, AlertTriangle, FileText, ArrowRight, BarChart3, Download,
-  Eye, Shield, Sparkles,
+  Shield, Sparkles,
 } from 'lucide-react';
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from 'recharts';
 
 const Dashboard = () => {
-  const { data: realPayslips, isLoading: loadingSlips } = usePayslips();
-  const { data: realAnomalies, isLoading: loadingAnomalies } = useAnomalies();
-  const { data: realTrends } = usePayTrends();
+  const { data: payslips, isLoading: loadingSlips } = usePayslips();
+  const { data: anomalies, isLoading: loadingAnomalies } = useAnomalies();
+  const { data: trends } = usePayTrends();
   const { data: profile } = useProfile();
   const { format: formatCurrency, symbol: currSym, currency } = useCurrency();
-  const { isDemoMode, enableDemo } = useDemoMode();
   const { uploadsRemaining, draftsRemaining, isPremium, limits } = useUsage();
 
   const isLoading = loadingSlips || loadingAnomalies;
-  const hasRealData = !isLoading && realPayslips && realPayslips.length > 0;
-  const showDemo = isDemoMode && !hasRealData;
+  const isEmpty = !isLoading && (!payslips || payslips.length === 0);
 
-  const payslips: Payslip[] = showDemo ? demoPayslips : (realPayslips || []);
-  const anomalies: AnomalyResult[] = showDemo ? demoAnomalies : (realAnomalies || []);
-  const trends: PayTrend[] | undefined = showDemo ? demoPayTrends : realTrends;
+  const allPayslips: Payslip[] = payslips || [];
+  const allAnomalies: AnomalyResult[] = anomalies || [];
 
-  const latest = payslips.length > 0 ? payslips[payslips.length - 1] : null;
-  const previous = payslips.length > 1 ? payslips[payslips.length - 2] : null;
+  const latest = allPayslips.length > 0 ? allPayslips[allPayslips.length - 1] : null;
+  const previous = allPayslips.length > 1 ? allPayslips[allPayslips.length - 2] : null;
   const netChange = latest && previous ? latest.net_pay - previous.net_pay : 0;
-  const unresolvedCount = anomalies.filter((a) => a.status === 'new').length;
-  const isEmpty = !isLoading && !hasRealData && !showDemo;
+  const unresolvedCount = allAnomalies.filter((a) => a.status === 'new').length;
 
   const greeting = profile?.first_name ? `Hi, ${profile.first_name}` : 'Welcome';
 
   const handleExportPdf = () => {
-    if (!payslips || payslips.length === 0) return;
+    if (!allPayslips || allPayslips.length === 0) return;
     generatePaySummaryPdf({
-      payslips,
+      payslips: allPayslips,
       currency,
       country: profile?.country ?? null,
       annualSalary: profile?.annual_salary,
@@ -75,11 +68,11 @@ const Dashboard = () => {
           <div>
             <h1 className="text-2xl font-bold text-foreground md:text-3xl">{greeting} 👋</h1>
             <p className="mt-1 text-muted-foreground">
-              {isEmpty ? 'Let\'s get started with your first payslip.' : showDemo ? 'Exploring sample data — upload a payslip to see your own.' : 'Here\'s your pay overview.'}
+              {isEmpty ? 'Let\'s get started with your first payslip.' : 'Here\'s your pay overview.'}
             </p>
           </div>
           <div className="flex gap-2 flex-wrap">
-            {payslips.length > 0 && !showDemo && (
+            {allPayslips.length > 0 && (
               <Button variant="outline" className="gap-2" onClick={handleExportPdf}>
                 <Download className="h-4 w-4" /> Export PDF
               </Button>
@@ -89,9 +82,6 @@ const Dashboard = () => {
             </Link>
           </div>
         </div>
-
-        {/* Demo mode banner */}
-        {showDemo && <DemoBanner />}
 
         {/* Loading state */}
         {isLoading && (
@@ -119,13 +109,10 @@ const Dashboard = () => {
               <p className="mt-3 max-w-md text-muted-foreground leading-relaxed">
                 Upload a payslip and PayCheck will extract the key figures, compare them against your profile, and flag anything that looks unusual. Your data stays private and secure.
               </p>
-              <div className="mt-6 flex flex-col sm:flex-row gap-3">
+              <div className="mt-6">
                 <Link to="/vault">
-                  <Button className="gap-2 w-full sm:w-auto"><Upload className="h-4 w-4" /> Upload your first payslip</Button>
+                  <Button className="gap-2"><Upload className="h-4 w-4" /> Upload your first payslip</Button>
                 </Link>
-                <Button variant="outline" className="gap-2" onClick={enableDemo}>
-                  <Eye className="h-4 w-4" /> Try demo mode
-                </Button>
               </div>
               <div className="mt-8 grid grid-cols-3 gap-6 text-center">
                 <div>
@@ -198,14 +185,14 @@ const Dashboard = () => {
                     <span className="text-sm text-muted-foreground">Total payslips</span>
                     <FileText className="h-4 w-4 text-muted-foreground" />
                   </div>
-                  <div className="mt-2 text-2xl font-bold text-foreground">{payslips.length}</div>
-                  <div className="mt-1 text-xs text-muted-foreground">{showDemo ? 'Sample data' : 'Stored securely'}</div>
+                  <div className="mt-2 text-2xl font-bold text-foreground">{allPayslips.length}</div>
+                  <div className="mt-1 text-xs text-muted-foreground">Stored securely</div>
                 </CardContent>
               </Card>
             </div>
 
             {/* Free tier usage indicator */}
-            {!isPremium && !showDemo && (
+            {!isPremium && (
               <Card className="border-0 shadow-sm">
                 <CardContent className="p-5">
                   <div className="flex items-center justify-between mb-3">
@@ -246,7 +233,7 @@ const Dashboard = () => {
               </Card>
             )}
 
-            {!isPremium && !showDemo && (uploadsRemaining === 0 || draftsRemaining === 0) && (
+            {!isPremium && (uploadsRemaining === 0 || draftsRemaining === 0) && (
               <UpgradePrompt
                 title="You've hit your free limit"
                 description="Upgrade to Plus for unlimited uploads, drafts, and full anomaly detection."
@@ -254,14 +241,10 @@ const Dashboard = () => {
             )}
 
             {/* Expected vs Actual comparison */}
-            {!showDemo && (
-              <>
-                <ExpectedVsActual latestPayslip={latest} />
-                <ExpectedVsActualChart payslips={payslips} />
-                <YearToDateSummary payslips={payslips} />
-                <YearToDateChart payslips={payslips} />
-              </>
-            )}
+            <ExpectedVsActual latestPayslip={latest} />
+            <ExpectedVsActualChart payslips={allPayslips} />
+            <YearToDateSummary payslips={allPayslips} />
+            <YearToDateChart payslips={allPayslips} />
 
             {/* Chart + anomalies */}
             <div className="grid gap-6 lg:grid-cols-5">
@@ -287,7 +270,7 @@ const Dashboard = () => {
                 </Card>
               )}
 
-              {anomalies.filter((a) => a.status === 'new').length > 0 && (
+              {allAnomalies.filter((a) => a.status === 'new').length > 0 && (
                 <Card className={`border-0 shadow-sm ${trends && trends.length > 1 ? 'lg:col-span-2' : 'lg:col-span-5'}`}>
                   <CardHeader className="pb-2">
                     <div className="flex items-center justify-between">
@@ -297,8 +280,8 @@ const Dashboard = () => {
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-3">
-                      {anomalies.filter((a) => a.status === 'new').slice(0, 4).map((anomaly) => (
-                        <Link key={anomaly.id} to={showDemo ? `/payslip/${anomaly.payslip_id}` : `/payslip/${anomaly.payslip_id}`} className="flex items-start gap-3 rounded-lg p-2 -mx-2 hover:bg-muted/50 transition-colors">
+                      {allAnomalies.filter((a) => a.status === 'new').slice(0, 4).map((anomaly) => (
+                        <Link key={anomaly.id} to={`/payslip/${anomaly.payslip_id}`} className="flex items-start gap-3 rounded-lg p-2 -mx-2 hover:bg-muted/50 transition-colors">
                           <div className={`mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full ${
                             anomaly.severity === 'high' ? 'bg-destructive/10 text-destructive' :
                             anomaly.severity === 'medium' ? 'bg-anomaly/10 text-anomaly' :
@@ -329,7 +312,7 @@ const Dashboard = () => {
               </CardHeader>
               <CardContent>
                 <div className="divide-y divide-border">
-                  {payslips.slice().reverse().slice(0, 4).map((slip) => (
+                  {allPayslips.slice().reverse().slice(0, 4).map((slip) => (
                     <Link key={slip.id} to={`/payslip/${slip.id}`} className="flex items-center gap-4 py-3 hover:bg-muted/30 -mx-2 px-2 rounded-lg transition-colors">
                       <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10">
                         <FileText className="h-5 w-5 text-primary" />
