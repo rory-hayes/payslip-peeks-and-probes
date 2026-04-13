@@ -218,6 +218,18 @@ const Settings = () => {
     if (deleteConfirm !== 'DELETE' || !user) return;
     setDeleting(true);
     try {
+      // 0. Cancel any active Stripe subscriptions before deleting data
+      if (subscription.isPremium && subscription.plan !== 'lifetime') {
+        try {
+          await supabase.functions.invoke('cancel-subscription-on-delete', {
+            body: { environment: getStripeEnvironment() },
+          });
+        } catch (e) {
+          console.error('Failed to cancel Stripe subscription:', e);
+          // Continue with deletion even if Stripe cancel fails
+        }
+      }
+
       // 1. Get payslip file paths so we can delete from storage
       const { data: payslipFiles } = await supabase
         .from('payslips')
