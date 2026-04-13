@@ -23,6 +23,40 @@ const SignUp = () => {
   const [agreed, setAgreed] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    const { error } = await signUp(email, password, firstName);
+    setLoading(false);
+    if (error) {
+      toast({ title: 'Sign up failed', description: error.message, variant: 'destructive' });
+    } else {
+      navigate('/onboarding');
+    }
+  };
+
+  const handleGoogleSignUp = async () => {
+    setGoogleLoading(true);
+    try {
+      const result = await lovable.auth.signInWithOAuth("google", {
+        redirect_uri: window.location.origin,
+      });
+
+      if (result.error) {
+        toast({ title: 'Google sign up failed', description: String(result.error), variant: 'destructive' });
+        setGoogleLoading(false);
+        return;
+      }
+
+      if (result.redirected) {
+        return;
+      }
+
+      navigate('/onboarding');
+    } catch (err) {
+      toast({ title: 'Google sign up failed', description: 'Something went wrong. Please try again.', variant: 'destructive' });
+      setGoogleLoading(false);
+    }
+  };
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4 py-8">
