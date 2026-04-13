@@ -19,6 +19,8 @@ import Anomalies from "./pages/Anomalies";
 import DraftQuery from "./pages/DraftQuery";
 import Settings from "./pages/Settings";
 import Pricing from "./pages/Pricing";
+import Checkout from "./pages/Checkout";
+import CheckoutReturn from "./pages/CheckoutReturn";
 import Privacy from "./pages/Privacy";
 import Terms from "./pages/Terms";
 import NotFound from "./pages/NotFound";
