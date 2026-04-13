@@ -5,31 +5,21 @@ import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Skeleton } from '@/components/ui/skeleton';
 import AppLayout from '@/components/layout/AppLayout';
-import DemoBanner from '@/components/DemoBanner';
 import AnomalyExplanation from '@/components/AnomalyExplanation';
 import { usePayslip, usePayslips, useAnomalies } from '@/hooks/use-payslip-data';
 import { useCurrency } from '@/hooks/use-profile';
-import { useDemoMode } from '@/contexts/DemoContext';
 import { formatDate } from '@/lib/date-utils';
-import { demoPayslips, demoAnomalies } from '@/lib/demo-data';
 import { AlertTriangle, ArrowLeft, FileText, GitCompare, MessageSquare } from 'lucide-react';
 
 const PayslipDetail = () => {
   const { id } = useParams();
-  const { data: realSlip, isLoading: realLoading } = usePayslip(id);
+  const { data: slip, isLoading } = usePayslip(id);
   const { data: realPayslips } = usePayslips();
   const { data: realAllAnomalies } = useAnomalies();
   const { format: formatCurrency } = useCurrency();
-  const { isDemoMode } = useDemoMode();
 
-  // Check for demo payslip
-  const demoSlip = demoPayslips.find((s) => s.id === id);
-  const showDemo = isDemoMode && !!demoSlip;
-  const slip = showDemo ? demoSlip : realSlip;
-  const isLoading = showDemo ? false : realLoading;
-
-  const allPayslips = showDemo ? demoPayslips : (realPayslips || []);
-  const allAnomalies = showDemo ? demoAnomalies : (realAllAnomalies || []);
+  const allPayslips = realPayslips || [];
+  const allAnomalies = realAllAnomalies || [];
   const anomalies = allAnomalies.filter((a) => a.payslip_id === id);
   const idx = allPayslips.findIndex((s) => s.id === id);
   const prevSlip = idx > 0 ? allPayslips[idx - 1] : null;
@@ -76,8 +66,6 @@ const PayslipDetail = () => {
   return (
     <AppLayout>
       <div className="space-y-6 max-w-3xl">
-        {showDemo && <DemoBanner />}
-
         <div className="flex items-center gap-4">
           <Link to="/vault"><Button variant="ghost" size="icon"><ArrowLeft className="h-4 w-4" /></Button></Link>
           <div>
@@ -143,11 +131,9 @@ const PayslipDetail = () => {
               <Button variant="outline" className="gap-2"><GitCompare className="h-4 w-4" /> Compare to {formatDate(prevSlip.pay_date)}</Button>
             </Link>
           )}
-          {!showDemo && (
-            <Link to={`/draft/${slip.id}`}>
-              <Button variant="outline" className="gap-2"><MessageSquare className="h-4 w-4" /> Draft payroll query</Button>
-            </Link>
-          )}
+          <Link to={`/draft/${slip.id}`}>
+            <Button variant="outline" className="gap-2"><MessageSquare className="h-4 w-4" /> Draft payroll query</Button>
+          </Link>
         </div>
 
         <p className="text-xs text-muted-foreground">

@@ -3,24 +3,17 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import AppLayout from '@/components/layout/AppLayout';
-import DemoBanner from '@/components/DemoBanner';
 import { usePayslips } from '@/hooks/use-payslip-data';
 import { useCurrency } from '@/hooks/use-profile';
-import { useDemoMode } from '@/contexts/DemoContext';
 import { formatDate } from '@/lib/date-utils';
-import { demoPayslips } from '@/lib/demo-data';
 import { ArrowLeft, TrendingUp, TrendingDown, Minus, ArrowRight } from 'lucide-react';
 
 const ComparePayslips = () => {
   const [searchParams] = useSearchParams();
-  const { data: realPayslips, isLoading: realLoading } = usePayslips();
+  const { data: realPayslips, isLoading } = usePayslips();
   const { format: formatCurrency } = useCurrency();
-  const { isDemoMode } = useDemoMode();
 
-  const hasRealData = !realLoading && realPayslips && realPayslips.length > 0;
-  const showDemo = isDemoMode && !hasRealData;
-  const payslips = showDemo ? demoPayslips : (realPayslips || []);
-  const isLoading = showDemo ? false : realLoading;
+  const payslips = realPayslips || [];
 
   const currentId = searchParams.get('current');
   const previousId = searchParams.get('previous');
@@ -66,8 +59,6 @@ const ComparePayslips = () => {
   return (
     <AppLayout>
       <div className="space-y-6 max-w-3xl">
-        {showDemo && <DemoBanner />}
-
         <div className="flex items-center gap-4">
           <Link to="/vault"><Button variant="ghost" size="icon"><ArrowLeft className="h-4 w-4" /></Button></Link>
           <div>
@@ -132,11 +123,9 @@ const ComparePayslips = () => {
         </Card>
 
         <div className="flex flex-wrap gap-3">
-          {!showDemo && (
-            <Link to={`/draft/${current.id}`}>
-              <Button className="gap-2">Draft payroll query <ArrowRight className="h-4 w-4" /></Button>
-            </Link>
-          )}
+          <Link to={`/draft/${current.id}`}>
+            <Button className="gap-2">Draft payroll query <ArrowRight className="h-4 w-4" /></Button>
+          </Link>
         </div>
       </div>
     </AppLayout>
