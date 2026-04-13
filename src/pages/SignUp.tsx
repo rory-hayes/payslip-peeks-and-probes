@@ -31,7 +31,7 @@ const SignUp = () => {
     if (error) {
       toast({ title: 'Sign up failed', description: error.message, variant: 'destructive' });
     } else {
-      setSuccess(true);
+      navigate('/onboarding');
     }
   };
 
