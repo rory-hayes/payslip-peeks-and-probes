@@ -7,7 +7,7 @@ import { Switch } from '@/components/ui/switch';
 import { CheckCircle, ArrowLeft, Crown, Sparkles } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSubscription } from '@/hooks/use-subscription';
-import { useToast } from '@/hooks/use-toast';
+import { PaymentTestModeBanner } from '@/components/PaymentTestModeBanner';
 
 type Currency = 'GBP' | 'EUR';
 type Billing = 'yearly' | 'monthly';
@@ -39,7 +39,6 @@ const Pricing = () => {
   const { user } = useAuth();
   const { subscription } = useSubscription();
   const navigate = useNavigate();
-  const { toast } = useToast();
 
   const [currency, setCurrency] = useState<Currency>('EUR');
   const [billing, setBilling] = useState<Billing>('yearly');
@@ -47,15 +46,17 @@ const Pricing = () => {
 
   const isLoggedIn = !!user;
 
-  const handleUpgrade = () => {
-    toast({
-      title: 'Coming soon',
-      description: 'Payment checkout is being set up. You\'ll be able to upgrade shortly.',
-    });
+  const handleCheckout = (priceId: string) => {
+    if (!isLoggedIn) {
+      navigate('/sign-up');
+      return;
+    }
+    navigate(`/checkout?price=${priceId}`);
   };
 
   return (
     <div className="min-h-screen bg-card">
+      <PaymentTestModeBanner />
       {/* Nav */}
       <nav className="sticky top-0 z-50 border-b border-border bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80">
         <div className="container flex h-16 items-center justify-between">
@@ -131,7 +132,7 @@ const Pricing = () => {
                   ))}
                 </ul>
                 {isLoggedIn ? (
-                  <Button variant="outline" className="w-full mt-8" disabled={!subscription.isPremium}>
+                  <Button variant="outline" className="w-full mt-8" disabled>
                     {subscription.isPremium ? 'Downgrade' : 'Current plan'}
                   </Button>
                 ) : (
@@ -191,14 +192,14 @@ const Pricing = () => {
                   subscription.isPremium ? (
                     <Button variant="outline" className="w-full mt-8" disabled>Current plan</Button>
                   ) : (
-                    <Button className="w-full mt-8" onClick={handleUpgrade}>
+                    <Button className="w-full mt-8" onClick={() => handleCheckout(billing === 'yearly' ? 'plus_yearly' : 'plus_monthly')}>
                       Upgrade to Plus
                     </Button>
                   )
                 ) : (
-                  <Link to="/sign-up" className="mt-8 block">
-                    <Button className="w-full">Start free trial</Button>
-                  </Link>
+                  <Button className="w-full mt-8" onClick={() => handleCheckout(billing === 'yearly' ? 'plus_yearly' : 'plus_monthly')}>
+                    Start free trial
+                  </Button>
                 )}
               </CardContent>
             </Card>
@@ -230,16 +231,14 @@ const Pricing = () => {
                   subscription.isPremium ? (
                     <Button variant="outline" className="w-full mt-8" disabled>Current plan</Button>
                   ) : (
-                    <Button variant="outline" className="w-full mt-8 border-amber-300 text-amber-700 hover:bg-amber-50" onClick={handleUpgrade}>
+                    <Button variant="outline" className="w-full mt-8 border-amber-300 text-amber-700 hover:bg-amber-50" onClick={() => handleCheckout('lifetime_once')}>
                       Get lifetime access
                     </Button>
                   )
                 ) : (
-                  <Link to="/sign-up" className="mt-8 block">
-                    <Button variant="outline" className="w-full border-amber-300 text-amber-700 hover:bg-amber-50">
-                      Claim founder deal
-                    </Button>
-                  </Link>
+                  <Button variant="outline" className="w-full mt-8 border-amber-300 text-amber-700 hover:bg-amber-50" onClick={() => handleCheckout('lifetime_once')}>
+                    Claim founder deal
+                  </Button>
                 )}
               </CardContent>
             </Card>
