@@ -275,7 +275,7 @@ const Dashboard = () => {
 
             {/* Chart + anomalies */}
             <div className="grid gap-6 lg:grid-cols-5">
-              {trends && trends.length > 1 && (
+              {allTrends && allTrends.length > 1 && (
                 <Card className="border-0 shadow-sm lg:col-span-3">
                   <CardHeader className="pb-2">
                     <CardTitle className="text-base">Net pay trend</CardTitle>
@@ -283,7 +283,7 @@ const Dashboard = () => {
                   <CardContent>
                     <div className="h-64">
                       <ResponsiveContainer width="100%" height="100%">
-                        <LineChart data={trends} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
+                        <LineChart data={allTrends} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
                           <CartesianGrid strokeDasharray="3 3" stroke="hsl(220, 13%, 88%)" />
                           <XAxis dataKey="month" tick={{ fontSize: 12 }} stroke="hsl(220, 10%, 46%)" />
                           <YAxis tick={{ fontSize: 12 }} stroke="hsl(220, 10%, 46%)" tickFormatter={(v) => `${sym}${v}`} />
@@ -298,7 +298,7 @@ const Dashboard = () => {
               )}
 
               {allAnomalies.filter((a) => a.status === 'new').length > 0 && (
-                <Card className={`border-0 shadow-sm ${trends && trends.length > 1 ? 'lg:col-span-2' : 'lg:col-span-5'}`}>
+                <Card className={`border-0 shadow-sm ${allTrends && allTrends.length > 1 ? 'lg:col-span-2' : 'lg:col-span-5'}`}>
                   <CardHeader className="pb-2">
                     <div className="flex items-center justify-between">
                       <CardTitle className="text-base">Recent anomalies</CardTitle>
