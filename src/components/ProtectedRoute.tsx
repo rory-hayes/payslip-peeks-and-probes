@@ -1,11 +1,18 @@
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useProfile } from '@/hooks/use-profile';
+import { useDemo } from '@/contexts/DemoContext';
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { user, loading } = useAuth();
   const location = useLocation();
   const { data: profile, isLoading: profileLoading } = useProfile();
+  const { isDemo } = useDemo();
+
+  // Allow demo mode access to dashboard
+  if (isDemo && location.pathname === '/dashboard') {
+    return <>{children}</>;
+  }
 
   if (loading || (user && profileLoading)) {
     return (
