@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -14,16 +14,20 @@ import UpgradePrompt from '@/components/UpgradePrompt';
 import { useCurrency, useProfile } from '@/hooks/use-profile';
 import { formatDate } from '@/lib/date-utils';
 import { generatePaySummaryPdf } from '@/lib/generate-pay-summary-pdf';
+import { useDemo } from '@/contexts/DemoContext';
+import { DEMO_PAYSLIPS, DEMO_ANOMALIES, DEMO_TRENDS } from '@/lib/demo-data';
 import type { Payslip, AnomalyResult, PayTrend } from '@/lib/types';
 import {
   Upload, TrendingUp, TrendingDown, AlertTriangle, FileText, ArrowRight, BarChart3, Download,
-  Shield, Sparkles,
+  Shield, Sparkles, X,
 } from 'lucide-react';
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from 'recharts';
 
 const Dashboard = () => {
+  const { isDemo, disableDemo } = useDemo();
+  const navigate = useNavigate();
   const { data: payslips, isLoading: loadingSlips } = usePayslips();
   const { data: anomalies, isLoading: loadingAnomalies } = useAnomalies();
   const { data: trends } = usePayTrends();
