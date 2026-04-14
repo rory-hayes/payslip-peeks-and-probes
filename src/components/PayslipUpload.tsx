@@ -1,6 +1,7 @@
 import { useState, useCallback, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
+import { logError, logInfo } from '@/lib/logger';
 import { useAuth } from '@/contexts/AuthContext';
 import { useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
@@ -112,6 +113,7 @@ const PayslipUpload = ({ onUploadComplete }: PayslipUploadProps) => {
 
     if (storageError) {
       console.error('Storage upload error:', storageError.message);
+      logError('upload_failed', 'Storage upload failed', { error: storageError.message, fileName: file.name });
       setErrorMsg('Upload failed. Please check your file and try again.');
       setState('error');
       return;
@@ -143,6 +145,7 @@ const PayslipUpload = ({ onUploadComplete }: PayslipUploadProps) => {
 
       if (fnError) {
         console.error('Processing error:', fnError);
+        logError('processing_failed', 'Payslip processing failed', { error: String(fnError), payslipId: payslip.id });
         toast({ title: 'Upload complete', description: 'Processing encountered an issue. You can retry from the vault.' });
         setProgress(100);
         setState('success');
@@ -196,6 +199,7 @@ const PayslipUpload = ({ onUploadComplete }: PayslipUploadProps) => {
       }
     } catch (err) {
       console.error('Edge function call failed:', err);
+      logError('edge_function_failed', 'Edge function invocation failed', { error: String(err) });
       toast({ title: 'Upload complete', description: 'Processing will continue in the background.' });
       setProgress(100);
       setState('success');

@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -14,16 +14,20 @@ import UpgradePrompt from '@/components/UpgradePrompt';
 import { useCurrency, useProfile } from '@/hooks/use-profile';
 import { formatDate } from '@/lib/date-utils';
 import { generatePaySummaryPdf } from '@/lib/generate-pay-summary-pdf';
+import { useDemo } from '@/contexts/DemoContext';
+import { DEMO_PAYSLIPS, DEMO_ANOMALIES, DEMO_TRENDS } from '@/lib/demo-data';
 import type { Payslip, AnomalyResult, PayTrend } from '@/lib/types';
 import {
   Upload, TrendingUp, TrendingDown, AlertTriangle, FileText, ArrowRight, BarChart3, Download,
-  Shield, Sparkles,
+  Shield, Sparkles, X,
 } from 'lucide-react';
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from 'recharts';
 
 const Dashboard = () => {
+  const { isDemo, disableDemo } = useDemo();
+  const navigate = useNavigate();
   const { data: payslips, isLoading: loadingSlips } = usePayslips();
   const { data: anomalies, isLoading: loadingAnomalies } = useAnomalies();
   const { data: trends } = usePayTrends();
@@ -31,18 +35,23 @@ const Dashboard = () => {
   const { format: formatCurrency, symbol: currSym, currency } = useCurrency();
   const { uploadsRemaining, draftsRemaining, isPremium, limits } = useUsage();
 
-  const isLoading = loadingSlips || loadingAnomalies;
-  const isEmpty = !isLoading && (!payslips || payslips.length === 0);
+  const isLoading = isDemo ? false : loadingSlips || loadingAnomalies;
+  const isEmpty = !isLoading && !isDemo && (!payslips || payslips.length === 0);
 
-  const allPayslips: Payslip[] = payslips || [];
-  const allAnomalies: AnomalyResult[] = anomalies || [];
+  const allPayslips: Payslip[] = isDemo ? DEMO_PAYSLIPS : (payslips || []);
+  const allAnomalies: AnomalyResult[] = isDemo ? DEMO_ANOMALIES : (anomalies || []);
+  const allTrends: PayTrend[] | undefined = isDemo ? DEMO_TRENDS : trends;
 
   const latest = allPayslips.length > 0 ? allPayslips[allPayslips.length - 1] : null;
   const previous = allPayslips.length > 1 ? allPayslips[allPayslips.length - 2] : null;
   const netChange = latest && previous ? latest.net_pay - previous.net_pay : 0;
   const unresolvedCount = allAnomalies.filter((a) => a.status === 'new').length;
 
-  const greeting = profile?.first_name ? `Hi, ${profile.first_name}` : 'Welcome';
+  const greeting = isDemo ? 'Demo Mode' : (profile?.first_name ? `Hi, ${profile.first_name}` : 'Welcome');
+
+  const demoCurrencyFormat = (v: number) => `£${v.toLocaleString('en-GB', { minimumFractionDigits: 2 })}`;
+  const fmtCurrency = isDemo ? demoCurrencyFormat : formatCurrency;
+  const sym = isDemo ? '£' : currSym;
 
   const handleExportPdf = () => {
     if (!allPayslips || allPayslips.length === 0) return;
@@ -63,12 +72,30 @@ const Dashboard = () => {
   return (
     <AppLayout>
       <div className="space-y-8 max-w-6xl">
+        {/* Demo banner */}
+        {isDemo && (
+          <div className="flex items-center justify-between rounded-lg border border-primary/30 bg-primary/5 px-4 py-3">
+            <p className="text-sm text-foreground">
+              <span className="font-medium">You're viewing sample data.</span>{' '}
+              <span className="text-muted-foreground">Sign up to upload your own payslips.</span>
+            </p>
+            <div className="flex gap-2">
+              <Link to="/sign-up">
+                <Button size="sm" className="gap-1.5"><Sparkles className="h-3 w-3" /> Sign up free</Button>
+              </Link>
+              <Button variant="ghost" size="sm" onClick={() => { disableDemo(); navigate('/'); }}>
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+        )}
+
         {/* Header */}
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-foreground md:text-3xl">{greeting} 👋</h1>
+            <h1 className="text-2xl font-bold text-foreground md:text-3xl">{greeting} {isDemo ? '🔍' : '👋'}</h1>
             <p className="mt-1 text-muted-foreground">
-              {isEmpty ? 'Let\'s get started with your first payslip.' : 'Here\'s your pay overview.'}
+              {isDemo ? 'Explore how PayCheck works with sample data.' : isEmpty ? 'Let\'s get started with your first payslip.' : 'Here\'s your pay overview.'}
             </p>
           </div>
           <div className="flex gap-2 flex-wrap">
@@ -142,12 +169,12 @@ const Dashboard = () => {
                     <span className="text-sm text-muted-foreground">Latest net pay</span>
                     <FileText className="h-4 w-4 text-muted-foreground" />
                   </div>
-                  <div className="mt-2 text-2xl font-bold text-foreground">{formatCurrency(latest.net_pay)}</div>
+                  <div className="mt-2 text-2xl font-bold text-foreground">{fmtCurrency(latest.net_pay)}</div>
                   {previous && (
                     <div className="mt-1 flex items-center gap-1 text-xs">
                       {netChange >= 0 ? <TrendingUp className="h-3 w-3 text-success" /> : <TrendingDown className="h-3 w-3 text-destructive" />}
                       <span className={netChange >= 0 ? 'text-success' : 'text-destructive'}>
-                        {formatCurrency(Math.abs(netChange))} vs last month
+                        {fmtCurrency(Math.abs(netChange))} vs last month
                       </span>
                     </div>
                   )}
@@ -159,7 +186,7 @@ const Dashboard = () => {
                     <span className="text-sm text-muted-foreground">Latest gross pay</span>
                     <BarChart3 className="h-4 w-4 text-muted-foreground" />
                   </div>
-                  <div className="mt-2 text-2xl font-bold text-foreground">{formatCurrency(latest.gross_pay)}</div>
+                  <div className="mt-2 text-2xl font-bold text-foreground">{fmtCurrency(latest.gross_pay)}</div>
                   <div className="mt-1 text-xs text-muted-foreground">{formatDate(latest.pay_date)}</div>
                 </CardContent>
               </Card>
@@ -248,7 +275,7 @@ const Dashboard = () => {
 
             {/* Chart + anomalies */}
             <div className="grid gap-6 lg:grid-cols-5">
-              {trends && trends.length > 1 && (
+              {allTrends && allTrends.length > 1 && (
                 <Card className="border-0 shadow-sm lg:col-span-3">
                   <CardHeader className="pb-2">
                     <CardTitle className="text-base">Net pay trend</CardTitle>
@@ -256,11 +283,11 @@ const Dashboard = () => {
                   <CardContent>
                     <div className="h-64">
                       <ResponsiveContainer width="100%" height="100%">
-                        <LineChart data={trends} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
+                        <LineChart data={allTrends} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
                           <CartesianGrid strokeDasharray="3 3" stroke="hsl(220, 13%, 88%)" />
                           <XAxis dataKey="month" tick={{ fontSize: 12 }} stroke="hsl(220, 10%, 46%)" />
-                          <YAxis tick={{ fontSize: 12 }} stroke="hsl(220, 10%, 46%)" tickFormatter={(v) => `${currSym}${v}`} />
-                          <Tooltip formatter={(val: number) => [formatCurrency(val), '']} />
+                          <YAxis tick={{ fontSize: 12 }} stroke="hsl(220, 10%, 46%)" tickFormatter={(v) => `${sym}${v}`} />
+                          <Tooltip formatter={(val: number) => [fmtCurrency(val), '']} />
                           <Line type="monotone" dataKey="net" stroke="hsl(217, 72%, 30%)" strokeWidth={2} dot={{ r: 4 }} name="Net pay" />
                           <Line type="monotone" dataKey="gross" stroke="hsl(172, 50%, 36%)" strokeWidth={2} dot={{ r: 4 }} name="Gross pay" />
                         </LineChart>
@@ -271,7 +298,7 @@ const Dashboard = () => {
               )}
 
               {allAnomalies.filter((a) => a.status === 'new').length > 0 && (
-                <Card className={`border-0 shadow-sm ${trends && trends.length > 1 ? 'lg:col-span-2' : 'lg:col-span-5'}`}>
+                <Card className={`border-0 shadow-sm ${allTrends && allTrends.length > 1 ? 'lg:col-span-2' : 'lg:col-span-5'}`}>
                   <CardHeader className="pb-2">
                     <div className="flex items-center justify-between">
                       <CardTitle className="text-base">Recent anomalies</CardTitle>
@@ -322,7 +349,7 @@ const Dashboard = () => {
                         <p className="text-xs text-muted-foreground">{slip.employer_name}</p>
                       </div>
                       <div className="text-right">
-                        <p className="text-sm font-semibold text-foreground">{formatCurrency(slip.net_pay)}</p>
+                        <p className="text-sm font-semibold text-foreground">{fmtCurrency(slip.net_pay)}</p>
                         <p className="text-xs text-muted-foreground">net</p>
                       </div>
                       {slip.anomaly_count > 0 && (
