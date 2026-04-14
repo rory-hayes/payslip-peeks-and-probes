@@ -169,12 +169,12 @@ const Dashboard = () => {
                     <span className="text-sm text-muted-foreground">Latest net pay</span>
                     <FileText className="h-4 w-4 text-muted-foreground" />
                   </div>
-                  <div className="mt-2 text-2xl font-bold text-foreground">{formatCurrency(latest.net_pay)}</div>
+                  <div className="mt-2 text-2xl font-bold text-foreground">{fmtCurrency(latest.net_pay)}</div>
                   {previous && (
                     <div className="mt-1 flex items-center gap-1 text-xs">
                       {netChange >= 0 ? <TrendingUp className="h-3 w-3 text-success" /> : <TrendingDown className="h-3 w-3 text-destructive" />}
                       <span className={netChange >= 0 ? 'text-success' : 'text-destructive'}>
-                        {formatCurrency(Math.abs(netChange))} vs last month
+                        {fmtCurrency(Math.abs(netChange))} vs last month
                       </span>
                     </div>
                   )}
@@ -186,7 +186,7 @@ const Dashboard = () => {
                     <span className="text-sm text-muted-foreground">Latest gross pay</span>
                     <BarChart3 className="h-4 w-4 text-muted-foreground" />
                   </div>
-                  <div className="mt-2 text-2xl font-bold text-foreground">{formatCurrency(latest.gross_pay)}</div>
+                  <div className="mt-2 text-2xl font-bold text-foreground">{fmtCurrency(latest.gross_pay)}</div>
                   <div className="mt-1 text-xs text-muted-foreground">{formatDate(latest.pay_date)}</div>
                 </CardContent>
               </Card>
@@ -286,8 +286,8 @@ const Dashboard = () => {
                         <LineChart data={trends} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
                           <CartesianGrid strokeDasharray="3 3" stroke="hsl(220, 13%, 88%)" />
                           <XAxis dataKey="month" tick={{ fontSize: 12 }} stroke="hsl(220, 10%, 46%)" />
-                          <YAxis tick={{ fontSize: 12 }} stroke="hsl(220, 10%, 46%)" tickFormatter={(v) => `${currSym}${v}`} />
-                          <Tooltip formatter={(val: number) => [formatCurrency(val), '']} />
+                          <YAxis tick={{ fontSize: 12 }} stroke="hsl(220, 10%, 46%)" tickFormatter={(v) => `${sym}${v}`} />
+                          <Tooltip formatter={(val: number) => [fmtCurrency(val), '']} />
                           <Line type="monotone" dataKey="net" stroke="hsl(217, 72%, 30%)" strokeWidth={2} dot={{ r: 4 }} name="Net pay" />
                           <Line type="monotone" dataKey="gross" stroke="hsl(172, 50%, 36%)" strokeWidth={2} dot={{ r: 4 }} name="Gross pay" />
                         </LineChart>
@@ -349,7 +349,7 @@ const Dashboard = () => {
                         <p className="text-xs text-muted-foreground">{slip.employer_name}</p>
                       </div>
                       <div className="text-right">
-                        <p className="text-sm font-semibold text-foreground">{formatCurrency(slip.net_pay)}</p>
+                        <p className="text-sm font-semibold text-foreground">{fmtCurrency(slip.net_pay)}</p>
                         <p className="text-xs text-muted-foreground">net</p>
                       </div>
                       {slip.anomaly_count > 0 && (
