@@ -69,10 +69,10 @@ export const DEMO_ANOMALIES: AnomalyResult[] = [
     confidence: 'high',
     title: 'Tax increased more than expected',
     description:
-      'What changed: Your income tax jumped from £510.00 to £640.00 — a £130.00 increase (25.5%) — while your gross pay stayed the same.\n\nWhy it matters: This could indicate a tax code change. It's worth checking your tax code hasn't been updated incorrectly.',
+      "What changed: Your income tax jumped from \u00a3510.00 to \u00a3640.00 \u2014 a \u00a3130.00 increase (25.5%) \u2014 while your gross pay stayed the same.\n\nWhy it matters: This could indicate a tax code change. It's worth checking your tax code hasn't been updated incorrectly.",
     status: 'new',
     suggested_action:
-      'Check the tax code on this payslip against your HMRC personal tax account. If the code changed, confirm it's correct.',
+      "Check the tax code on this payslip against your HMRC personal tax account. If the code changed, confirm it's correct.",
   },
   {
     id: 'demo-a2',
@@ -84,10 +84,10 @@ export const DEMO_ANOMALIES: AnomalyResult[] = [
     confidence: 'high',
     title: 'Same gross pay but different take-home',
     description:
-      'What changed: Your gross pay is essentially the same, but your take-home pay dropped by £137.50. Something in your deductions changed.\n\nWhy it matters: When gross stays the same but net moves, a deduction was added or adjusted.',
+      "What changed: Your gross pay is essentially the same, but your take-home pay dropped by \u00a3137.50. Something in your deductions changed.\n\nWhy it matters: When gross stays the same but net moves, a deduction was added or adjusted.",
     status: 'new',
     suggested_action:
-      'Compare each deduction line against last month's payslip. Focus on tax and pension to identify what shifted.',
+      "Compare each deduction line against last month's payslip. Focus on tax and pension to identify what shifted.",
   },
 ];
 
