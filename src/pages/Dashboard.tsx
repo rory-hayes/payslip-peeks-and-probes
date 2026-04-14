@@ -35,18 +35,23 @@ const Dashboard = () => {
   const { format: formatCurrency, symbol: currSym, currency } = useCurrency();
   const { uploadsRemaining, draftsRemaining, isPremium, limits } = useUsage();
 
-  const isLoading = loadingSlips || loadingAnomalies;
-  const isEmpty = !isLoading && (!payslips || payslips.length === 0);
+  const isLoading = isDemo ? false : loadingSlips || loadingAnomalies;
+  const isEmpty = !isLoading && !isDemo && (!payslips || payslips.length === 0);
 
-  const allPayslips: Payslip[] = payslips || [];
-  const allAnomalies: AnomalyResult[] = anomalies || [];
+  const allPayslips: Payslip[] = isDemo ? DEMO_PAYSLIPS : (payslips || []);
+  const allAnomalies: AnomalyResult[] = isDemo ? DEMO_ANOMALIES : (anomalies || []);
+  const allTrends: PayTrend[] | undefined = isDemo ? DEMO_TRENDS : trends;
 
   const latest = allPayslips.length > 0 ? allPayslips[allPayslips.length - 1] : null;
   const previous = allPayslips.length > 1 ? allPayslips[allPayslips.length - 2] : null;
   const netChange = latest && previous ? latest.net_pay - previous.net_pay : 0;
   const unresolvedCount = allAnomalies.filter((a) => a.status === 'new').length;
 
-  const greeting = profile?.first_name ? `Hi, ${profile.first_name}` : 'Welcome';
+  const greeting = isDemo ? 'Demo Mode' : (profile?.first_name ? `Hi, ${profile.first_name}` : 'Welcome');
+
+  const demoCurrencyFormat = (v: number) => `£${v.toLocaleString('en-GB', { minimumFractionDigits: 2 })}`;
+  const fmtCurrency = isDemo ? demoCurrencyFormat : formatCurrency;
+  const sym = isDemo ? '£' : currSym;
 
   const handleExportPdf = () => {
     if (!allPayslips || allPayslips.length === 0) return;
