@@ -78,15 +78,15 @@ const Landing = () => {
               <p className="mt-6 max-w-lg text-lg text-muted-foreground leading-relaxed">
                 PayCheck helps you understand your payslips, track changes month to month, and spot issues before they become problems. No jargon. No guesswork.
               </p>
-              <div className="mt-8 flex flex-wrap gap-4">
+                <div className="mt-8 flex flex-wrap gap-4">
                 <Link to="/sign-up">
                   <Button size="lg" className="gap-2 px-6">
                     Start checking payslips <ArrowRight className="h-4 w-4" />
                   </Button>
                 </Link>
-                <a href="#how-it-works">
-                  <Button variant="outline" size="lg" className="px-6">See how it works</Button>
-                </a>
+                <Button variant="outline" size="lg" className="px-6" onClick={handleTryDemo}>
+                  Try the demo
+                </Button>
               </div>
               <div className="mt-8 flex items-center gap-6 text-sm text-muted-foreground">
                 <span className="flex items-center gap-1.5"><Lock className="h-4 w-4" /> Bank-level security</span>
@@ -194,7 +194,7 @@ const Landing = () => {
             <p className="mt-4 text-muted-foreground">Start free. Upgrade when you need more.</p>
           </div>
           <div className="mt-16 grid gap-8 md:grid-cols-2 max-w-3xl mx-auto">
-            <Card className="border shadow-sm">
+             <Card className="border shadow-sm">
               <CardContent className="p-8">
                 <h3 className="font-semibold text-foreground">Free</h3>
                 <div className="mt-4"><span className="text-4xl font-bold text-foreground">£0</span><span className="text-muted-foreground">/month</span></div>
@@ -215,7 +215,8 @@ const Landing = () => {
               </div>
               <CardContent className="p-8">
                 <h3 className="font-semibold text-foreground">Plus</h3>
-                <div className="mt-4"><span className="text-4xl font-bold text-foreground">£4.99</span><span className="text-muted-foreground">/month</span></div>
+                <div className="mt-4"><span className="text-4xl font-bold text-foreground">£17.99</span><span className="text-muted-foreground">/year</span></div>
+                <p className="mt-1 text-xs text-muted-foreground">Just £1.50/month</p>
                 <p className="mt-2 text-sm text-muted-foreground">Full access. Peace of mind, every pay day.</p>
                 <ul className="mt-6 space-y-3 text-sm text-muted-foreground">
                   {['Unlimited payslip uploads', 'Full anomaly detection suite', 'Compare any two payslips', 'Unlimited issue drafts', 'Historical trends & insights', 'Priority support'].map((f, i) => (
