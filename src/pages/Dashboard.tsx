@@ -72,12 +72,30 @@ const Dashboard = () => {
   return (
     <AppLayout>
       <div className="space-y-8 max-w-6xl">
+        {/* Demo banner */}
+        {isDemo && (
+          <div className="flex items-center justify-between rounded-lg border border-primary/30 bg-primary/5 px-4 py-3">
+            <p className="text-sm text-foreground">
+              <span className="font-medium">You're viewing sample data.</span>{' '}
+              <span className="text-muted-foreground">Sign up to upload your own payslips.</span>
+            </p>
+            <div className="flex gap-2">
+              <Link to="/sign-up">
+                <Button size="sm" className="gap-1.5"><Sparkles className="h-3 w-3" /> Sign up free</Button>
+              </Link>
+              <Button variant="ghost" size="sm" onClick={() => { disableDemo(); navigate('/'); }}>
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+        )}
+
         {/* Header */}
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-foreground md:text-3xl">{greeting} 👋</h1>
+            <h1 className="text-2xl font-bold text-foreground md:text-3xl">{greeting} {isDemo ? '🔍' : '👋'}</h1>
             <p className="mt-1 text-muted-foreground">
-              {isEmpty ? 'Let\'s get started with your first payslip.' : 'Here\'s your pay overview.'}
+              {isDemo ? 'Explore how PayCheck works with sample data.' : isEmpty ? 'Let\'s get started with your first payslip.' : 'Here\'s your pay overview.'}
             </p>
           </div>
           <div className="flex gap-2 flex-wrap">
