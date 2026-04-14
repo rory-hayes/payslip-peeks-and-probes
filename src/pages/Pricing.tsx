@@ -18,8 +18,8 @@ const priceIds: Record<Currency, { yearly: string; monthly: string; lifetime: st
 };
 
 const prices: Record<Currency, { symbol: string; yearly: string; yearlyPerMonth: string; monthly: string; lifetime: string }> = {
-  GBP: { symbol: '£', yearly: '14.99', yearlyPerMonth: '1.25', monthly: '2.49', lifetime: '24.99' },
-  EUR: { symbol: '€', yearly: '16.99', yearlyPerMonth: '1.42', monthly: '2.99', lifetime: '29.99' },
+  GBP: { symbol: '£', yearly: '17.99', yearlyPerMonth: '1.50', monthly: '2.99', lifetime: '29.99' },
+  EUR: { symbol: '€', yearly: '19.99', yearlyPerMonth: '1.67', monthly: '3.49', lifetime: '34.99' },
 };
 
 const freeFeatures = [
