@@ -89,13 +89,18 @@ const Privacy = () => (
 
         <section className="space-y-3">
           <h2 className="text-lg font-semibold text-foreground">8. Security safeguards</h2>
-          <p>We implement the following technical and organisational measures to protect your data:</p>
+          <p>We implement the following technical and organisational measures to protect your payslip data:</p>
           <ul className="list-disc pl-5 space-y-1">
-            <li><strong className="text-foreground">Encryption</strong> — all data is encrypted in transit (TLS 1.2+) and at rest (AES-256).</li>
-            <li><strong className="text-foreground">Row-level security</strong> — database policies ensure each user can only access their own data. No cross-user data access is possible.</li>
-            <li><strong className="text-foreground">Authentication</strong> — accounts are protected by password hashing (bcrypt) and optional Google OAuth. Passwords are checked against the Have I Been Pwned database to prevent use of known compromised credentials.</li>
-            <li><strong className="text-foreground">Access control</strong> — payslip file storage uses per-user folder isolation with policy-based access controls.</li>
-            <li><strong className="text-foreground">Audit logging</strong> — key actions (uploads, deletions, exports) are logged for security monitoring.</li>
+            <li><strong className="text-foreground">Encryption in transit</strong> — all traffic between your device and PayCheck is protected with TLS 1.2 or higher. Files cannot be intercepted during upload or download.</li>
+            <li><strong className="text-foreground">Encryption at rest</strong> — every payslip file and every database record is encrypted at rest with AES-256 by our infrastructure provider. Disks and backups are encrypted by default.</li>
+            <li><strong className="text-foreground">Private file storage</strong> — payslip files are stored in a private storage bucket. There is no public URL. Files can only be retrieved through short-lived, signed download links generated for the authenticated owner.</li>
+            <li><strong className="text-foreground">Per-user folder isolation</strong> — each user's files live in a dedicated folder keyed to their account ID. Storage-level access policies enforce that one account cannot read, modify, or delete another account's files, even if a request reaches the storage layer directly.</li>
+            <li><strong className="text-foreground">Row-level security on every table</strong> — database policies on payslips, extractions, anomalies, drafts, notes, and audit events all enforce <code className="text-xs">user_id = auth.uid()</code>. Cross-user data access is impossible at the database level.</li>
+            <li><strong className="text-foreground">Upload validation</strong> — the storage layer rejects any file over 10 MB or outside the allowed types (PDF, PNG, JPG, WebP). Malformed or oversized uploads are blocked before they touch processing.</li>
+            <li><strong className="text-foreground">Authentication</strong> — accounts are protected by industry-standard password hashing and optional Google OAuth. Passwords are checked against the Have I Been Pwned database during sign-up and password change to block known compromised credentials.</li>
+            <li><strong className="text-foreground">Service isolation</strong> — AI extraction runs in isolated server-side functions. Extracted financial data is written back only to your own user record. No third party retains your payslip files or extracted data.</li>
+            <li><strong className="text-foreground">Audit logging</strong> — key actions (uploads, deletions, exports, account deletion) are recorded in a per-user audit log for security monitoring and to support data-subject access requests.</li>
+            <li><strong className="text-foreground">Secure deletion</strong> — when you delete a payslip or your account, files are removed from storage and database records are permanently deleted. Backups follow a rolling retention window and expire within 30 days.</li>
           </ul>
         </section>
 
