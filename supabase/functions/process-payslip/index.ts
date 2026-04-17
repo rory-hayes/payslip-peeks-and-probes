@@ -259,7 +259,7 @@ function runAnomalyChecks(
     // Net pay change (5% threshold)
     if (current.net_pay != null && previous.net_pay != null && previous.net_pay > 0) {
       const change = pct(current.net_pay, previous.net_pay);
-      if (Math.abs(change) > 5) {
+      if (Math.abs(change) > threshold) {
         const direction = change > 0 ? "increased" : "dropped";
         const absDiff = Math.abs(current.net_pay - previous.net_pay);
         anomalies.push({
@@ -276,7 +276,7 @@ function runAnomalyChecks(
     // Gross pay change (5% threshold)
     if (current.gross_pay != null && previous.gross_pay != null && previous.gross_pay > 0) {
       const change = pct(current.gross_pay, previous.gross_pay);
-      if (Math.abs(change) > 5) {
+      if (Math.abs(change) > threshold) {
         const direction = change > 0 ? "increased" : "decreased";
         const absDiff = Math.abs(current.gross_pay - previous.gross_pay);
         const hasBonus = current.bonus_amount != null && current.bonus_amount > 0;
