@@ -2,12 +2,12 @@
  * IMPLEMENTATION NOTES (internal / admin reference):
  *
  * Custom Domain:
- *   - This app is intended to run on a custom primary domain (e.g. paycheck.app).
+ *   - This app runs on the custom primary domain paycheckinsights.com.
  *   - Configure the domain via Project Settings → Domains in the Lovable dashboard.
  *   - All internal references use the "PayCheck" brand — no platform references leak to users.
  *
  * Branded Sender Email Domain:
- *   - Auth and transactional emails should be sent from a branded domain (e.g. notify@paycheck.app).
+ *   - Auth and transactional emails should be sent from a branded domain (e.g. notify@paycheckinsights.com).
  *   - Configure via Cloud → Emails in the Lovable dashboard.
  *
  * Google OAuth Credentials:
