@@ -13,6 +13,7 @@ import {
   CreditCard,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
+import VerifyEmailBanner from '@/components/VerifyEmailBanner';
 
 const navItems = [
   { label: 'Dashboard', icon: LayoutDashboard, path: '/dashboard' },
@@ -90,6 +91,7 @@ const AppLayout = ({ children }: { children: ReactNode }) => {
 
       {/* Main content */}
       <div className="flex flex-1 flex-col">
+        <VerifyEmailBanner />
         {/* Mobile header */}
         <header className="flex h-14 items-center justify-between border-b border-border bg-card px-4 md:hidden">
           <Link to="/dashboard" className="flex items-center gap-2">
