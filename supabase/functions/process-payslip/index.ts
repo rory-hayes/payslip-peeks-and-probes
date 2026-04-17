@@ -142,7 +142,8 @@ interface Anomaly {
 function runAnomalyChecks(
   current: Extraction,
   previous: Extraction | null,
-  country: string | null
+  country: string | null,
+  threshold = 5
 ): Anomaly[] {
   const anomalies: Anomaly[] = [];
   const sym = (country === "Ireland" || country === "ireland") ? "€" : "£";
