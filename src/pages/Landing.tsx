@@ -292,7 +292,7 @@ const Landing = () => {
               <Link to="/pricing" className="hover:text-foreground transition-colors">Pricing</Link>
               <Link to="/privacy" className="hover:text-foreground transition-colors">Privacy</Link>
               <Link to="/terms" className="hover:text-foreground transition-colors">Terms</Link>
-              <a href="mailto:support@paycheck.app" className="hover:text-foreground transition-colors">Contact</a>
+              <a href="mailto:support@paycheckinsights.com" className="hover:text-foreground transition-colors">Contact</a>
             </div>
             <p className="text-xs text-muted-foreground">© 2026 PayCheck. Not tax or legal advice.</p>
           </div>

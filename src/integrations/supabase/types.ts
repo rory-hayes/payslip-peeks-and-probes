@@ -338,6 +338,7 @@ export type Database = {
       profiles: {
         Row: {
           annual_salary: number | null
+          anomaly_threshold_percent: number
           country: string | null
           created_at: string
           currency: string | null
@@ -358,6 +359,7 @@ export type Database = {
         }
         Insert: {
           annual_salary?: number | null
+          anomaly_threshold_percent?: number
           country?: string | null
           created_at?: string
           currency?: string | null
@@ -378,6 +380,7 @@ export type Database = {
         }
         Update: {
           annual_salary?: number | null
+          anomaly_threshold_percent?: number
           country?: string | null
           created_at?: string
           currency?: string | null
@@ -395,6 +398,30 @@ export type Database = {
           student_loan_plan?: string | null
           updated_at?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      rate_limits: {
+        Row: {
+          bucket_key: string
+          count: number
+          created_at: string
+          id: string
+          window_start: string
+        }
+        Insert: {
+          bucket_key: string
+          count?: number
+          created_at?: string
+          id?: string
+          window_start?: string
+        }
+        Update: {
+          bucket_key?: string
+          count?: number
+          created_at?: string
+          id?: string
+          window_start?: string
         }
         Relationships: []
       }

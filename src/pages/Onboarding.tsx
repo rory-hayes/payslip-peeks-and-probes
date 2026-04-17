@@ -12,7 +12,10 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { useQueryClient } from '@tanstack/react-query';
 
-const STEPS = ['Welcome', 'Country', 'Pay profile', 'Payroll setup', 'Ready'] as const;
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { HelpCircle } from 'lucide-react';
+
+const STEPS = ['Welcome', 'Country', 'Pay profile', 'Sensitivity', 'Payroll setup', 'Ready'] as const;
 
 const Onboarding = () => {
   const navigate = useNavigate();
@@ -23,6 +26,7 @@ const Onboarding = () => {
   const [country, setCountry] = useState<'UK' | 'Ireland' | ''>('');
   const [frequency, setFrequency] = useState<string>('');
   const [employer, setEmployer] = useState('');
+  const [threshold, setThreshold] = useState<number>(5);
   const [flags, setFlags] = useState({ pension: false, studentLoan: false, bonus: false, benefits: false });
   const [saving, setSaving] = useState(false);
 
@@ -32,8 +36,9 @@ const Onboarding = () => {
     if (step === 0) return true;
     if (step === 1) return !!country;
     if (step === 2) return !!frequency && employer.trim().length > 0;
-    if (step === 3) return true;
+    if (step === 3) return threshold >= 1 && threshold <= 25;
     if (step === 4) return true;
+    if (step === 5) return true;
     return false;
   })();
 
@@ -51,6 +56,7 @@ const Onboarding = () => {
         currency: country === 'Ireland' ? 'EUR' : 'GBP',
         pay_frequency: frequency,
         employer_name: employer.trim(),
+        anomaly_threshold_percent: threshold,
         has_pension: flags.pension,
         has_student_loan: flags.studentLoan,
         has_bonus: flags.bonus,
@@ -194,8 +200,61 @@ const Onboarding = () => {
               </div>
             )}
 
-            {/* Step 3 — Payroll setup */}
+            {/* Step 3 — Sensitivity */}
             {step === 3 && (
+              <div className="space-y-6">
+                <div className="text-center">
+                  <h2 className="text-2xl font-bold text-foreground">How sensitive should we be?</h2>
+                  <p className="mt-2 text-sm text-muted-foreground">
+                    We flag pay changes between payslips when they exceed your threshold.
+                  </p>
+                </div>
+
+                <div className="rounded-xl border border-border p-5 space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-1.5">
+                      <Label htmlFor="threshold" className="text-sm font-medium">Change threshold</Label>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <button type="button" aria-label="What is this?" className="text-muted-foreground hover:text-foreground">
+                            <HelpCircle className="h-3.5 w-3.5" />
+                          </button>
+                        </TooltipTrigger>
+                        <TooltipContent className="max-w-xs">
+                          The minimum % change in your gross or net pay that triggers an alert. A lower number flags more changes (more noise); a higher number only flags larger swings. <strong>5% is recommended</strong> — it catches meaningful shifts like tax-code changes without alerting on small overtime variations.
+                        </TooltipContent>
+                      </Tooltip>
+                    </div>
+                    <span className="text-2xl font-bold text-primary tabular-nums">{threshold}%</span>
+                  </div>
+
+                  <input
+                    id="threshold"
+                    type="range"
+                    min={1}
+                    max={25}
+                    step={1}
+                    value={threshold}
+                    onChange={(e) => setThreshold(Number(e.target.value))}
+                    className="w-full accent-primary"
+                  />
+
+                  <div className="flex justify-between text-[11px] text-muted-foreground">
+                    <span>1% — very sensitive</span>
+                    <span>5% — recommended</span>
+                    <span>25% — only big changes</span>
+                  </div>
+
+                  <p className="text-xs text-muted-foreground leading-relaxed pt-1">
+                    You can change this anytime in Settings. The threshold applies to month-on-month
+                    comparisons of gross pay, net pay, and key deductions.
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* Step 4 — Payroll setup */}
+            {step === 4 && (
               <div className="space-y-6">
                 <div className="text-center">
                   <h2 className="text-2xl font-bold text-foreground">Payroll details</h2>
@@ -227,8 +286,8 @@ const Onboarding = () => {
               </div>
             )}
 
-            {/* Step 4 — Ready / Summary */}
-            {step === 4 && (
+            {/* Step 5 — Ready / Summary */}
+            {step === 5 && (
               <div className="space-y-6">
                 <div className="text-center space-y-2">
                   <div className="flex h-16 w-16 mx-auto items-center justify-center rounded-2xl bg-green-500/10">

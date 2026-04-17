@@ -105,13 +105,19 @@ const Privacy = () => (
         </section>
 
         <section className="space-y-3">
-          <h2 className="text-lg font-semibold text-foreground">9. Cookies</h2>
-          <p>PayCheck uses essential cookies only — for authentication and session management. We do not use tracking or advertising cookies.</p>
+          <h2 className="text-lg font-semibold text-foreground">9. Backups & business continuity</h2>
+          <p>Your data is stored on managed cloud infrastructure that runs encrypted, automated backups every 24 hours. Backups are retained on a rolling 7-day window and are encrypted at rest with the same AES-256 standard as live data. Point-in-time recovery is available so we can restore the database to any moment within the retention window in the event of corruption or accidental loss. Backups never leave the UK/EEA region.</p>
+          <p>If you delete your account, your data is removed from live storage immediately and falls out of any encrypted backup within the retention window (no longer than 30 days). We do not extract, copy, or retain backups beyond this period.</p>
         </section>
 
         <section className="space-y-3">
-          <h2 className="text-lg font-semibold text-foreground">10. Contact</h2>
-          <p>If you have questions about this privacy policy, your data, or wish to exercise any of your rights, please contact us at <span className="text-primary">privacy@paycheck.app</span>.</p>
+          <h2 className="text-lg font-semibold text-foreground">10. Cookies</h2>
+          <p>PayCheck uses essential cookies only — for authentication and session management. We do not use tracking or advertising cookies. The first time you visit, you'll see a short banner asking you to accept or decline non-essential cookies; your choice is stored locally in your browser.</p>
+        </section>
+
+        <section className="space-y-3">
+          <h2 className="text-lg font-semibold text-foreground">11. Contact</h2>
+          <p>If you have questions about this privacy policy, your data, or wish to exercise any of your rights, please contact us at <span className="text-primary">privacy@paycheckinsights.com</span>.</p>
         </section>
       </div>
     </main>

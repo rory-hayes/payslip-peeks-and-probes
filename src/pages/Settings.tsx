@@ -2,12 +2,12 @@
  * IMPLEMENTATION NOTES (internal / admin reference):
  *
  * Custom Domain:
- *   - This app is intended to run on a custom primary domain (e.g. paycheck.app).
+ *   - This app runs on the custom primary domain paycheckinsights.com.
  *   - Configure the domain via Project Settings → Domains in the Lovable dashboard.
  *   - All internal references use the "PayCheck" brand — no platform references leak to users.
  *
  * Branded Sender Email Domain:
- *   - Auth and transactional emails should be sent from a branded domain (e.g. notify@paycheck.app).
+ *   - Auth and transactional emails should be sent from a branded domain (e.g. notify@paycheckinsights.com).
  *   - Configure via Cloud → Emails in the Lovable dashboard.
  *
  * Google OAuth Credentials:
@@ -52,6 +52,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useUsage } from '@/hooks/use-usage';
 import { useSubscription } from '@/hooks/use-subscription';
 import { getStripeEnvironment } from '@/lib/stripe';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { Download, Trash2, HelpCircle, Sparkles, ExternalLink } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
@@ -78,6 +79,7 @@ const Settings = () => {
   const [pensionPercent, setPensionPercent] = useState('5');
   const [hasStudentLoan, setHasStudentLoan] = useState(false);
   const [studentLoanPlan, setStudentLoanPlan] = useState('plan2');
+  const [threshold, setThreshold] = useState<number>(5);
   const [loading, setLoading] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState('');
   const [deleteOpen, setDeleteOpen] = useState(false);
@@ -127,6 +129,7 @@ const Settings = () => {
           setPensionPercent(data.pension_percent ? String(data.pension_percent) : '5');
           setHasStudentLoan(!!data.has_student_loan);
           setStudentLoanPlan(data.student_loan_plan || 'plan2');
+          setThreshold(data.anomaly_threshold_percent != null ? Number(data.anomaly_threshold_percent) : 5);
         }
       });
   }, [user]);
@@ -148,6 +151,7 @@ const Settings = () => {
         pension_percent: hasPension && pensionPercent ? Number(pensionPercent) : null,
         has_student_loan: hasStudentLoan,
         student_loan_plan: hasStudentLoan ? studentLoanPlan : null,
+        anomaly_threshold_percent: threshold,
       })
       .eq('user_id', user.id);
     setLoading(false);
@@ -451,6 +455,45 @@ const Settings = () => {
                 )}
               </>
             )}
+          </CardContent>
+        </Card>
+
+        <Card className="border-0 shadow-sm">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base flex items-center gap-1.5">
+              Anomaly sensitivity
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button type="button" aria-label="What is this?" className="text-muted-foreground hover:text-foreground">
+                    <HelpCircle className="h-3.5 w-3.5" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent className="max-w-xs">
+                  The minimum % change in your gross or net pay (vs. last payslip) that triggers an alert. Lower = more sensitive (more alerts); higher = only big swings. <strong>5% is recommended</strong>.
+                </TooltipContent>
+              </Tooltip>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-center justify-between">
+              <Label htmlFor="threshold">Change threshold</Label>
+              <span className="text-lg font-bold text-primary tabular-nums">{threshold}%</span>
+            </div>
+            <input
+              id="threshold"
+              type="range"
+              min={1}
+              max={25}
+              step={1}
+              value={threshold}
+              onChange={(e) => setThreshold(Number(e.target.value))}
+              className="w-full accent-primary"
+            />
+            <div className="flex justify-between text-[11px] text-muted-foreground">
+              <span>1% — very sensitive</span>
+              <span>5% — recommended</span>
+              <span>25% — only big changes</span>
+            </div>
           </CardContent>
         </Card>
 

@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
+import { checkRateLimit, getClientIp } from "../_shared/rate-limit.ts";
 
 // ---------- Date normalisation ----------
 
@@ -141,7 +142,8 @@ interface Anomaly {
 function runAnomalyChecks(
   current: Extraction,
   previous: Extraction | null,
-  country: string | null
+  country: string | null,
+  threshold = 5
 ): Anomaly[] {
   const anomalies: Anomaly[] = [];
   const sym = (country === "Ireland" || country === "ireland") ? "€" : "£";
@@ -257,7 +259,7 @@ function runAnomalyChecks(
     // Net pay change (5% threshold)
     if (current.net_pay != null && previous.net_pay != null && previous.net_pay > 0) {
       const change = pct(current.net_pay, previous.net_pay);
-      if (Math.abs(change) > 5) {
+      if (Math.abs(change) > threshold) {
         const direction = change > 0 ? "increased" : "dropped";
         const absDiff = Math.abs(current.net_pay - previous.net_pay);
         anomalies.push({
@@ -274,7 +276,7 @@ function runAnomalyChecks(
     // Gross pay change (5% threshold)
     if (current.gross_pay != null && previous.gross_pay != null && previous.gross_pay > 0) {
       const change = pct(current.gross_pay, previous.gross_pay);
-      if (Math.abs(change) > 5) {
+      if (Math.abs(change) > threshold) {
         const direction = change > 0 ? "increased" : "decreased";
         const absDiff = Math.abs(current.gross_pay - previous.gross_pay);
         const hasBonus = current.bonus_amount != null && current.bonus_amount > 0;
@@ -485,6 +487,56 @@ serve(async (req) => {
     }
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+
+    // Resolve owner from payslip first so we can rate-limit per user.
+    const { data: payslipOwner } = await supabase
+      .from("payslips")
+      .select("user_id")
+      .eq("id", payslip_id)
+      .single();
+
+    const userKey = payslipOwner?.user_id ?? "anon";
+    const ipKey = getClientIp(req);
+
+    // Two-tier rate limit: 10 uploads/user/hour, 30 uploads/IP/hour.
+    const userLimit = await checkRateLimit({
+      bucketKey: `process-payslip:user:${userKey}`,
+      maxPerWindow: 10,
+      windowSeconds: 3600,
+      client: supabase,
+    });
+    if (!userLimit.allowed) {
+      return new Response(
+        JSON.stringify({ error: "Too many uploads. Please try again later." }),
+        {
+          status: 429,
+          headers: {
+            ...corsHeaders,
+            "Content-Type": "application/json",
+            "Retry-After": String(userLimit.retryAfterSeconds),
+          },
+        }
+      );
+    }
+    const ipLimit = await checkRateLimit({
+      bucketKey: `process-payslip:ip:${ipKey}`,
+      maxPerWindow: 30,
+      windowSeconds: 3600,
+      client: supabase,
+    });
+    if (!ipLimit.allowed) {
+      return new Response(
+        JSON.stringify({ error: "Too many requests from this network. Please try again later." }),
+        {
+          status: 429,
+          headers: {
+            ...corsHeaders,
+            "Content-Type": "application/json",
+            "Retry-After": String(ipLimit.retryAfterSeconds),
+          },
+        }
+      );
+    }
 
     // 1. Get payslip record
     const { data: payslip, error: payslipErr } = await supabase
@@ -738,10 +790,22 @@ serve(async (req) => {
 
     const country =
       (extracted.country as string) || payslip.country || null;
+
+    // Load user's anomaly threshold from their profile (defaults to 5%)
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("anomaly_threshold_percent")
+      .eq("user_id", payslip.user_id)
+      .maybeSingle();
+    const threshold = profile?.anomaly_threshold_percent != null
+      ? Number(profile.anomaly_threshold_percent)
+      : 5;
+
     const anomalies = runAnomalyChecks(
       currentExtraction,
       previousExtraction,
-      country
+      country,
+      threshold
     );
 
     // 8. Save anomalies
