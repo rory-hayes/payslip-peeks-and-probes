@@ -1,5 +1,7 @@
+import { useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useDemo } from '@/contexts/DemoContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -28,6 +30,14 @@ import heroImg from '@/assets/hero-illustration.jpg';
 const Landing = () => {
   const navigate = useNavigate();
   const { enableDemo } = useDemo();
+  const { user, loading } = useAuth();
+
+  // If a logged-in user lands here (e.g. after OAuth callback), send them to the app.
+  useEffect(() => {
+    if (!loading && user) {
+      navigate('/dashboard', { replace: true });
+    }
+  }, [user, loading, navigate]);
 
   const handleTryDemo = () => {
     enableDemo();
