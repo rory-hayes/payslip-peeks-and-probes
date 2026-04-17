@@ -290,8 +290,8 @@ const Onboarding = () => {
             {step === 5 && (
               <div className="space-y-6">
                 <div className="text-center space-y-2">
-                  <div className="flex h-16 w-16 mx-auto items-center justify-center rounded-2xl bg-green-500/10">
-                    <Upload className="h-8 w-8 text-green-600" />
+                  <div className="flex h-16 w-16 mx-auto items-center justify-center rounded-2xl bg-success/10">
+                    <Upload className="h-8 w-8 text-success" />
                   </div>
                   <h2 className="text-2xl font-bold text-foreground">You're all set!</h2>
                   <p className="text-muted-foreground leading-relaxed">
