@@ -488,6 +488,56 @@ serve(async (req) => {
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
+    // Resolve owner from payslip first so we can rate-limit per user.
+    const { data: payslipOwner } = await supabase
+      .from("payslips")
+      .select("user_id")
+      .eq("id", payslip_id)
+      .single();
+
+    const userKey = payslipOwner?.user_id ?? "anon";
+    const ipKey = getClientIp(req);
+
+    // Two-tier rate limit: 10 uploads/user/hour, 30 uploads/IP/hour.
+    const userLimit = await checkRateLimit({
+      bucketKey: `process-payslip:user:${userKey}`,
+      maxPerWindow: 10,
+      windowSeconds: 3600,
+      client: supabase,
+    });
+    if (!userLimit.allowed) {
+      return new Response(
+        JSON.stringify({ error: "Too many uploads. Please try again later." }),
+        {
+          status: 429,
+          headers: {
+            ...corsHeaders,
+            "Content-Type": "application/json",
+            "Retry-After": String(userLimit.retryAfterSeconds),
+          },
+        }
+      );
+    }
+    const ipLimit = await checkRateLimit({
+      bucketKey: `process-payslip:ip:${ipKey}`,
+      maxPerWindow: 30,
+      windowSeconds: 3600,
+      client: supabase,
+    });
+    if (!ipLimit.allowed) {
+      return new Response(
+        JSON.stringify({ error: "Too many requests from this network. Please try again later." }),
+        {
+          status: 429,
+          headers: {
+            ...corsHeaders,
+            "Content-Type": "application/json",
+            "Retry-After": String(ipLimit.retryAfterSeconds),
+          },
+        }
+      );
+    }
+
     // 1. Get payslip record
     const { data: payslip, error: payslipErr } = await supabase
       .from("payslips")
