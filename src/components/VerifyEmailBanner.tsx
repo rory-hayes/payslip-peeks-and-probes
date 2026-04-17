@@ -54,16 +54,16 @@ export default function VerifyEmailBanner() {
   };
 
   return (
-    <div className="border-b border-amber-300 bg-amber-50 px-4 py-2.5 text-amber-900">
+    <div className="border-b border-warning/40 bg-warning/15 px-4 py-2.5 text-foreground">
       <div className="mx-auto flex max-w-6xl items-center gap-3 text-sm">
-        <Mail className="h-4 w-4 shrink-0" aria-hidden="true" />
+        <Mail className="h-4 w-4 shrink-0 text-warning" aria-hidden="true" />
         <span className="flex-1 leading-snug">
           Please verify your email address ({user.email}) to secure your account.
         </span>
         <Button
           size="sm"
           variant="outline"
-          className="h-7 border-amber-400 bg-white text-amber-900 hover:bg-amber-100"
+          className="h-7"
           onClick={handleResend}
           disabled={resending}
         >
@@ -72,7 +72,7 @@ export default function VerifyEmailBanner() {
         <button
           onClick={handleDismiss}
           aria-label="Dismiss"
-          className="text-amber-700 hover:text-amber-900"
+          className="text-muted-foreground hover:text-foreground"
         >
           <X className="h-4 w-4" />
         </button>

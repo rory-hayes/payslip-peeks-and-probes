@@ -99,7 +99,7 @@ const Terms = () => (
 
         <section className="space-y-3">
           <h2 className="text-lg font-semibold text-foreground">13. Contact</h2>
-          <p>Questions about these terms? Contact us at <span className="text-primary">support@paycheck.app</span>.</p>
+          <p>Questions about these terms? Contact us at <span className="text-primary">support@paycheckinsights.com</span>.</p>
         </section>
       </div>
     </main>
