@@ -31,7 +31,7 @@ const PayslipDetail = () => {
   const idx = allPayslips.findIndex((s) => s.id === id);
   const prevSlip = idx > 0 ? allPayslips[idx - 1] : null;
 
-  const canRetry = slip && (slip.status === 'failed' || slip.status === 'needs_review' || slip.status === 'processing');
+  const canRetry = slip && (slip.status as string) !== 'confirmed' && (slip.status as string) !== 'extracted';
 
   const handleRetry = async () => {
     if (!id) return;
