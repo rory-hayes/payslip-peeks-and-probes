@@ -459,6 +459,45 @@ const Settings = () => {
         </Card>
 
         <Card className="border-0 shadow-sm">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base flex items-center gap-1.5">
+              Anomaly sensitivity
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button type="button" aria-label="What is this?" className="text-muted-foreground hover:text-foreground">
+                    <HelpCircle className="h-3.5 w-3.5" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent className="max-w-xs">
+                  The minimum % change in your gross or net pay (vs. last payslip) that triggers an alert. Lower = more sensitive (more alerts); higher = only big swings. <strong>5% is recommended</strong>.
+                </TooltipContent>
+              </Tooltip>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-center justify-between">
+              <Label htmlFor="threshold">Change threshold</Label>
+              <span className="text-lg font-bold text-primary tabular-nums">{threshold}%</span>
+            </div>
+            <input
+              id="threshold"
+              type="range"
+              min={1}
+              max={25}
+              step={1}
+              value={threshold}
+              onChange={(e) => setThreshold(Number(e.target.value))}
+              className="w-full accent-primary"
+            />
+            <div className="flex justify-between text-[11px] text-muted-foreground">
+              <span>1% — very sensitive</span>
+              <span>5% — recommended</span>
+              <span>25% — only big changes</span>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="border-0 shadow-sm">
           <CardHeader className="pb-2"><CardTitle className="text-base">Employer</CardTitle></CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
