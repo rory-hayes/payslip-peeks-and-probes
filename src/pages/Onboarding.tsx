@@ -12,7 +12,10 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { useQueryClient } from '@tanstack/react-query';
 
-const STEPS = ['Welcome', 'Country', 'Pay profile', 'Payroll setup', 'Ready'] as const;
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { HelpCircle } from 'lucide-react';
+
+const STEPS = ['Welcome', 'Country', 'Pay profile', 'Sensitivity', 'Payroll setup', 'Ready'] as const;
 
 const Onboarding = () => {
   const navigate = useNavigate();
@@ -23,6 +26,7 @@ const Onboarding = () => {
   const [country, setCountry] = useState<'UK' | 'Ireland' | ''>('');
   const [frequency, setFrequency] = useState<string>('');
   const [employer, setEmployer] = useState('');
+  const [threshold, setThreshold] = useState<number>(5);
   const [flags, setFlags] = useState({ pension: false, studentLoan: false, bonus: false, benefits: false });
   const [saving, setSaving] = useState(false);
 
@@ -32,8 +36,9 @@ const Onboarding = () => {
     if (step === 0) return true;
     if (step === 1) return !!country;
     if (step === 2) return !!frequency && employer.trim().length > 0;
-    if (step === 3) return true;
+    if (step === 3) return threshold >= 1 && threshold <= 25;
     if (step === 4) return true;
+    if (step === 5) return true;
     return false;
   })();
 
@@ -51,6 +56,7 @@ const Onboarding = () => {
         currency: country === 'Ireland' ? 'EUR' : 'GBP',
         pay_frequency: frequency,
         employer_name: employer.trim(),
+        anomaly_threshold_percent: threshold,
         has_pension: flags.pension,
         has_student_loan: flags.studentLoan,
         has_bonus: flags.bonus,
