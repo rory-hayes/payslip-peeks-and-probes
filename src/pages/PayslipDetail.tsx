@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -9,7 +10,10 @@ import AnomalyExplanation from '@/components/AnomalyExplanation';
 import { usePayslip, usePayslips, useAnomalies } from '@/hooks/use-payslip-data';
 import { useCurrency } from '@/hooks/use-profile';
 import { formatDate } from '@/lib/date-utils';
-import { AlertTriangle, ArrowLeft, FileText, GitCompare, MessageSquare } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
+import { useQueryClient } from '@tanstack/react-query';
+import { AlertTriangle, ArrowLeft, FileText, GitCompare, MessageSquare, RefreshCw } from 'lucide-react';
 
 const PayslipDetail = () => {
   const { id } = useParams();
@@ -17,12 +21,38 @@ const PayslipDetail = () => {
   const { data: realPayslips } = usePayslips();
   const { data: realAllAnomalies } = useAnomalies();
   const { format: formatCurrency } = useCurrency();
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const [retrying, setRetrying] = useState(false);
 
   const allPayslips = realPayslips || [];
   const allAnomalies = realAllAnomalies || [];
   const anomalies = allAnomalies.filter((a) => a.payslip_id === id);
   const idx = allPayslips.findIndex((s) => s.id === id);
   const prevSlip = idx > 0 ? allPayslips[idx - 1] : null;
+
+  const canRetry = slip && (slip.status === 'failed' || slip.status === 'needs_review' || slip.status === 'processing');
+
+  const handleRetry = async () => {
+    if (!id) return;
+    setRetrying(true);
+    try {
+      const { error } = await supabase.functions.invoke('process-payslip', { body: { payslip_id: id } });
+      if (error) {
+        const msg = (error as { message?: string }).message || 'Re-processing failed.';
+        toast({ title: 'Retry failed', description: msg, variant: 'destructive' });
+      } else {
+        toast({ title: 'Re-processing started', description: 'We\'ll refresh the data shortly.' });
+        await Promise.all([
+          queryClient.invalidateQueries({ queryKey: ['payslips'] }),
+          queryClient.invalidateQueries({ queryKey: ['anomalies'] }),
+        ]);
+      }
+    } catch (e) {
+      toast({ title: 'Retry failed', description: 'Could not reach the processing service.', variant: 'destructive' });
+    }
+    setRetrying(false);
+  };
 
   if (isLoading) {
     return (
@@ -134,6 +164,12 @@ const PayslipDetail = () => {
           <Link to={`/draft/${slip.id}`}>
             <Button variant="outline" className="gap-2"><MessageSquare className="h-4 w-4" /> Draft payroll query</Button>
           </Link>
+          {canRetry && (
+            <Button variant="outline" className="gap-2" onClick={handleRetry} disabled={retrying}>
+              <RefreshCw className={`h-4 w-4 ${retrying ? 'animate-spin' : ''}`} />
+              {retrying ? 'Retrying…' : 'Retry processing'}
+            </Button>
+          )}
         </div>
 
         <p className="text-xs text-muted-foreground">

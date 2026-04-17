@@ -790,10 +790,22 @@ serve(async (req) => {
 
     const country =
       (extracted.country as string) || payslip.country || null;
+
+    // Load user's anomaly threshold from their profile (defaults to 5%)
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("anomaly_threshold_percent")
+      .eq("user_id", payslip.user_id)
+      .maybeSingle();
+    const threshold = profile?.anomaly_threshold_percent != null
+      ? Number(profile.anomaly_threshold_percent)
+      : 5;
+
     const anomalies = runAnomalyChecks(
       currentExtraction,
       previousExtraction,
-      country
+      country,
+      threshold
     );
 
     // 8. Save anomalies
