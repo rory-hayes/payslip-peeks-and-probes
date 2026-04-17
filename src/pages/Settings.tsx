@@ -52,6 +52,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useUsage } from '@/hooks/use-usage';
 import { useSubscription } from '@/hooks/use-subscription';
 import { getStripeEnvironment } from '@/lib/stripe';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { Download, Trash2, HelpCircle, Sparkles, ExternalLink } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
@@ -78,6 +79,7 @@ const Settings = () => {
   const [pensionPercent, setPensionPercent] = useState('5');
   const [hasStudentLoan, setHasStudentLoan] = useState(false);
   const [studentLoanPlan, setStudentLoanPlan] = useState('plan2');
+  const [threshold, setThreshold] = useState<number>(5);
   const [loading, setLoading] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState('');
   const [deleteOpen, setDeleteOpen] = useState(false);
@@ -127,6 +129,7 @@ const Settings = () => {
           setPensionPercent(data.pension_percent ? String(data.pension_percent) : '5');
           setHasStudentLoan(!!data.has_student_loan);
           setStudentLoanPlan(data.student_loan_plan || 'plan2');
+          setThreshold(data.anomaly_threshold_percent != null ? Number(data.anomaly_threshold_percent) : 5);
         }
       });
   }, [user]);
@@ -148,6 +151,7 @@ const Settings = () => {
         pension_percent: hasPension && pensionPercent ? Number(pensionPercent) : null,
         has_student_loan: hasStudentLoan,
         student_loan_plan: hasStudentLoan ? studentLoanPlan : null,
+        anomaly_threshold_percent: threshold,
       })
       .eq('user_id', user.id);
     setLoading(false);
