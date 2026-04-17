@@ -24,6 +24,8 @@ export default function CookieConsent() {
     } catch {
       // ignore
     }
+    // Notify the analytics layer (and any other listeners) within this tab.
+    broadcastConsentChange(value);
     setVisible(false);
   };
 
