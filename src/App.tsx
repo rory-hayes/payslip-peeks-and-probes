@@ -26,8 +26,14 @@ import Privacy from "./pages/Privacy";
 import Terms from "./pages/Terms";
 import NotFound from "./pages/NotFound";
 import CookieConsent from "@/components/CookieConsent";
+import { initAnalytics } from "@/lib/analytics";
 
 const queryClient = new QueryClient();
+
+// Initialise the consent-aware analytics layer once at app boot.
+// No provider is wired yet — calls remain no-ops until one is configured
+// in src/lib/analytics.ts AND the user clicks "Accept all".
+initAnalytics();
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
