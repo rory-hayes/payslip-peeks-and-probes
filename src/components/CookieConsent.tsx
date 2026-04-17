@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Cookie, X } from 'lucide-react';
+import { broadcastConsentChange } from '@/lib/analytics';
 
 const STORAGE_KEY = 'paycheck.cookie_consent';
 
