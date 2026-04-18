@@ -39,6 +39,8 @@ import SpainPayslipGuide from "./pages/guides/SpainPayslipGuide";
 import ItalyPayslipGuide from "./pages/guides/ItalyPayslipGuide";
 import BelgiumPayslipGuide from "./pages/guides/BelgiumPayslipGuide";
 import PortugalPayslipGuide from "./pages/guides/PortugalPayslipGuide";
+import CalculatorIndex from "./pages/calculator/CalculatorIndex";
+import CountryCalculator from "./pages/calculator/CountryCalculator";
 import CookieConsent from "@/components/CookieConsent";
 import { initAnalytics } from "@/lib/analytics";
 
