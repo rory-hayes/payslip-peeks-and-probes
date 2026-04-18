@@ -72,7 +72,7 @@ const Settings = () => {
   const { subscription } = useSubscription();
   const { uploadsRemaining, draftsRemaining, isPremium, limits } = useUsage();
   const [firstName, setFirstName] = useState('');
-  const [country, setCountry] = useState<'UK' | 'Ireland'>('UK');
+  const [country, setCountry] = useState<CountryCode>('UK');
   const [annualSalary, setAnnualSalary] = useState('');
   const [frequency, setFrequency] = useState('monthly');
   const [employer, setEmployer] = useState('');
@@ -88,7 +88,7 @@ const Settings = () => {
   const [deleting, setDeleting] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [managingBilling, setManagingBilling] = useState(false);
-  const currencySymbol = country === 'Ireland' ? '€' : '£';
+  const currencySymbol = getCountryConfig(country).currencySymbol;
 
   const planLabel = subscription.plan === 'lifetime' ? 'Lifetime' : subscription.plan === 'plus' ? 'Plus' : 'Free';
 
@@ -122,7 +122,7 @@ const Settings = () => {
       .then(({ data }) => {
         if (data) {
           setFirstName(data.first_name || '');
-          setCountry((data.country as 'UK' | 'Ireland') || 'UK');
+          setCountry((data.country as CountryCode) || 'UK');
           setAnnualSalary(data.annual_salary ? String(data.annual_salary) : '');
           setFrequency(data.pay_frequency || 'monthly');
           setEmployer(data.employer_name || '');
@@ -144,7 +144,7 @@ const Settings = () => {
       .update({
         first_name: firstName,
         country,
-        currency: country === 'Ireland' ? 'EUR' : 'GBP',
+        currency: getCountryConfig(country).currency,
         annual_salary: annualSalary ? Number(annualSalary) : null,
         pay_frequency: frequency,
         employer_name: employer,
@@ -319,14 +319,14 @@ const Settings = () => {
               </div>
               <div className="space-y-2">
                 <Label>Country</Label>
-                <div className="grid grid-cols-2 gap-2">
-                  {(['UK', 'Ireland'] as const).map((c) => (
+                <div className="grid grid-cols-3 gap-2">
+                  {COUNTRY_LIST.map((c) => (
                     <button
-                      key={c}
-                      onClick={() => setCountry(c)}
-                      className={`rounded-lg border px-3 py-2 text-sm transition-all ${country === c ? 'border-primary bg-primary/5 text-primary font-medium' : 'border-border text-muted-foreground'}`}
+                      key={c.code}
+                      onClick={() => setCountry(c.code)}
+                      className={`rounded-lg border px-3 py-2 text-sm transition-all ${country === c.code ? 'border-primary bg-primary/5 text-primary font-medium' : 'border-border text-muted-foreground'}`}
                     >
-                      {c === 'UK' ? '🇬🇧 UK' : '🇮🇪 Ireland'}
+                      {c.flag} {c.code === 'UK' ? 'UK' : c.name}
                     </button>
                   ))}
                 </div>
