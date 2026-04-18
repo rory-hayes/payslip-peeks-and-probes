@@ -57,6 +57,7 @@ import { Download, Trash2, HelpCircle, Sparkles, ExternalLink } from 'lucide-rea
 import { Link } from 'react-router-dom';
 import { deleteUserAccountData } from '@/lib/delete-account';
 import { COUNTRY_LIST, getCountryConfig, type CountryCode } from '@/lib/countries';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 const STUDENT_LOAN_PLANS = [
   { value: 'plan1', label: 'Plan 1', desc: 'Started before Sep 2012 (England/Wales)' },
@@ -346,6 +347,38 @@ const Settings = () => {
                 </div>
               </div>
             </div>
+            {countryConfig.subRegions && countryConfig.subRegions.length > 0 && (
+              <div className="space-y-2">
+                <Label>{countryConfig.subRegionLabel ?? 'Region'}</Label>
+                <Select value={subRegion ?? ''} onValueChange={setSubRegion}>
+                  <SelectTrigger>
+                    <SelectValue placeholder={`Select ${(countryConfig.subRegionLabel ?? 'region').toLowerCase()}`} />
+                  </SelectTrigger>
+                  <SelectContent className="max-h-72">
+                    {countryConfig.subRegions.map((s) => (
+                      <SelectItem key={s.code} value={s.code}>{s.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+            {countryConfig.filingStatuses && countryConfig.filingStatuses.length > 0 && (
+              <div className="space-y-2">
+                <Label>{countryConfig.filingStatusLabel ?? 'Filing status'}</Label>
+                <div className="grid gap-2" style={{ gridTemplateColumns: `repeat(${countryConfig.filingStatuses.length}, minmax(0, 1fr))` }}>
+                  {countryConfig.filingStatuses.map((f) => (
+                    <button
+                      key={f.code}
+                      type="button"
+                      onClick={() => setFilingStatus(f.code)}
+                      className={`rounded-lg border px-3 py-2 text-sm transition-all ${filingStatus === f.code ? 'border-primary bg-primary/5 text-primary font-medium' : 'border-border text-muted-foreground'}`}
+                    >
+                      {f.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
             <div className="space-y-2">
               <Label>Pay frequency</Label>
               <div className="grid grid-cols-4 gap-2">
