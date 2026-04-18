@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -63,8 +63,13 @@ const NetPayCalculator = ({ country, lockCountry = false, compact = false }: Net
     initialFiling && config.filingStatuses?.some((f) => f.code === initialFiling) ? initialFiling : defaultFiling,
   );
 
-  // Reset sub-region / filing status when country changes
+  // Reset sub-region / filing status when country changes (skip first render so URL params survive)
+  const didMountForCountry = useRef(false);
   useEffect(() => {
+    if (!didMountForCountry.current) {
+      didMountForCountry.current = true;
+      return;
+    }
     setSubRegion(config.subRegions?.[0]?.code ?? null);
     setFilingStatus(config.filingStatuses?.[0]?.code ?? null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
