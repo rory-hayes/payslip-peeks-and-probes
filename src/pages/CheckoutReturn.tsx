@@ -4,12 +4,17 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { CheckCircle, XCircle, Loader2 } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
+import { useSubscription } from "@/hooks/use-subscription";
+
+const POLL_INTERVAL_MS = 1500;
+const MAX_POLLS = 10;
 
 export default function CheckoutReturn() {
   const [searchParams] = useSearchParams();
   const sessionId = searchParams.get("session_id");
   const queryClient = useQueryClient();
   const [status, setStatus] = useState<'loading' | 'success' | 'failed'>('loading');
+  const { refetch } = useSubscription();
 
   useEffect(() => {
     if (!sessionId) {
@@ -17,20 +22,40 @@ export default function CheckoutReturn() {
       return;
     }
 
-    // Invalidate subscription cache so it re-fetches after webhook processes
-    queryClient.invalidateQueries({ queryKey: ['subscription'] });
-    queryClient.invalidateQueries({ queryKey: ['usage'] });
+    let isCancelled = false;
+    let timer: number | undefined;
+    let polls = 0;
 
-    // Give webhook a moment to process, then mark as success
-    // The webhook will populate the subscriptions table
-    const timer = setTimeout(() => {
-      setStatus('success');
-      // Re-invalidate after a delay to catch webhook processing
-      queryClient.invalidateQueries({ queryKey: ['subscription'] });
-    }, 2000);
+    const verifySubscription = async () => {
+      await queryClient.invalidateQueries({ queryKey: ['subscription'] });
+      await queryClient.invalidateQueries({ queryKey: ['usage'] });
 
-    return () => clearTimeout(timer);
-  }, [sessionId, queryClient]);
+      const result = await refetch();
+      if (isCancelled) return;
+
+      if (result.data?.isPremium) {
+        setStatus('success');
+        return;
+      }
+
+      polls += 1;
+      if (polls >= MAX_POLLS) {
+        setStatus('failed');
+        return;
+      }
+
+      timer = window.setTimeout(() => {
+        void verifySubscription();
+      }, POLL_INTERVAL_MS);
+    };
+
+    void verifySubscription();
+
+    return () => {
+      isCancelled = true;
+      if (timer) window.clearTimeout(timer);
+    };
+  }, [sessionId, queryClient, refetch]);
 
   return (
     <div className="min-h-screen bg-card flex items-center justify-center p-4">
