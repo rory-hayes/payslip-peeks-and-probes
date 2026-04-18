@@ -54,7 +54,8 @@ export function useCurrency() {
   const { data: profile } = useProfile();
   const currency = profile?.currency ?? 'GBP';
   const symbol = currency === 'EUR' ? '€' : '£';
-  const locale = currency === 'EUR' ? 'en-IE' : 'en-GB';
+  // Use de-DE locale for Germany so €1.234,56 formats correctly
+  const locale = profile?.country === 'Germany' ? 'de-DE' : currency === 'EUR' ? 'en-IE' : 'en-GB';
 
   const format = (amount: number) =>
     `${symbol}${amount.toLocaleString(locale, { minimumFractionDigits: 2 })}`;
