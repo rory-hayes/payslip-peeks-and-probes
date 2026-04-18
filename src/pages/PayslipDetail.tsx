@@ -13,7 +13,8 @@ import { formatDate } from '@/lib/date-utils';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useQueryClient } from '@tanstack/react-query';
-import { AlertTriangle, ArrowLeft, FileText, GitCompare, MessageSquare, RefreshCw } from 'lucide-react';
+import { useUpdateAnomalyStatus } from '@/hooks/use-anomaly-status';
+import { AlertTriangle, ArrowLeft, CheckCircle, Eye, FileText, GitCompare, MessageSquare, RefreshCw, RotateCcw, Send } from 'lucide-react';
 
 const PayslipDetail = () => {
   const { id } = useParams();
