@@ -2,11 +2,13 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import type { Payslip } from '@/lib/types';
 import { calculateExpectedMonthly, type DeductionOptions } from '@/lib/tax-calculator';
+import type { CountryCode } from '@/lib/countries';
+import { getCountryConfig } from '@/lib/countries';
 
 interface PdfOptions {
   payslips: Payslip[];
   currency: 'GBP' | 'EUR';
-  country: 'UK' | 'Ireland' | null;
+  country: CountryCode | null;
   annualSalary?: number | null;
   deductionOpts?: DeductionOptions;
   firstName?: string | null;
@@ -19,7 +21,7 @@ function fmt(amount: number, symbol: string) {
 export function generatePaySummaryPdf(options: PdfOptions) {
   const { payslips, currency, country, annualSalary, deductionOpts = {}, firstName } = options;
   const sym = currency === 'EUR' ? '€' : '£';
-  const regionLabel = country === 'Ireland' ? 'Ireland' : 'UK';
+  const regionLabel = getCountryConfig(country).name;
 
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
   const pageWidth = doc.internal.pageSize.getWidth();

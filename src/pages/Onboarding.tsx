@@ -11,6 +11,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { useQueryClient } from '@tanstack/react-query';
+import { COUNTRY_LIST, getCountryConfig, type CountryCode } from '@/lib/countries';
 
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { HelpCircle } from 'lucide-react';
@@ -23,7 +24,7 @@ const Onboarding = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [step, setStep] = useState(0);
-  const [country, setCountry] = useState<'UK' | 'Ireland' | ''>('');
+  const [country, setCountry] = useState<CountryCode | ''>('');
   const [frequency, setFrequency] = useState<string>('');
   const [employer, setEmployer] = useState('');
   const [threshold, setThreshold] = useState<number>(5);
@@ -49,11 +50,12 @@ const Onboarding = () => {
     if (!user) return;
     setSaving(true);
 
+    const cfg = country ? getCountryConfig(country) : null;
     const { error: profileError } = await supabase
       .from('profiles')
       .update({
         country: country || null,
-        currency: country === 'Ireland' ? 'EUR' : 'GBP',
+        currency: cfg?.currency ?? 'GBP',
         pay_frequency: frequency,
         employer_name: employer.trim(),
         anomaly_threshold_percent: threshold,
@@ -94,8 +96,9 @@ const Onboarding = () => {
     navigate('/dashboard');
   };
 
-  const countryLabel = country === 'Ireland' ? 'Ireland' : country === 'UK' ? 'United Kingdom' : '—';
-  const currencyLabel = country === 'Ireland' ? 'EUR (€)' : 'GBP (£)';
+  const countryCfg = country ? getCountryConfig(country) : null;
+  const countryLabel = countryCfg?.name ?? '—';
+  const currencyLabel = countryCfg ? `${countryCfg.currency} (${countryCfg.currencySymbol})` : 'GBP (£)';
 
   return (
     <div className="flex min-h-screen flex-col bg-background">
@@ -137,26 +140,26 @@ const Onboarding = () => {
                   <h2 className="text-2xl font-bold text-foreground">Where are you employed?</h2>
                   <p className="mt-2 text-sm text-muted-foreground">This sets your currency and tax rules.</p>
                 </div>
-                <div className="grid grid-cols-2 gap-4">
-                  {([
-                    { key: 'UK' as const, label: 'United Kingdom', flag: '🇬🇧', currency: 'GBP (£)' },
-                    { key: 'Ireland' as const, label: 'Ireland', flag: '🇮🇪', currency: 'EUR (€)' },
-                  ]).map((c) => (
+                <div className="grid grid-cols-3 gap-3">
+                  {COUNTRY_LIST.map((c) => (
                     <button
-                      key={c.key}
-                      onClick={() => setCountry(c.key)}
-                      className={`flex flex-col items-center gap-2 rounded-xl border-2 p-6 transition-all ${
-                        country === c.key
+                      key={c.code}
+                      onClick={() => setCountry(c.code)}
+                      className={`flex flex-col items-center gap-2 rounded-xl border-2 p-4 transition-all ${
+                        country === c.code
                           ? 'border-primary bg-primary/5'
                           : 'border-border hover:border-muted-foreground/30'
                       }`}
                     >
-                      <span className="text-4xl">{c.flag}</span>
-                      <span className="font-medium text-foreground">{c.label}</span>
-                      <span className="text-xs text-muted-foreground">{c.currency}</span>
+                      <span className="text-3xl">{c.flag}</span>
+                      <span className="text-sm font-medium text-foreground">{c.name}</span>
+                      <span className="text-[11px] text-muted-foreground">{c.currency} ({c.currencySymbol})</span>
                     </button>
                   ))}
                 </div>
+                <p className="text-xs text-center text-muted-foreground pt-1">
+                  More EMEA countries coming soon. Pick the closest match for now.
+                </p>
               </div>
             )}
 

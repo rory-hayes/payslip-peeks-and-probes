@@ -83,7 +83,7 @@ Return a JSON object using this exact schema (use null for fields you cannot fin
   "pay_period_start": "YYYY-MM-DD or null",
   "pay_period_end": "YYYY-MM-DD or null",
   "employer_name": "string or null",
-  "country": "UK or Ireland or null",
+  "country": "UK or Ireland or Germany or null",
   "gross_pay": number or null,
   "net_pay": number or null,
   "taxable_pay": number or null,
@@ -91,6 +91,9 @@ Return a JSON object using this exact schema (use null for fields you cannot fin
   "national_insurance_amount": number or null,
   "prsi_amount": number or null,
   "usc_amount": number or null,
+  "social_security_amount": number or null,
+  "solidarity_amount": number or null,
+  "church_tax_amount": number or null,
   "pension_amount": number or null,
   "student_loan_amount": number or null,
   "bonus_amount": number or null,
@@ -106,10 +109,24 @@ Return a JSON object using this exact schema (use null for fields you cannot fin
   "notes": "any extraction notes"
 }
 
+Country detection:
+- If PRSI or USC are present, country is Ireland
+- If "National Insurance" / "NI" is present, country is UK
+- If German terms appear (Brutto, Netto, Lohnsteuer, Solidaritätszuschlag, Sozialversicherung, Steuerklasse, Krankenversicherung, Rentenversicherung, Pflegeversicherung, Arbeitslosenversicherung), country is Germany
+
+Field mapping for Germany:
+- "Brutto" / "Bruttobezüge" → gross_pay
+- "Netto" / "Auszahlungsbetrag" → net_pay
+- "Lohnsteuer" → tax_amount
+- "Solidaritätszuschlag" / "Soli" → solidarity_amount
+- "Kirchensteuer" / "KiSt" → church_tax_amount
+- Sum of "Krankenversicherung (KV) + Rentenversicherung (RV) + Arbeitslosenversicherung (AV) + Pflegeversicherung (PV)" employee shares → social_security_amount
+- "Betriebsrente" / "Gehaltsumwandlung" / pension contributions → pension_amount
+
 Rules:
-- All monetary values should be plain numbers (no currency symbols)
-- If PRSI or USC are present, country is likely Ireland
-- If National Insurance is present, country is likely UK
+- All monetary values should be plain numbers (no currency symbols, no thousand separators)
+- For German payslips, use the EMPLOYEE share (Arbeitnehmer-Anteil), NOT the employer share
+- For German payslips, decimal separator on the document is a comma — convert to a dot in the output
 - Be precise with decimal values
 - Only return the JSON object, no other text`;
 
@@ -123,6 +140,9 @@ interface Extraction {
   national_insurance_amount: number | null;
   prsi_amount: number | null;
   usc_amount: number | null;
+  social_security_amount: number | null;
+  solidarity_amount: number | null;
+  church_tax_amount: number | null;
   pension_amount: number | null;
   student_loan_amount: number | null;
   bonus_amount: number | null;
@@ -146,7 +166,9 @@ function runAnomalyChecks(
   threshold = 5
 ): Anomaly[] {
   const anomalies: Anomaly[] = [];
-  const sym = (country === "Ireland" || country === "ireland") ? "€" : "£";
+  const isIreland = country === "Ireland" || country === "ireland";
+  const isGermany = country === "Germany" || country === "germany";
+  const sym = isIreland || isGermany ? "€" : "£";
 
   const pct = (curr: number, prev: number) =>
     prev !== 0 ? ((curr - prev) / Math.abs(prev)) * 100 : curr !== 0 ? 100 : 0;
@@ -205,15 +227,17 @@ function runAnomalyChecks(
       confidence: "medium",
       title: "No tax deduction found",
       description: `What changed: Your payslip shows gross pay of ${sym}${current.gross_pay.toFixed(2)} but no income tax deduction.\n\nWhy it matters: Most employees pay income tax. A missing tax deduction could mean you're on an emergency tax code, your employer hasn't applied the correct code, or there's an extraction error. In rare cases it may be correct (e.g. your personal allowance covers your full salary).\n\nThis may be perfectly valid, but it's worth checking.`,
-      suggested_action: country === "Ireland" || country === "ireland"
+      suggested_action: isIreland
         ? "Log into Revenue's myAccount and check your tax credits and rate bands. Confirm with payroll that the correct tax credit certificate has been applied."
-        : "Check your tax code on this payslip and verify it against your HMRC personal tax account at gov.uk. If the code is wrong, ask payroll to update it.",
+        : isGermany
+          ? "Check your Steuerklasse (tax class) on this payslip — if it's wrong, ask your employer to update it via your local Finanzamt. You can also verify your details in your ELStAM record."
+          : "Check your tax code on this payslip and verify it against your HMRC personal tax account at gov.uk. If the code is wrong, ask payroll to update it.",
     });
   }
 
-  // Missing NI (UK) or PRSI (Ireland) deduction
+  // Missing NI (UK) / PRSI (Ireland) / Sozialversicherung (Germany) deduction
   if (current.gross_pay != null && current.gross_pay > 0) {
-    if (country === "Ireland" || country === "ireland") {
+    if (isIreland) {
       if (current.prsi_amount == null || current.prsi_amount === 0) {
         anomalies.push({
           anomaly_type: "missing_prsi",
@@ -222,6 +246,17 @@ function runAnomalyChecks(
           title: "No PRSI deduction found",
           description: `What changed: Your payslip shows gross pay of €${current.gross_pay.toFixed(2)} but no PRSI contribution.\n\nWhy it matters: Most employees pay PRSI. Missing PRSI could affect your social insurance record and future entitlements (e.g. State Pension, Jobseeker's Benefit). It may be correct if you're exempt, but it's worth confirming.\n\nThis may be perfectly valid, but it's worth checking.`,
           suggested_action: "Check your PRSI class with your employer. If you believe you should be paying PRSI, ask payroll to verify your classification with Revenue.",
+        });
+      }
+    } else if (isGermany) {
+      if (current.social_security_amount == null || current.social_security_amount === 0) {
+        anomalies.push({
+          anomaly_type: "missing_social_security",
+          severity: "medium",
+          confidence: "medium",
+          title: "No Sozialversicherung deduction found",
+          description: `What changed: Your payslip shows gross pay of €${current.gross_pay.toFixed(2)} but no Sozialversicherung (social security) contribution.\n\nWhy it matters: Most employees in Germany pay into Krankenversicherung (KV), Rentenversicherung (RV), Arbeitslosenversicherung (AV) and Pflegeversicherung (PV). Missing contributions affect your healthcare, pension and unemployment cover. In rare cases (e.g. minijob, certain freelancers) it may be correct.\n\nThis may be perfectly valid, but it's worth checking.`,
+          suggested_action: "Ask your Personalabteilung (HR) why no Sozialversicherung is being deducted, and confirm your employment status (e.g. Mini-Job vs sozialversicherungspflichtig).",
         });
       }
     } else {
@@ -751,6 +786,9 @@ serve(async (req) => {
           extracted.national_insurance_amount as number | null,
         prsi_amount: extracted.prsi_amount as number | null,
         usc_amount: extracted.usc_amount as number | null,
+        social_security_amount: extracted.social_security_amount as number | null,
+        solidarity_amount: extracted.solidarity_amount as number | null,
+        church_tax_amount: extracted.church_tax_amount as number | null,
         pension_amount: extracted.pension_amount as number | null,
         student_loan_amount: extracted.student_loan_amount as number | null,
         bonus_amount: extracted.bonus_amount as number | null,
@@ -840,6 +878,9 @@ serve(async (req) => {
         extracted.national_insurance_amount as number | null,
       prsi_amount: extracted.prsi_amount as number | null,
       usc_amount: extracted.usc_amount as number | null,
+      social_security_amount: extracted.social_security_amount as number | null,
+      solidarity_amount: extracted.solidarity_amount as number | null,
+      church_tax_amount: extracted.church_tax_amount as number | null,
       pension_amount: extracted.pension_amount as number | null,
       student_loan_amount: extracted.student_loan_amount as number | null,
       bonus_amount: extracted.bonus_amount as number | null,
