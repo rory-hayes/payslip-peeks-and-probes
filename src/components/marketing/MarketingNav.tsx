@@ -28,7 +28,7 @@ const MarketingNav = ({ active = null }: MarketingNavProps) => {
           <span className="text-xl font-bold text-foreground">PayCheck</span>
         </Link>
         <div className="hidden items-center gap-6 md:flex">
-          <Link to="/calculator" className={linkClass('calculator')}>Take-home calculator</Link>
+          <Link to="/calculator" className={linkClass('calculator')}>Calculator</Link>
           <Link to="/how-it-works" className={linkClass('how-it-works')}>How it works</Link>
           <Link to="/guides" className={linkClass('guides')}>Guides</Link>
           <Link to="/pricing" className={linkClass(null)}>Pricing</Link>
