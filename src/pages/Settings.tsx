@@ -57,6 +57,7 @@ import { Download, Trash2, HelpCircle, Sparkles, ExternalLink } from 'lucide-rea
 import { Link } from 'react-router-dom';
 import { deleteUserAccountData } from '@/lib/delete-account';
 import { COUNTRY_LIST, getCountryConfig, type CountryCode } from '@/lib/countries';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 const STUDENT_LOAN_PLANS = [
   { value: 'plan1', label: 'Plan 1', desc: 'Started before Sep 2012 (England/Wales)' },
@@ -81,6 +82,8 @@ const Settings = () => {
   const [pensionPercent, setPensionPercent] = useState('5');
   const [hasStudentLoan, setHasStudentLoan] = useState(false);
   const [studentLoanPlan, setStudentLoanPlan] = useState('plan2');
+  const [subRegion, setSubRegion] = useState<string | null>(null);
+  const [filingStatus, setFilingStatus] = useState<string | null>(null);
   const [threshold, setThreshold] = useState<number>(5);
   const [loading, setLoading] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState('');
@@ -88,7 +91,8 @@ const Settings = () => {
   const [deleting, setDeleting] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [managingBilling, setManagingBilling] = useState(false);
-  const currencySymbol = getCountryConfig(country).currencySymbol;
+  const countryConfig = getCountryConfig(country);
+  const currencySymbol = countryConfig.currencySymbol;
 
   const planLabel = subscription.plan === 'lifetime' ? 'Lifetime' : subscription.plan === 'plus' ? 'Plus' : 'Free';
 
@@ -131,10 +135,19 @@ const Settings = () => {
           setPensionPercent(data.pension_percent ? String(data.pension_percent) : '5');
           setHasStudentLoan(!!data.has_student_loan);
           setStudentLoanPlan(data.student_loan_plan || 'plan2');
+          setSubRegion((data as { sub_region?: string | null }).sub_region ?? null);
+          setFilingStatus((data as { filing_status?: string | null }).filing_status ?? null);
           setThreshold(data.anomaly_threshold_percent != null ? Number(data.anomaly_threshold_percent) : 5);
         }
       });
   }, [user]);
+
+  // Reset sub-region / filing status when country changes to one without them
+  useEffect(() => {
+    if (!countryConfig.subRegions) setSubRegion(null);
+    if (!countryConfig.filingStatuses) setFilingStatus(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [country]);
 
   const handleSave = async () => {
     if (!user) return;
@@ -153,6 +166,8 @@ const Settings = () => {
         pension_percent: hasPension && pensionPercent ? Number(pensionPercent) : null,
         has_student_loan: hasStudentLoan,
         student_loan_plan: hasStudentLoan ? studentLoanPlan : null,
+        sub_region: countryConfig.subRegions ? subRegion : null,
+        filing_status: countryConfig.filingStatuses ? filingStatus : null,
         anomaly_threshold_percent: threshold,
       })
       .eq('user_id', user.id);
@@ -332,6 +347,38 @@ const Settings = () => {
                 </div>
               </div>
             </div>
+            {countryConfig.subRegions && countryConfig.subRegions.length > 0 && (
+              <div className="space-y-2">
+                <Label>{countryConfig.subRegionLabel ?? 'Region'}</Label>
+                <Select value={subRegion ?? ''} onValueChange={setSubRegion}>
+                  <SelectTrigger>
+                    <SelectValue placeholder={`Select ${(countryConfig.subRegionLabel ?? 'region').toLowerCase()}`} />
+                  </SelectTrigger>
+                  <SelectContent className="max-h-72">
+                    {countryConfig.subRegions.map((s) => (
+                      <SelectItem key={s.code} value={s.code}>{s.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+            {countryConfig.filingStatuses && countryConfig.filingStatuses.length > 0 && (
+              <div className="space-y-2">
+                <Label>{countryConfig.filingStatusLabel ?? 'Filing status'}</Label>
+                <div className="grid gap-2" style={{ gridTemplateColumns: `repeat(${countryConfig.filingStatuses.length}, minmax(0, 1fr))` }}>
+                  {countryConfig.filingStatuses.map((f) => (
+                    <button
+                      key={f.code}
+                      type="button"
+                      onClick={() => setFilingStatus(f.code)}
+                      className={`rounded-lg border px-3 py-2 text-sm transition-all ${filingStatus === f.code ? 'border-primary bg-primary/5 text-primary font-medium' : 'border-border text-muted-foreground'}`}
+                    >
+                      {f.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
             <div className="space-y-2">
               <Label>Pay frequency</Label>
               <div className="grid grid-cols-4 gap-2">

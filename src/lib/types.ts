@@ -7,8 +7,7 @@ export type Country =
   | 'Spain'
   | 'Italy'
   | 'Belgium'
-  | 'Portugal'
-  | 'US';
+  | 'Portugal';
 export type PayFrequency = 'weekly' | 'fortnightly' | 'monthly' | 'other';
 export type AnomalySeverity = 'low' | 'medium' | 'high';
 export type AnomalyStatus = 'new' | 'reviewed' | 'raised' | 'resolved';

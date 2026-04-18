@@ -38,6 +38,24 @@ export interface DeductionLine {
   label: string;
 }
 
+/** A sub-national region (US state, Canadian province, German Land, etc.) */
+export interface SubRegion {
+  /** Stable code (e.g. 'CA', 'NY', 'TX'). Persisted on the profile.sub_region column. */
+  code: string;
+  /** Display name (e.g. 'California') */
+  name: string;
+}
+
+/** A tax filing status (US/Canada/Germany Steuerklasse style) */
+export interface FilingStatusOption {
+  /** Stable code persisted on the profile.filing_status column */
+  code: string;
+  /** Short display label */
+  label: string;
+  /** Optional helper text */
+  description?: string;
+}
+
 export interface CountryConfig {
   code: CountryCode;
   name: string;
@@ -53,4 +71,12 @@ export interface CountryConfig {
   calculateMonthly: (annualSalary: number, opts: DeductionOptions) => MonthlyBreakdown;
   /** Short, user-facing description of the tax assumptions used */
   taxAssumptionsBlurb: string;
+  /** Optional: states/provinces. When present, UI shows a sub-region picker. */
+  subRegions?: SubRegion[];
+  /** Display label for the sub-region picker (e.g. 'State', 'Province') */
+  subRegionLabel?: string;
+  /** Optional: filing-status options. When present, UI shows a filing-status picker. */
+  filingStatuses?: FilingStatusOption[];
+  /** Display label for the filing-status picker */
+  filingStatusLabel?: string;
 }

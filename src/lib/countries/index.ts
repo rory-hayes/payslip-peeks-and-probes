@@ -10,7 +10,14 @@ import { belgiumConfig } from './belgium';
 import { portugalConfig } from './portugal';
 import { usConfig } from './us';
 
-export type { CountryCode, CountryConfig, CurrencyCode, DeductionLine } from './types';
+export type {
+  CountryCode,
+  CountryConfig,
+  CurrencyCode,
+  DeductionLine,
+  SubRegion,
+  FilingStatusOption,
+} from './types';
 
 export const COUNTRIES: Record<CountryCode, CountryConfig> = {
   UK: ukConfig,
