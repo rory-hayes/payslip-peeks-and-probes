@@ -39,6 +39,7 @@ import SpainPayslipGuide from "./pages/guides/SpainPayslipGuide";
 import ItalyPayslipGuide from "./pages/guides/ItalyPayslipGuide";
 import BelgiumPayslipGuide from "./pages/guides/BelgiumPayslipGuide";
 import PortugalPayslipGuide from "./pages/guides/PortugalPayslipGuide";
+import UsPayslipGuide from "./pages/guides/UsPayslipGuide";
 import CalculatorIndex from "./pages/calculator/CalculatorIndex";
 import CountryCalculator from "./pages/calculator/CountryCalculator";
 import CookieConsent from "@/components/CookieConsent";
@@ -92,6 +93,7 @@ const App = () => (
             <Route path="/guides/italy-payslip-guide" element={<ItalyPayslipGuide />} />
             <Route path="/guides/belgium-payslip-guide" element={<BelgiumPayslipGuide />} />
             <Route path="/guides/portugal-payslip-guide" element={<PortugalPayslipGuide />} />
+            <Route path="/guides/us-payslip-guide" element={<UsPayslipGuide />} />
             <Route path="/calculator" element={<CalculatorIndex />} />
             <Route path="/calculator/:country" element={<CountryCalculator />} />
             <Route path="*" element={<NotFound />} />

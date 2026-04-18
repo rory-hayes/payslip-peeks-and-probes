@@ -22,6 +22,7 @@ const countryGuides = [
   { title: 'Italy Payslip Guide', desc: 'IRPEF, INPS, addizionali and TFR explained for Italy-based employees.', to: '/guides/italy-payslip-guide', icon: Globe },
   { title: 'Belgium Payslip Guide', desc: 'Précompte professionnel, ONSS / RSZ and pécule de vacances explained for Belgium-based employees.', to: '/guides/belgium-payslip-guide', icon: Globe },
   { title: 'Portugal Payslip Guide', desc: 'IRS, Segurança Social and subsídios explained for Portugal-based employees.', to: '/guides/portugal-payslip-guide', icon: Globe },
+  { title: 'US Payslip Guide', desc: 'Federal Withholding, FICA (OASDI + Medicare), state tax and pre-tax 401(k)/HSA/FSA explained for US employees.', to: '/guides/us-payslip-guide', icon: Globe },
 ];
 
 const GuidesIndex = () => {
