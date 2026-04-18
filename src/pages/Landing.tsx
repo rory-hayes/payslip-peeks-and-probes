@@ -207,7 +207,7 @@ const Landing = () => {
              <Card className="border shadow-sm">
               <CardContent className="p-8">
                 <h3 className="font-semibold text-foreground">Free</h3>
-                <div className="mt-4"><span className="text-4xl font-bold text-foreground">£0</span><span className="text-muted-foreground">/month</span></div>
+                <div className="mt-4"><span className="text-4xl font-bold text-foreground">€0</span><span className="text-muted-foreground">/month</span></div>
                 <p className="mt-2 text-sm text-muted-foreground">Great for getting started.</p>
                 <ul className="mt-6 space-y-3 text-sm text-muted-foreground">
                   {['3 payslip uploads/month', 'Basic anomaly checks', '1 month comparison', '2 issue drafts/month'].map((f, i) => (
