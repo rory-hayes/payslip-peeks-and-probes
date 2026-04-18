@@ -3,15 +3,20 @@ import type { DeductionOptions, MonthlyBreakdown } from '../tax-calculator-types
 import { round } from '../tax-calculator-types';
 
 /**
- * Netherlands 2024 — single, under retirement age, standard loonheffingskorting applied.
- * Combined Loonheffing = Loonbelasting + premies volksverzekeringen
- *   Box 1 brackets 2024 (under AOW age):
- *     - up to €38,098 → 36.97% (incl. 27.65% volksverzekeringen)
- *     - €38,098 – €75,518 → 36.97%
- *     - above €75,518 → 49.50%
- *   Algemene heffingskorting + arbeidskorting applied (rough single-person estimate).
- * Zorgverzekeringswet (ZVW) employee bijdrage = paid via premium, not on payslip.
- *   Most payslips show only loonheffing as "tax" line.
+ * Netherlands 2024 — single, under AOW age, white tabel (standard loonheffingskorting).
+ * Source: belastingdienst.nl Tabel 1 (rates 2024).
+ *
+ * Box 1 brackets 2024 (under AOW age — only 2 brackets, not 3):
+ *   - up to €75,518 → 36.97% (incl. 27.65% volksverzekeringen)
+ *   - above €75,518 → 49.50%
+ *
+ * Heffingskortingen (tax credits) reduce loonheffing:
+ *   - Algemene heffingskorting: max €3,362, phases out 6.337% from €24,813
+ *   - Arbeidskorting: max €5,532 around €37k, phases out 6.51% from €37,691
+ *
+ * ZVW (Zorgverzekeringswet) employee bijdrage = paid as health-insurance premium,
+ * not deducted on payslip for employees → not modelled here.
+ * Pensioenpremie = scheme-specific, modelled via opts.pensionPercent.
  */
 function calcNetherlandsMonthlyTax(annualSalary: number, opts: DeductionOptions): MonthlyBreakdown {
   const gross = annualSalary;
@@ -82,5 +87,5 @@ export const netherlandsConfig: CountryConfig = {
     'Vakantiegeld', 'Salarisstrook', 'Loonstrook',
   ],
   calculateMonthly: calcNetherlandsMonthlyTax,
-  taxAssumptionsBlurb: '2024 Netherlands Box 1 brackets, algemene heffingskorting + arbeidskorting (single, under AOW age)',
+  taxAssumptionsBlurb: '2024 Netherlands: Single, under AOW age, white tabel. Box 1 brackets (36.97% / 49.50%), algemene heffingskorting + arbeidskorting applied. Excludes ZVW (paid as separate health premium) and 30%-ruling expat benefit. Pensioen via your scheme % — actual employer/employee split varies.',
 };
