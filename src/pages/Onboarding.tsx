@@ -347,6 +347,14 @@ const Onboarding = () => {
                     <span className="font-medium text-foreground">{employer.trim() || '—'}</span>
                   </div>
                   <div className="flex justify-between px-4 py-3">
+                    <span className="text-muted-foreground">Annual salary</span>
+                    <span className="font-medium text-foreground">
+                      {annualSalary.trim()
+                        ? `${countryCfg?.currencySymbol ?? '£'}${Number(annualSalary.replace(/[^0-9.]/g, '')).toLocaleString()}`
+                        : 'Not set'}
+                    </span>
+                  </div>
+                  <div className="flex justify-between px-4 py-3">
                     <span className="text-muted-foreground">Extras</span>
                     <span className="font-medium text-foreground text-right">
                       {[
