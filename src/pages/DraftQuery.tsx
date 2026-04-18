@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -14,6 +14,8 @@ import { useUsage } from '@/hooks/use-usage';
 import { formatDate } from '@/lib/date-utils';
 import { ArrowLeft, Copy, Mail, CheckCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
 
 function safeDateLabel(raw: string | null | undefined): string {
   if (!raw) return 'a recent pay period';
@@ -38,7 +40,6 @@ function buildDraft(
     const items = anomalies.map((a) => {
       let line = `• ${a.title}`;
       if (a.description) {
-        // Take first sentence of description for conciseness
         const firstSentence = a.description.split(/(?<=\.)\s/)[0];
         line += ` — ${firstSentence}`;
       }
@@ -70,26 +71,93 @@ function buildSubject(dateLabel: string, hasAnomalies: boolean): string {
 const DraftQuery = () => {
   const { id } = useParams();
   const { toast } = useToast();
+  const { user } = useAuth();
   const { data: slip, isLoading } = usePayslip(id);
   const { data: allAnomalies } = useAnomalies();
   const { data: profile } = useProfile();
   const { canDraft, draftsRemaining, isPremium } = useUsage();
-  const anomalies = allAnomalies?.filter((a) => a.payslip_id === id) || [];
+  const anomalies = useMemo(
+    () => allAnomalies?.filter((a) => a.payslip_id === id) || [],
+    [allAnomalies, id],
+  );
 
   const [subject, setSubject] = useState('');
   const [body, setBody] = useState('');
   const [toEmail, setToEmail] = useState('');
   const [copied, setCopied] = useState(false);
   const [initialized, setInitialized] = useState(false);
+  const [draftId, setDraftId] = useState<string | null>(null);
+  const saveTimeoutRef = useRef<number | null>(null);
 
-  // Initialize once data loads
-  if (slip && !initialized) {
+  useEffect(() => {
+    if (!slip || !user || initialized) return;
+
     const dateLabel = safeDateLabel(slip.pay_date);
-    setSubject(buildSubject(dateLabel, anomalies.length > 0));
-    setBody(buildDraft(dateLabel, slip.employer_name, anomalies, profile?.first_name ?? null));
-    setToEmail(profile?.payroll_email ?? '');
-    setInitialized(true);
-  }
+    const initialSubject = buildSubject(dateLabel, anomalies.length > 0);
+    const initialBody = buildDraft(dateLabel, slip.employer_name, anomalies, profile?.first_name ?? null);
+    const initialEmail = profile?.payroll_email ?? '';
+
+    const initialiseDraft = async () => {
+      setSubject(initialSubject);
+      setBody(initialBody);
+      setToEmail(initialEmail);
+      setInitialized(true);
+
+      if (!canDraft) return;
+
+      const { data: existingDrafts, error: selectError } = await supabase
+        .from('issue_drafts')
+        .select('id, subject, body')
+        .eq('user_id', user.id)
+        .eq('payslip_id', slip.id)
+        .order('updated_at', { ascending: false })
+        .limit(1);
+
+      if (selectError) return;
+
+      const existingDraft = existingDrafts?.[0];
+      if (existingDraft) {
+        setDraftId(existingDraft.id);
+        setSubject(existingDraft.subject || initialSubject);
+        setBody(existingDraft.body || initialBody);
+        return;
+      }
+
+      const { data: insertedDraft, error: insertError } = await supabase
+        .from('issue_drafts')
+        .insert({
+          user_id: user.id,
+          payslip_id: slip.id,
+          subject: initialSubject,
+          body: initialBody,
+          status: 'draft',
+        })
+        .select('id')
+        .single();
+
+      if (!insertError && insertedDraft) {
+        setDraftId(insertedDraft.id);
+      }
+    };
+
+    void initialiseDraft();
+  }, [anomalies, canDraft, initialized, profile?.first_name, profile?.payroll_email, slip, user]);
+
+  useEffect(() => {
+    if (!draftId || !initialized) return;
+    if (saveTimeoutRef.current) window.clearTimeout(saveTimeoutRef.current);
+
+    saveTimeoutRef.current = window.setTimeout(() => {
+      void supabase
+        .from('issue_drafts')
+        .update({ subject, body, status: 'draft' })
+        .eq('id', draftId);
+    }, 300);
+
+    return () => {
+      if (saveTimeoutRef.current) window.clearTimeout(saveTimeoutRef.current);
+    };
+  }, [body, draftId, initialized, subject]);
 
   const handleCopy = () => {
     navigator.clipboard.writeText(`Subject: ${subject}\n\n${body}`);
