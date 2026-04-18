@@ -3,29 +3,53 @@ import type { DeductionOptions, MonthlyBreakdown } from '../tax-calculator-types
 import { round } from '../tax-calculator-types';
 
 /**
- * France 2024 — single, no children, standard PAS (Prélèvement à la source).
- * Income tax (IR) calculated on net taxable salary using barème progressif (single part).
- * Social contributions (employee share, simplified):
- *   - CSG/CRDS              ≈ 9.7% of 98.25% of gross (we apply ~9.5% of gross)
- *   - Sécurité sociale (vieillesse + chômage + complémentaire) ≈ 12% of gross (combined)
- * Combined employee share ≈ 22% of gross (rough average for cadres/non-cadres mid-band).
+ * France 2024 — single (1 part fiscale), no children, non-cadre, standard PAS.
+ * Source: impots.gouv.fr (barème 2024), URSSAF taux 2024, BOSS.gouv.fr.
+ *
+ * Social contributions modelled (employee share, with PMSS caps where applicable):
+ *   - CSG déductible       6.80% on 98.25% of gross (uncapped, abattement de 1.75%)
+ *   - CSG non-déductible   2.40% on 98.25% of gross (uncapped)
+ *   - CRDS                 0.50% on 98.25% of gross (uncapped)
+ *   - Sécurité sociale (vieillesse plafonnée) 6.90% on Tranche 1 (≤ PMSS €3,864/mo = €46,368/yr)
+ *   - Sécurité sociale (vieillesse déplafonnée) 0.40% on full gross
+ *   - AGIRC-ARRCO Tranche 1 (non-cadre) 3.15% on ≤ PMSS
+ *   - AGIRC-ARRCO Tranche 2 (non-cadre) 8.64% on PMSS – 8×PMSS
+ *   - APEC (cadre only) — NOT applied (defaulting to non-cadre)
+ *
+ * IR: standard 10% abattement (€448 min, €13,522 max for 2023 income), then 2024 barème.
+ * NB: PAS rate = effective average rate from previous year — we approximate with current-year barème.
  */
+const PMSS_2024 = 3_864 * 12; // €46,368/yr — Plafond mensuel de la Sécurité sociale
+
 function calcFranceMonthlyTax(annualSalary: number, opts: DeductionOptions): MonthlyBreakdown {
   const gross = annualSalary;
 
   const pensionRate = (opts.pensionPercent ?? 0) / 100;
   const annualPension = gross * pensionRate;
 
-  // Social contributions (employee share, simplified)
-  const csgCrds = gross * 0.095;            // CSG/CRDS
-  const secSociale = gross * 0.12;          // vieillesse + chômage + complémentaire (cadre avg)
-  const social = csgCrds + secSociale;
+  // ── CSG / CRDS (on 98.25% of gross, abattement de 1.75%) ──
+  const csgCrdsBase = gross * 0.9825;
+  const csgDed = csgCrdsBase * 0.0680;       // CSG déductible
+  const csgNonDed = csgCrdsBase * 0.0240;    // CSG non-déductible
+  const crds = csgCrdsBase * 0.0050;         // CRDS
 
-  // Net taxable for IR (rough — abattement of 10% capped, plus pension)
-  const abattement = Math.min(gross * 0.10, 14_171);
-  const taxableIR = Math.max(0, gross - abattement - annualPension);
+  // ── Sécurité sociale vieillesse (plafonnée + déplafonnée) ──
+  const tranche1 = Math.min(gross, PMSS_2024);
+  const ssVieillessePlaf = tranche1 * 0.069;
+  const ssVieillesseDeplaf = gross * 0.004;
 
-  // 2024 barème (single — 1 part)
+  // ── AGIRC-ARRCO (retraite complémentaire, non-cadre) ──
+  const arrcoT1 = tranche1 * 0.0315;
+  const trancheAbove = Math.max(0, gross - PMSS_2024);
+  const arrcoT2 = Math.min(trancheAbove, 7 * PMSS_2024) * 0.0864;
+
+  const social = csgDed + csgNonDed + crds + ssVieillessePlaf + ssVieillesseDeplaf + arrcoT1 + arrcoT2;
+
+  // ── Impôt sur le revenu (barème 2024, 1 part) ──
+  // Net imposable ≈ gross - CSG déductible - 10% abattement (capped)
+  const abattement10 = Math.min(Math.max((gross - csgDed) * 0.10, 448), 13_522);
+  const taxableIR = Math.max(0, gross - csgDed - abattement10 - annualPension);
+
   const bands = [
     { upTo: 11_294, rate: 0 },
     { upTo: 28_797, rate: 0.11 },
@@ -85,5 +109,5 @@ export const franceConfig: CountryConfig = {
     'Cotisations salariales', 'Cotisations patronales', 'Bulletin de paie',
   ],
   calculateMonthly: calcFranceMonthlyTax,
-  taxAssumptionsBlurb: '2024 France barème IR (1 part), PAS, combined employee CSG/CRDS + Sécurité sociale at average rates',
+  taxAssumptionsBlurb: '2024 France: Single (1 part), non-cadre, mainland. CSG/CRDS on 98.25% of gross, vieillesse capped at PMSS (€3,864/mo), AGIRC-ARRCO T1+T2. PAS approximated using current-year barème. If you are cadre, your AGIRC-ARRCO T2 rate and APEC contribution will differ. Ne tient pas compte du quotient familial.',
 };
