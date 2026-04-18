@@ -470,6 +470,32 @@ serve(async (req) => {
   }
 
   try {
+    const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
+    const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
+    const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+
+    if (!LOVABLE_API_KEY) {
+      throw new Error("LOVABLE_API_KEY is not configured");
+    }
+
+    // Authenticate the caller
+    const authHeader = req.headers.get("authorization")?.replace("Bearer ", "");
+    if (!authHeader) {
+      return new Response(
+        JSON.stringify({ error: "Unauthorized" }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+    const authClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    const { data: { user }, error: authError } = await authClient.auth.getUser(authHeader);
+    if (authError || !user) {
+      return new Response(
+        JSON.stringify({ error: "Unauthorized" }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     const { payslip_id } = await req.json();
     if (!payslip_id) {
       return new Response(
@@ -478,24 +504,57 @@ serve(async (req) => {
       );
     }
 
-    const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
-    const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-
-    if (!LOVABLE_API_KEY) {
-      throw new Error("LOVABLE_API_KEY is not configured");
-    }
-
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
-    // Resolve owner from payslip first so we can rate-limit per user.
+    // Verify the caller owns this payslip
     const { data: payslipOwner } = await supabase
       .from("payslips")
       .select("user_id")
       .eq("id", payslip_id)
       .single();
 
-    const userKey = payslipOwner?.user_id ?? "anon";
+    if (!payslipOwner || payslipOwner.user_id !== user.id) {
+      return new Response(
+        JSON.stringify({ error: "Forbidden" }),
+        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Server-side free-tier upload quota enforcement
+    const FREE_UPLOAD_LIMIT = 3;
+    const startOfMonth = new Date();
+    startOfMonth.setUTCDate(1);
+    startOfMonth.setUTCHours(0, 0, 0, 0);
+
+    const { data: activeSub } = await supabase
+      .from("subscriptions")
+      .select("status, current_period_end")
+      .eq("user_id", user.id)
+      .in("status", ["active", "trialing", "canceled"])
+      .order("created_at", { ascending: false });
+
+    const now = new Date().toISOString();
+    const hasActiveSub = (activeSub ?? []).some((s) =>
+      (s.status === "active" || s.status === "trialing") ||
+      (s.status === "canceled" && s.current_period_end && s.current_period_end > now)
+    );
+
+    if (!hasActiveSub) {
+      const { count: monthlyUploads } = await supabase
+        .from("payslips")
+        .select("*", { count: "exact", head: true })
+        .eq("user_id", user.id)
+        .gte("created_at", startOfMonth.toISOString());
+
+      if ((monthlyUploads ?? 0) > FREE_UPLOAD_LIMIT) {
+        return new Response(
+          JSON.stringify({ error: "Monthly upload limit reached. Upgrade to continue." }),
+          { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+    }
+
+    const userKey = user.id;
     const ipKey = getClientIp(req);
 
     // Two-tier rate limit: 10 uploads/user/hour, 30 uploads/IP/hour.
@@ -836,11 +895,9 @@ serve(async (req) => {
       }
     );
   } catch (e) {
-    console.error("process-payslip error:", e);
+    console.error("[process-payslip] error:", e);
     return new Response(
-      JSON.stringify({
-        error: e instanceof Error ? e.message : "Unknown error",
-      }),
+      JSON.stringify({ error: "An internal error occurred. Please try again." }),
       {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
