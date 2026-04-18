@@ -3,10 +3,19 @@ import type { DeductionOptions, MonthlyBreakdown } from '../tax-calculator-types
 import { round } from '../tax-calculator-types';
 
 /**
- * Portugal 2024 — single (não casado), no dependants, mainland.
- * IRS withholding approximated using 2024 progressive brackets:
+ * Portugal 2024 — single (não casado), no dependants, mainland, no IRS Jovem.
+ * Source: portaldasfinancas.gov.pt (IRS 2024), Segurança Social 11% TSU.
+ *
+ * IMPORTANT: Portuguese employment uses 14-month convention — annual gross is
+ * paid as 12 monthly salaries + Jul (subsídio de férias) + Dec (subsídio de Natal).
+ * To match a typical bulletin de paie, "monthly gross" = annual / 14, not /12.
+ * The Expected vs Actual UI compares against this monthly figure.
+ *
+ * IRS withholding 2024 (mainland, single, dependent worker, monthly):
  *   13.25% / 18% / 23% / 26% / 32.75% / 37% / 43.5% / 45% / 48%
- * Segurança Social employee share = 11% of gross (no cap for general regime).
+ * Annual brackets used here for simplicity; real retenção uses monthly tabelas.
+ *
+ * TSU (Taxa Social Única) employee share = 11% of gross, no cap (general regime).
  */
 function calcPortugalMonthlyTax(annualSalary: number, opts: DeductionOptions): MonthlyBreakdown {
   const gross = annualSalary;
@@ -14,12 +23,12 @@ function calcPortugalMonthlyTax(annualSalary: number, opts: DeductionOptions): M
   const pensionRate = (opts.pensionPercent ?? 0) / 100;
   const annualPension = gross * pensionRate;
 
-  // Segurança Social
+  // Segurança Social — 11% on full gross, no cap
   const social = gross * 0.11;
 
   const taxable = Math.max(0, gross - social - annualPension);
 
-  // 2024 IRS brackets (mainland, single)
+  // 2024 IRS brackets (mainland, single, dependent worker)
   const bands = [
     { upTo: 7_703, rate: 0.1325 },
     { upTo: 11_623, rate: 0.18 },
@@ -43,10 +52,13 @@ function calcPortugalMonthlyTax(annualSalary: number, opts: DeductionOptions): M
     }
   }
 
-  const grossMonthly = gross / 12;
-  const monthlyTax = tax / 12;
-  const monthlySocial = social / 12;
-  const monthlyPension = annualPension / 12;
+  // 14-month convention: divide by 14 to match a typical Portuguese monthly payslip
+  // (Jul + Dec months get a 2x payment via subsídios — those payslips will look 2× higher)
+  const PT_MONTHS = 14;
+  const grossMonthly = gross / PT_MONTHS;
+  const monthlyTax = tax / PT_MONTHS;
+  const monthlySocial = social / PT_MONTHS;
+  const monthlyPension = annualPension / PT_MONTHS;
   const totalDeductions = monthlyTax + monthlySocial + monthlyPension;
 
   return {
@@ -83,5 +95,5 @@ export const portugalConfig: CountryConfig = {
     'Recibo de vencimento', 'Recibo de salário', 'PPR',
   ],
   calculateMonthly: calcPortugalMonthlyTax,
-  taxAssumptionsBlurb: '2024 Portugal IRS brackets (mainland, single), Segurança Social 11%',
+  taxAssumptionsBlurb: '2024 Portugal: Single, no dependants, mainland (Madeira/Açores reduced rates not applied), no IRS Jovem. Annual salary divided by 14 (12 months + Jul/Dec subsídios) — your Jul and Dec payslips will be ~2× the monthly figure. TSU 11% employee, no cap.',
 };
