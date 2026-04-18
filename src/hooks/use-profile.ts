@@ -6,7 +6,7 @@ import type { CountryCode } from '@/lib/countries';
 
 export interface UserProfile {
   country: CountryCode | null;
-  currency: 'GBP' | 'EUR';
+  currency: 'GBP' | 'EUR' | 'USD';
   annual_salary: number | null;
   first_name: string | null;
   employer_name: string | null;
@@ -32,7 +32,7 @@ export function useProfile() {
       if (error) throw error;
       return {
         country: data.country as UserProfile['country'],
-        currency: (data.currency === 'EUR' ? 'EUR' : 'GBP') as UserProfile['currency'],
+        currency: ((['EUR', 'USD'].includes(data.currency ?? '') ? data.currency : 'GBP') as UserProfile['currency']),
         annual_salary: data.annual_salary ? Number(data.annual_salary) : null,
         first_name: data.first_name,
         employer_name: data.employer_name,
@@ -53,7 +53,8 @@ export function useProfile() {
 export function useCurrency() {
   const { data: profile } = useProfile();
   const currency = profile?.currency ?? 'GBP';
-  const symbol = currency === 'EUR' ? '€' : '£';
+  const symbolMap = { GBP: '£', EUR: '€', USD: '$' } as const;
+  const symbol = symbolMap[currency];
   // Locale per country so European number formatting (€1.234,56) works correctly
   const localeMap: Record<string, string> = {
     UK: 'en-GB',
@@ -65,8 +66,10 @@ export function useCurrency() {
     Italy: 'it-IT',
     Belgium: 'fr-BE',
     Portugal: 'pt-PT',
+    US: 'en-US',
   };
-  const locale = localeMap[profile?.country ?? ''] ?? (currency === 'EUR' ? 'en-IE' : 'en-GB');
+  const defaultLocale = currency === 'USD' ? 'en-US' : currency === 'EUR' ? 'en-IE' : 'en-GB';
+  const locale = localeMap[profile?.country ?? ''] ?? defaultLocale;
 
   const format = (amount: number) =>
     `${symbol}${amount.toLocaleString(locale, { minimumFractionDigits: 2 })}`;
