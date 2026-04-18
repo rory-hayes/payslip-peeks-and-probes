@@ -7,9 +7,10 @@ import { Skeleton } from '@/components/ui/skeleton';
 import AppLayout from '@/components/layout/AppLayout';
 import AnomalyExplanation from '@/components/AnomalyExplanation';
 import { useAnomalies } from '@/hooks/use-payslip-data';
+import { useUpdateAnomalyStatus } from '@/hooks/use-anomaly-status';
 import { formatDate } from '@/lib/date-utils';
 import type { AnomalyStatus } from '@/lib/types';
-import { AlertTriangle, CheckCircle, ChevronDown, ChevronUp, Eye, MessageSquare } from 'lucide-react';
+import { AlertTriangle, CheckCircle, ChevronDown, ChevronUp, Eye, MessageSquare, RotateCcw, Send } from 'lucide-react';
 
 const statusLabels: Record<AnomalyStatus, string> = {
   new: 'New',
