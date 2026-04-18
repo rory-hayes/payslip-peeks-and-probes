@@ -84,5 +84,5 @@ export const spainConfig: CountryConfig = {
     'Nómina', 'Recibo de salarios',
   ],
   calculateMonthly: calcSpainMonthlyTax,
-  taxAssumptionsBlurb: '2024 Spain state + average CCAA IRPF bands, employee Seguridad Social ≈6.48%, single (no regional variation)',
+  taxAssumptionsBlurb: '2024 Spain: Single, no children, mínimo personal €5,550. IRPF combined state + average CCAA bands — your actual rate varies ±5% by Comunidad Autónoma (e.g. Madrid lower, Cataluña higher). Seguridad Social employee 6.48% (capped at base máxima €56,646). Excludes: deducciones por hijos, vivienda habitual, plan de pensiones de empresa.',
 };

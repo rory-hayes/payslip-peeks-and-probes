@@ -90,5 +90,5 @@ export const belgiumConfig: CountryConfig = {
     'Fiche de paie', 'Loonfiche', 'Pension complémentaire', 'Aanvullend pensioen',
   ],
   calculateMonthly: calcBelgiumMonthlyTax,
-  taxAssumptionsBlurb: '2024 Belgium IPP brackets (single, isolé), ONSS 13.07%, ~7% communal additional',
+  taxAssumptionsBlurb: '2024 Belgium: Single (isolé), no dependants, quotité exemptée €10,160. ONSS employee 13.07% (no cap). Communal additional ≈7% (avg — varies 0%–9% by commune). Excludes: cotisation spéciale de sécurité sociale (€0–60/mo), bonus à l\'emploi, frais professionnels forfaitaires détaillés.',
 };
