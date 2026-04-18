@@ -25,6 +25,7 @@ const PayslipDetail = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [retrying, setRetrying] = useState(false);
+  const updateStatus = useUpdateAnomalyStatus();
 
   const allPayslips = realPayslips || [];
   const allAnomalies = realAllAnomalies || [];
