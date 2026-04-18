@@ -352,6 +352,7 @@ export type Database = {
           created_at: string
           currency: string | null
           employer_name: string | null
+          filing_status: string | null
           first_name: string | null
           has_benefits: boolean | null
           has_bonus: boolean | null
@@ -363,6 +364,7 @@ export type Database = {
           payroll_email: string | null
           pension_percent: number | null
           student_loan_plan: string | null
+          sub_region: string | null
           updated_at: string
           user_id: string
         }
@@ -373,6 +375,7 @@ export type Database = {
           created_at?: string
           currency?: string | null
           employer_name?: string | null
+          filing_status?: string | null
           first_name?: string | null
           has_benefits?: boolean | null
           has_bonus?: boolean | null
@@ -384,6 +387,7 @@ export type Database = {
           payroll_email?: string | null
           pension_percent?: number | null
           student_loan_plan?: string | null
+          sub_region?: string | null
           updated_at?: string
           user_id: string
         }
@@ -394,6 +398,7 @@ export type Database = {
           created_at?: string
           currency?: string | null
           employer_name?: string | null
+          filing_status?: string | null
           first_name?: string | null
           has_benefits?: boolean | null
           has_bonus?: boolean | null
@@ -405,6 +410,7 @@ export type Database = {
           payroll_email?: string | null
           pension_percent?: number | null
           student_loan_plan?: string | null
+          sub_region?: string | null
           updated_at?: string
           user_id?: string
         }
