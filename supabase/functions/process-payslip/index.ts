@@ -83,7 +83,7 @@ Return a JSON object using this exact schema (use null for fields you cannot fin
   "pay_period_start": "YYYY-MM-DD or null",
   "pay_period_end": "YYYY-MM-DD or null",
   "employer_name": "string or null",
-  "country": "UK or Ireland or null",
+  "country": "UK or Ireland or Germany or null",
   "gross_pay": number or null,
   "net_pay": number or null,
   "taxable_pay": number or null,
@@ -91,6 +91,9 @@ Return a JSON object using this exact schema (use null for fields you cannot fin
   "national_insurance_amount": number or null,
   "prsi_amount": number or null,
   "usc_amount": number or null,
+  "social_security_amount": number or null,
+  "solidarity_amount": number or null,
+  "church_tax_amount": number or null,
   "pension_amount": number or null,
   "student_loan_amount": number or null,
   "bonus_amount": number or null,
@@ -106,10 +109,24 @@ Return a JSON object using this exact schema (use null for fields you cannot fin
   "notes": "any extraction notes"
 }
 
+Country detection:
+- If PRSI or USC are present, country is Ireland
+- If "National Insurance" / "NI" is present, country is UK
+- If German terms appear (Brutto, Netto, Lohnsteuer, Solidaritätszuschlag, Sozialversicherung, Steuerklasse, Krankenversicherung, Rentenversicherung, Pflegeversicherung, Arbeitslosenversicherung), country is Germany
+
+Field mapping for Germany:
+- "Brutto" / "Bruttobezüge" → gross_pay
+- "Netto" / "Auszahlungsbetrag" → net_pay
+- "Lohnsteuer" → tax_amount
+- "Solidaritätszuschlag" / "Soli" → solidarity_amount
+- "Kirchensteuer" / "KiSt" → church_tax_amount
+- Sum of "Krankenversicherung (KV) + Rentenversicherung (RV) + Arbeitslosenversicherung (AV) + Pflegeversicherung (PV)" employee shares → social_security_amount
+- "Betriebsrente" / "Gehaltsumwandlung" / pension contributions → pension_amount
+
 Rules:
-- All monetary values should be plain numbers (no currency symbols)
-- If PRSI or USC are present, country is likely Ireland
-- If National Insurance is present, country is likely UK
+- All monetary values should be plain numbers (no currency symbols, no thousand separators)
+- For German payslips, use the EMPLOYEE share (Arbeitnehmer-Anteil), NOT the employer share
+- For German payslips, decimal separator on the document is a comma — convert to a dot in the output
 - Be precise with decimal values
 - Only return the JSON object, no other text`;
 
@@ -123,6 +140,9 @@ interface Extraction {
   national_insurance_amount: number | null;
   prsi_amount: number | null;
   usc_amount: number | null;
+  social_security_amount: number | null;
+  solidarity_amount: number | null;
+  church_tax_amount: number | null;
   pension_amount: number | null;
   student_loan_amount: number | null;
   bonus_amount: number | null;
@@ -146,7 +166,9 @@ function runAnomalyChecks(
   threshold = 5
 ): Anomaly[] {
   const anomalies: Anomaly[] = [];
-  const sym = (country === "Ireland" || country === "ireland") ? "€" : "£";
+  const isIreland = country === "Ireland" || country === "ireland";
+  const isGermany = country === "Germany" || country === "germany";
+  const sym = isIreland || isGermany ? "€" : "£";
 
   const pct = (curr: number, prev: number) =>
     prev !== 0 ? ((curr - prev) / Math.abs(prev)) * 100 : curr !== 0 ? 100 : 0;
