@@ -92,6 +92,8 @@ const App = () => (
             <Route path="/guides/italy-payslip-guide" element={<ItalyPayslipGuide />} />
             <Route path="/guides/belgium-payslip-guide" element={<BelgiumPayslipGuide />} />
             <Route path="/guides/portugal-payslip-guide" element={<PortugalPayslipGuide />} />
+            <Route path="/calculator" element={<CalculatorIndex />} />
+            <Route path="/calculator/:country" element={<CountryCalculator />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
           <CookieConsent />
