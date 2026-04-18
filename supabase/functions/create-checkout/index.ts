@@ -1,6 +1,12 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "npm:@supabase/supabase-js@2";
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { type StripeEnv, createStripeClient } from "../_shared/stripe.ts";
+
+const supabase = createClient(
+  Deno.env.get("SUPABASE_URL")!,
+  Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+);
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -8,7 +14,16 @@ serve(async (req) => {
   }
 
   try {
-    const { priceId, quantity, customerEmail, userId, returnUrl, environment } = await req.json();
+    const authHeader = req.headers.get("authorization")?.replace("Bearer ", "");
+    const { data: { user }, error: authError } = await supabase.auth.getUser(authHeader);
+    if (authError || !user) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const { priceId, quantity, returnUrl, environment } = await req.json();
     if (!priceId || typeof priceId !== 'string' || !/^[a-zA-Z0-9_-]+$/.test(priceId)) {
       return new Response(JSON.stringify({ error: "Invalid priceId" }), {
         status: 400,
@@ -34,11 +49,9 @@ serve(async (req) => {
       mode: isRecurring ? "subscription" : "payment",
       ui_mode: "embedded",
       return_url: returnUrl || `${req.headers.get("origin")}/checkout/return?session_id={CHECKOUT_SESSION_ID}`,
-      ...(customerEmail && { customer_email: customerEmail }),
-      ...(userId && {
-        metadata: { userId },
-        ...(isRecurring && { subscription_data: { metadata: { userId } } }),
-      }),
+      ...(user.email && { customer_email: user.email }),
+      metadata: { userId: user.id },
+      ...(isRecurring && { subscription_data: { metadata: { userId: user.id } } }),
     });
 
     return new Response(JSON.stringify({ clientSecret: session.client_secret }), {
