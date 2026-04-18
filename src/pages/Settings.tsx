@@ -55,6 +55,7 @@ import { getStripeEnvironment } from '@/lib/stripe';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { Download, Trash2, HelpCircle, Sparkles, ExternalLink } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { deleteUserAccountData } from '@/lib/delete-account';
 
 const STUDENT_LOAN_PLANS = [
   { value: 'plan1', label: 'Plan 1', desc: 'Started before Sep 2012 (England/Wales)' },
@@ -184,7 +185,6 @@ const Settings = () => {
         supabase.from('employers').select('*').eq('user_id', user.id),
       ]);
 
-      // Strip the join column used for RLS filtering
       const cleanExtractions = (extractions ?? [])
         .filter((e: any) => e.payslips?.user_id === user.id)
         .map(({ payslips: _j, ...rest }: any) => rest);
@@ -222,48 +222,13 @@ const Settings = () => {
     if (deleteConfirm !== 'DELETE' || !user) return;
     setDeleting(true);
     try {
-      // 0. Cancel any active Stripe subscriptions before deleting data
-      if (subscription.isPremium && subscription.plan !== 'lifetime') {
-        try {
-          await supabase.functions.invoke('cancel-subscription-on-delete', {
-            body: { environment: getStripeEnvironment() },
-          });
-        } catch (e) {
-          console.error('Failed to cancel Stripe subscription:', e);
-          // Continue with deletion even if Stripe cancel fails
-        }
-      }
+      await deleteUserAccountData(supabase as never, {
+        userId: user.id,
+        isPremium: subscription.isPremium,
+        plan: subscription.plan,
+        environment: getStripeEnvironment(),
+      });
 
-      // 1. Get payslip file paths so we can delete from storage
-      const { data: payslipFiles } = await supabase
-        .from('payslips')
-        .select('file_path')
-        .eq('user_id', user.id);
-
-      // 2. Delete storage files
-      const paths = (payslipFiles ?? [])
-        .map((p) => p.file_path)
-        .filter(Boolean) as string[];
-      if (paths.length > 0) {
-        await supabase.storage.from('payslips').remove(paths);
-      }
-
-      // 3. Delete database records (cascades handle extractions + anomalies)
-      await Promise.all([
-        supabase.from('user_notes').delete().eq('user_id', user.id),
-        supabase.from('issue_drafts').delete().eq('user_id', user.id),
-        supabase.from('audit_events').delete().eq('user_id', user.id),
-        supabase.from('billing_subscriptions').delete().eq('user_id', user.id),
-        supabase.from('employers').delete().eq('user_id', user.id),
-      ]);
-
-      // Payslips (cascade deletes extractions + anomaly_results)
-      await supabase.from('payslips').delete().eq('user_id', user.id);
-
-      // Profile last
-      await supabase.from('profiles').delete().eq('user_id', user.id);
-
-      // 4. Sign out and redirect
       await signOut();
       window.location.href = '/';
     } catch {
@@ -281,7 +246,6 @@ const Settings = () => {
           <p className="text-sm text-muted-foreground">Manage your profile, preferences, and data</p>
         </div>
 
-        {/* Plan & Usage */}
         <Card className="border-0 shadow-sm">
           <CardHeader className="pb-2"><CardTitle className="text-base">Plan & usage</CardTitle></CardHeader>
           <CardContent className="space-y-4">
@@ -518,7 +482,6 @@ const Settings = () => {
 
         <Separator />
 
-        {/* How it works */}
         <Card className="border-0 shadow-sm">
           <CardHeader className="pb-2">
             <CardTitle className="text-base flex items-center gap-2">
