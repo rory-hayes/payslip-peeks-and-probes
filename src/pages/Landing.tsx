@@ -225,8 +225,8 @@ const Landing = () => {
               </div>
               <CardContent className="p-8">
                 <h3 className="font-semibold text-foreground">Plus</h3>
-                <div className="mt-4"><span className="text-4xl font-bold text-foreground">£17.99</span><span className="text-muted-foreground">/year</span></div>
-                <p className="mt-1 text-xs text-muted-foreground">Just £1.50/month</p>
+                <div className="mt-4"><span className="text-4xl font-bold text-foreground">€19.99</span><span className="text-muted-foreground">/year</span></div>
+                <p className="mt-1 text-xs text-muted-foreground">Just €1.67/month</p>
                 <p className="mt-2 text-sm text-muted-foreground">Full access. Peace of mind, every pay day.</p>
                 <ul className="mt-6 space-y-3 text-sm text-muted-foreground">
                   {['Unlimited payslip uploads', 'Full anomaly detection suite', 'Compare any two payslips', 'Unlimited issue drafts', 'Historical trends & insights', 'Priority support'].map((f, i) => (
