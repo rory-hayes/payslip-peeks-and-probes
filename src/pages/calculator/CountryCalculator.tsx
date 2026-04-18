@@ -22,6 +22,7 @@ const SLUG_MAP: Record<string, CountryCode> = {
   italy: 'Italy',
   belgium: 'Belgium',
   portugal: 'Portugal',
+  us: 'US',
 };
 
 const CountryCalculator = () => {
