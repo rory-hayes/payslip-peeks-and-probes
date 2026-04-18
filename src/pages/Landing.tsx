@@ -60,6 +60,7 @@ const Landing = () => {
             <a href="#features" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Features</a>
             <a href="#pricing" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Pricing</a>
             <a href="#faq" className="text-sm text-muted-foreground hover:text-foreground transition-colors">FAQ</a>
+            <Link to="/guides" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Guides</Link>
           </div>
           <div className="flex items-center gap-3">
             <Link to="/sign-in">

@@ -25,6 +25,13 @@ import CheckoutReturn from "./pages/CheckoutReturn";
 import Privacy from "./pages/Privacy";
 import Terms from "./pages/Terms";
 import NotFound from "./pages/NotFound";
+import GuidesIndex from "./pages/guides/GuidesIndex";
+import HowToCheckPayslip from "./pages/guides/HowToCheckPayslip";
+import WhyNetPayDown from "./pages/guides/WhyNetPayDown";
+import CommonMistakes from "./pages/guides/CommonMistakes";
+import ComparePayslipsGuide from "./pages/guides/ComparePayslips";
+import UkPayslipGuide from "./pages/guides/UkPayslipGuide";
+import IrelandPayslipGuide from "./pages/guides/IrelandPayslipGuide";
 import CookieConsent from "@/components/CookieConsent";
 import { initAnalytics } from "@/lib/analytics";
 
@@ -62,6 +69,13 @@ const App = () => (
             <Route path="/checkout/return" element={<ProtectedRoute><CheckoutReturn /></ProtectedRoute>} />
             <Route path="/privacy" element={<Privacy />} />
             <Route path="/terms" element={<Terms />} />
+            <Route path="/guides" element={<GuidesIndex />} />
+            <Route path="/guides/how-to-check-your-payslip" element={<HowToCheckPayslip />} />
+            <Route path="/guides/why-did-my-net-pay-go-down" element={<WhyNetPayDown />} />
+            <Route path="/guides/common-payslip-mistakes" element={<CommonMistakes />} />
+            <Route path="/guides/compare-two-payslips" element={<ComparePayslipsGuide />} />
+            <Route path="/guides/uk-payslip-guide" element={<UkPayslipGuide />} />
+            <Route path="/guides/ireland-payslip-guide" element={<IrelandPayslipGuide />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
           <CookieConsent />
