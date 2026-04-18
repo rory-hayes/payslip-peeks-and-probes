@@ -8,9 +8,10 @@ import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ArrowRight, Info, Share2 } from 'lucide-react';
 import { calculateExpectedMonthly } from '@/lib/tax-calculator';
-import { getCountryConfig, type CountryCode } from '@/lib/countries';
+import { getCountryConfig, COUNTRY_LIST, type CountryCode } from '@/lib/countries';
 import { toast } from 'sonner';
 
 interface NetPayCalculatorProps {
@@ -23,21 +24,25 @@ interface NetPayCalculatorProps {
 
 type StudentLoanPlan = 'plan1' | 'plan2' | 'plan4' | 'plan5' | 'postgrad';
 
-const formatMoney = (amount: number, locale: string, symbol: string) =>
-  `${symbol}${amount.toLocaleString(locale, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
-
 const NetPayCalculator = ({ country, lockCountry = false, compact = false }: NetPayCalculatorProps) => {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
+
+  const config = getCountryConfig(country);
 
   // ── Initial state from query params (deep-linkable) ──────────
   const initialGross = (() => {
     const raw = searchParams.get('gross');
     const n = raw ? Number(raw) : NaN;
-    return Number.isFinite(n) && n > 0 ? n : country === 'UK' ? 35000 : 40000;
+    if (Number.isFinite(n) && n > 0) return n;
+    if (country === 'UK') return 35000;
+    if (country === 'US') return 75000;
+    return 40000;
   })();
   const initialPension = Number(searchParams.get('pension') ?? '0');
   const initialStudentLoan = searchParams.get('studentLoan') as StudentLoanPlan | null;
+  const initialState = searchParams.get('state');
+  const initialFiling = searchParams.get('filing');
 
   const [gross, setGross] = useState<number>(initialGross);
   const [grossInput, setGrossInput] = useState<string>(String(initialGross));
@@ -46,15 +51,35 @@ const NetPayCalculator = ({ country, lockCountry = false, compact = false }: Net
   const [hasStudentLoan, setHasStudentLoan] = useState<boolean>(country === 'UK' && !!initialStudentLoan);
   const [studentLoanPlan, setStudentLoanPlan] = useState<StudentLoanPlan>(initialStudentLoan ?? 'plan2');
 
-  const config = getCountryConfig(country);
+  // Sub-region (US state, etc.) — default to first option for the country
+  const defaultSubRegion = config.subRegions?.[0]?.code ?? null;
+  const [subRegion, setSubRegion] = useState<string | null>(
+    initialState && config.subRegions?.some((s) => s.code === initialState) ? initialState : defaultSubRegion,
+  );
+
+  // Filing status — default to first option for the country
+  const defaultFiling = config.filingStatuses?.[0]?.code ?? null;
+  const [filingStatus, setFilingStatus] = useState<string | null>(
+    initialFiling && config.filingStatuses?.some((f) => f.code === initialFiling) ? initialFiling : defaultFiling,
+  );
+
+  // Reset sub-region / filing status when country changes
+  useEffect(() => {
+    setSubRegion(config.subRegions?.[0]?.code ?? null);
+    setFilingStatus(config.filingStatuses?.[0]?.code ?? null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [country]);
+
   const breakdown = useMemo(
     () =>
       calculateExpectedMonthly(gross, country, {
         pensionPercent: hasPension ? pensionPercent : 0,
         hasStudentLoan: country === 'UK' && hasStudentLoan,
         studentLoanPlan,
+        subRegion,
+        filingStatus,
       }),
-    [gross, country, hasPension, pensionPercent, hasStudentLoan, studentLoanPlan],
+    [gross, country, hasPension, pensionPercent, hasStudentLoan, studentLoanPlan, subRegion, filingStatus],
   );
 
   const fmt = (n: number) =>
@@ -71,11 +96,15 @@ const NetPayCalculator = ({ country, lockCountry = false, compact = false }: Net
       else next.delete('pension');
       if (country === 'UK' && hasStudentLoan) next.set('studentLoan', studentLoanPlan);
       else next.delete('studentLoan');
+      if (config.subRegions && subRegion) next.set('state', subRegion);
+      else next.delete('state');
+      if (config.filingStatuses && filingStatus) next.set('filing', filingStatus);
+      else next.delete('filing');
       setSearchParams(next, { replace: true });
     }, 300);
     return () => window.clearTimeout(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [gross, hasPension, pensionPercent, hasStudentLoan, studentLoanPlan, country]);
+  }, [gross, hasPension, pensionPercent, hasStudentLoan, studentLoanPlan, country, subRegion, filingStatus]);
 
   const effectiveTaxRate = gross > 0 ? ((breakdown.totalDeductions * 12) / gross) * 100 : 0;
 
@@ -97,14 +126,11 @@ const NetPayCalculator = ({ country, lockCountry = false, compact = false }: Net
           onValueChange={(v) => navigate(`/calculator/${v.toLowerCase()}${window.location.search}`)}
         >
           <TabsList className="flex flex-wrap h-auto">
-            {(['UK', 'Ireland', 'Germany', 'France', 'Netherlands', 'Spain', 'Italy', 'Belgium', 'Portugal'] as CountryCode[]).map((c) => {
-              const cfg = getCountryConfig(c);
-              return (
-                <TabsTrigger key={c} value={c} className="gap-1.5">
-                  <span aria-hidden="true">{cfg.flag}</span> {cfg.name}
-                </TabsTrigger>
-              );
-            })}
+            {COUNTRY_LIST.map((cfg) => (
+              <TabsTrigger key={cfg.code} value={cfg.code} className="gap-1.5">
+                <span aria-hidden="true">{cfg.flag}</span> {cfg.name}
+              </TabsTrigger>
+            ))}
           </TabsList>
         </Tabs>
       )}
@@ -133,9 +159,46 @@ const NetPayCalculator = ({ country, lockCountry = false, compact = false }: Net
               </div>
             </div>
 
+            {/* Sub-region (US state, etc.) */}
+            {config.subRegions && config.subRegions.length > 0 && (
+              <div>
+                <Label htmlFor="sub-region">{config.subRegionLabel ?? 'Region'}</Label>
+                <Select value={subRegion ?? ''} onValueChange={setSubRegion}>
+                  <SelectTrigger id="sub-region" className="mt-1.5">
+                    <SelectValue placeholder={`Select ${(config.subRegionLabel ?? 'region').toLowerCase()}`} />
+                  </SelectTrigger>
+                  <SelectContent className="max-h-72">
+                    {config.subRegions.map((s) => (
+                      <SelectItem key={s.code} value={s.code}>
+                        {s.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            {/* Filing status */}
+            {config.filingStatuses && config.filingStatuses.length > 0 && (
+              <div>
+                <Label>{config.filingStatusLabel ?? 'Filing status'}</Label>
+                <Tabs value={filingStatus ?? ''} onValueChange={setFilingStatus} className="mt-1.5">
+                  <TabsList className="grid w-full" style={{ gridTemplateColumns: `repeat(${config.filingStatuses.length}, minmax(0, 1fr))` }}>
+                    {config.filingStatuses.map((f) => (
+                      <TabsTrigger key={f.code} value={f.code} className="text-xs">
+                        {f.label}
+                      </TabsTrigger>
+                    ))}
+                  </TabsList>
+                </Tabs>
+              </div>
+            )}
+
             <div className="space-y-3">
               <div className="flex items-center justify-between">
-                <Label htmlFor="pension-toggle" className="cursor-pointer">Workplace pension</Label>
+                <Label htmlFor="pension-toggle" className="cursor-pointer">
+                  {country === 'US' ? 'Pre-tax 401(k)' : 'Workplace pension'}
+                </Label>
                 <Switch id="pension-toggle" checked={hasPension} onCheckedChange={setHasPension} />
               </div>
               {hasPension && (
@@ -212,6 +275,12 @@ const NetPayCalculator = ({ country, lockCountry = false, compact = false }: Net
                   <span className="text-destructive">−{fmt(breakdown.incomeTax)}</span>
                 </div>
               )}
+              {(breakdown.stateTax ?? 0) > 0 && (
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">State income tax</span>
+                  <span className="text-destructive">−{fmt(breakdown.stateTax ?? 0)}</span>
+                </div>
+              )}
               {breakdown.nationalInsurance > 0 && (
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">{config.deductionLines.find((l) => l.expectedKey === 'nationalInsurance')?.label ?? 'Social contributions'}</span>
@@ -232,7 +301,7 @@ const NetPayCalculator = ({ country, lockCountry = false, compact = false }: Net
               )}
               {breakdown.pension > 0 && (
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">Pension</span>
+                  <span className="text-muted-foreground">{country === 'US' ? '401(k)' : 'Pension'}</span>
                   <span className="text-destructive">−{fmt(breakdown.pension)}</span>
                 </div>
               )}
@@ -251,7 +320,7 @@ const NetPayCalculator = ({ country, lockCountry = false, compact = false }: Net
             <div className="mt-6 flex items-center gap-2">
               <Badge variant="secondary" className="text-[10px] uppercase tracking-wide">Estimate</Badge>
               <p className="text-xs text-muted-foreground">
-                Based on 2024/25 rates. Single, no children. Your actual deductions may differ.
+                Based on 2024 rates. Single, no children. Your actual deductions may differ.
               </p>
             </div>
 

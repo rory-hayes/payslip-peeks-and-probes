@@ -6,7 +6,7 @@ import type { CountryCode } from '@/lib/countries';
 
 export interface UserProfile {
   country: CountryCode | null;
-  currency: 'GBP' | 'EUR';
+  currency: 'GBP' | 'EUR' | 'USD';
   annual_salary: number | null;
   first_name: string | null;
   employer_name: string | null;
@@ -17,6 +17,10 @@ export interface UserProfile {
   student_loan_plan: string | null;
   onboarding_complete: boolean;
   payroll_email: string | null;
+  /** US state code (e.g. 'CA') or other sub-national region */
+  sub_region: string | null;
+  /** Filing status (e.g. 'single', 'married') */
+  filing_status: string | null;
 }
 
 export function useProfile() {
@@ -26,13 +30,13 @@ export function useProfile() {
     queryFn: async (): Promise<UserProfile> => {
       const { data, error } = await supabase
         .from('profiles')
-        .select('country, currency, annual_salary, first_name, employer_name, pay_frequency, has_pension, has_student_loan, pension_percent, student_loan_plan, onboarding_complete, payroll_email')
+        .select('country, currency, annual_salary, first_name, employer_name, pay_frequency, has_pension, has_student_loan, pension_percent, student_loan_plan, onboarding_complete, payroll_email, sub_region, filing_status')
         .eq('user_id', user!.id)
         .single();
       if (error) throw error;
       return {
         country: data.country as UserProfile['country'],
-        currency: (data.currency === 'EUR' ? 'EUR' : 'GBP') as UserProfile['currency'],
+        currency: ((['EUR', 'USD'].includes(data.currency ?? '') ? data.currency : 'GBP') as UserProfile['currency']),
         annual_salary: data.annual_salary ? Number(data.annual_salary) : null,
         first_name: data.first_name,
         employer_name: data.employer_name,
@@ -43,6 +47,8 @@ export function useProfile() {
         student_loan_plan: data.student_loan_plan ?? null,
         onboarding_complete: !!data.onboarding_complete,
         payroll_email: data.payroll_email ?? null,
+        sub_region: (data as { sub_region?: string | null }).sub_region ?? null,
+        filing_status: (data as { filing_status?: string | null }).filing_status ?? null,
       };
     },
     enabled: !!user,
@@ -53,7 +59,8 @@ export function useProfile() {
 export function useCurrency() {
   const { data: profile } = useProfile();
   const currency = profile?.currency ?? 'GBP';
-  const symbol = currency === 'EUR' ? '€' : '£';
+  const symbolMap = { GBP: '£', EUR: '€', USD: '$' } as const;
+  const symbol = symbolMap[currency];
   // Locale per country so European number formatting (€1.234,56) works correctly
   const localeMap: Record<string, string> = {
     UK: 'en-GB',
@@ -65,8 +72,10 @@ export function useCurrency() {
     Italy: 'it-IT',
     Belgium: 'fr-BE',
     Portugal: 'pt-PT',
+    US: 'en-US',
   };
-  const locale = localeMap[profile?.country ?? ''] ?? (currency === 'EUR' ? 'en-IE' : 'en-GB');
+  const defaultLocale = currency === 'USD' ? 'en-US' : currency === 'EUR' ? 'en-IE' : 'en-GB';
+  const locale = localeMap[profile?.country ?? ''] ?? defaultLocale;
 
   const format = (amount: number) =>
     `${symbol}${amount.toLocaleString(locale, { minimumFractionDigits: 2 })}`;
