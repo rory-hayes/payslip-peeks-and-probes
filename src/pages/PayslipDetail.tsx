@@ -142,14 +142,39 @@ const PayslipDetail = () => {
                 <div key={a.id} className="rounded-lg border border-border p-4">
                   <div className="flex items-start justify-between gap-2">
                     <h4 className="text-sm font-semibold text-foreground">{a.title}</h4>
-                    <Badge variant="outline" className={`text-xs capitalize shrink-0 ${
-                      a.severity === 'high' ? 'border-destructive text-destructive' :
-                      a.severity === 'medium' ? 'border-anomaly text-anomaly' :
-                      'border-warning text-warning'
-                    }`}>{a.severity}</Badge>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <Badge variant="outline" className={`text-xs capitalize ${
+                        a.severity === 'high' ? 'border-destructive text-destructive' :
+                        a.severity === 'medium' ? 'border-anomaly text-anomaly' :
+                        'border-warning text-warning'
+                      }`}>{a.severity}</Badge>
+                      <Badge variant="secondary" className="text-xs capitalize">{a.status}</Badge>
+                    </div>
                   </div>
                   <div className="mt-3">
                     <AnomalyExplanation description={a.description} suggestedAction={a.suggested_action} />
+                  </div>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {a.status !== 'reviewed' && a.status !== 'resolved' && a.status !== 'raised' && (
+                      <Button variant="outline" size="sm" className="gap-1 text-xs h-7" onClick={() => updateStatus.mutate({ id: a.id, status: 'reviewed' })} disabled={updateStatus.isPending}>
+                        <Eye className="h-3 w-3" /> Mark reviewed
+                      </Button>
+                    )}
+                    {a.status !== 'raised' && a.status !== 'resolved' && (
+                      <Button variant="outline" size="sm" className="gap-1 text-xs h-7" onClick={() => updateStatus.mutate({ id: a.id, status: 'raised' })} disabled={updateStatus.isPending}>
+                        <Send className="h-3 w-3" /> Raised with payroll
+                      </Button>
+                    )}
+                    {a.status !== 'resolved' && (
+                      <Button size="sm" className="gap-1 text-xs h-7" onClick={() => updateStatus.mutate({ id: a.id, status: 'resolved' })} disabled={updateStatus.isPending}>
+                        <CheckCircle className="h-3 w-3" /> Resolve
+                      </Button>
+                    )}
+                    {a.status !== 'new' && (
+                      <Button variant="ghost" size="sm" className="gap-1 text-xs h-7 text-muted-foreground" onClick={() => updateStatus.mutate({ id: a.id, status: 'new' })} disabled={updateStatus.isPending}>
+                        <RotateCcw className="h-3 w-3" /> Reopen
+                      </Button>
+                    )}
                   </div>
                 </div>
               ))}
