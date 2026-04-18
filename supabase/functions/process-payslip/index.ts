@@ -83,7 +83,7 @@ Return a JSON object using this exact schema (use null for fields you cannot fin
   "pay_period_start": "YYYY-MM-DD or null",
   "pay_period_end": "YYYY-MM-DD or null",
   "employer_name": "string or null",
-  "country": "UK or Ireland or Germany or null",
+  "country": "UK or Ireland or Germany or France or Netherlands or Spain or Italy or Belgium or Portugal or null",
   "gross_pay": number or null,
   "net_pay": number or null,
   "taxable_pay": number or null,
@@ -111,8 +111,14 @@ Return a JSON object using this exact schema (use null for fields you cannot fin
 
 Country detection:
 - If PRSI or USC are present, country is Ireland
-- If "National Insurance" / "NI" is present, country is UK
+- If "National Insurance" / "NI" / "PAYE" with £ is present, country is UK
 - If German terms appear (Brutto, Netto, Lohnsteuer, Solidaritätszuschlag, Sozialversicherung, Steuerklasse, Krankenversicherung, Rentenversicherung, Pflegeversicherung, Arbeitslosenversicherung), country is Germany
+- If French terms appear (Bulletin de paie, Salaire brut, Net à payer, Prélèvement à la source, CSG, CRDS, Sécurité sociale, AGIRC-ARRCO), country is France
+- If Dutch terms appear (Loonstrook, Salarisstrook, Brutoloon, Nettoloon, Loonheffing, Loonbelasting, Heffingskorting, Vakantiegeld, AOW, WLZ), country is Netherlands
+- If Spanish terms appear (Nómina, Recibo de salarios, Salario bruto, IRPF, Seguridad Social, Contingencias comunes, Líquido a percibir), country is Spain
+- If Italian terms appear (Busta paga, Cedolino, Retribuzione lorda, IRPEF, INPS, TFR, Addizionale regionale), country is Italy
+- If Belgian terms appear (Fiche de paie, Loonfiche, Précompte professionnel, Bedrijfsvoorheffing, ONSS, RSZ, Pécule de vacances), country is Belgium
+- If Portuguese terms appear (Recibo de vencimento, Vencimento bruto, IRS, Retenção na fonte, Segurança Social, Subsídio de férias), country is Portugal
 
 Field mapping for Germany:
 - "Brutto" / "Bruttobezüge" → gross_pay
@@ -123,10 +129,52 @@ Field mapping for Germany:
 - Sum of "Krankenversicherung (KV) + Rentenversicherung (RV) + Arbeitslosenversicherung (AV) + Pflegeversicherung (PV)" employee shares → social_security_amount
 - "Betriebsrente" / "Gehaltsumwandlung" / pension contributions → pension_amount
 
+Field mapping for France:
+- "Salaire brut" / "Total brut" → gross_pay
+- "Net à payer" / "Salaire net" → net_pay
+- "Prélèvement à la source" / "PAS" / "Impôt sur le revenu" → tax_amount
+- Sum of "CSG + CRDS + Sécurité sociale + AGIRC-ARRCO + Chômage + Assurance maladie" employee shares (cotisations salariales) → social_security_amount
+- "Retraite complémentaire" or supplementary pension → pension_amount
+
+Field mapping for Netherlands:
+- "Brutoloon" / "Bruto salaris" → gross_pay
+- "Nettoloon" / "Netto salaris" / "Uit te betalen" → net_pay
+- "Loonheffing" / "Loonbelasting" → tax_amount (this already includes premies volksverzekeringen)
+- "Pensioenpremie" / pension contributions → pension_amount
+- Dutch payslips typically do NOT show separate social security (it's bundled into Loonheffing) — leave social_security_amount as null
+
+Field mapping for Spain:
+- "Salario bruto" / "Total devengado" → gross_pay
+- "Líquido a percibir" / "Salario neto" → net_pay
+- "Retención IRPF" / "IRPF" → tax_amount
+- Sum of "Contingencias comunes + Desempleo + Formación profesional + MEI" employee shares → social_security_amount
+- "Plan de pensiones" → pension_amount
+
+Field mapping for Italy:
+- "Retribuzione lorda" / "Imponibile" → gross_pay
+- "Netto a pagare" / "Retribuzione netta" → net_pay
+- "IRPEF" + "Addizionale regionale" + "Addizionale comunale" combined → tax_amount
+- "Contributi INPS" / "Contributo IVS" employee share → social_security_amount
+- "Previdenza complementare" → pension_amount
+
+Field mapping for Belgium:
+- "Salaire brut" / "Brutto loon" → gross_pay
+- "Salaire net" / "Netto loon" → net_pay
+- "Précompte professionnel" / "Bedrijfsvoorheffing" → tax_amount
+- "ONSS" / "RSZ" employee share → social_security_amount
+- "Pension complémentaire" / "Aanvullend pensioen" → pension_amount
+
+Field mapping for Portugal:
+- "Vencimento bruto" / "Total ilíquido" → gross_pay
+- "Líquido a receber" / "Vencimento líquido" → net_pay
+- "Retenção na fonte" / "IRS" → tax_amount
+- "Segurança Social" / "TSU" employee share → social_security_amount
+- "PPR" / pension contributions → pension_amount
+
 Rules:
 - All monetary values should be plain numbers (no currency symbols, no thousand separators)
-- For German payslips, use the EMPLOYEE share (Arbeitnehmer-Anteil), NOT the employer share
-- For German payslips, decimal separator on the document is a comma — convert to a dot in the output
+- Use the EMPLOYEE share, NOT the employer share
+- For European payslips (DE/FR/NL/ES/IT/BE/PT), the decimal separator on the document is often a comma — convert to a dot in the output
 - Be precise with decimal values
 - Only return the JSON object, no other text`;
 
@@ -166,9 +214,19 @@ function runAnomalyChecks(
   threshold = 5
 ): Anomaly[] {
   const anomalies: Anomaly[] = [];
-  const isIreland = country === "Ireland" || country === "ireland";
-  const isGermany = country === "Germany" || country === "germany";
-  const sym = isIreland || isGermany ? "€" : "£";
+  const c = (country ?? "").toLowerCase();
+  const isIreland = c === "ireland";
+  const isGermany = c === "germany";
+  const isFrance = c === "france";
+  const isNetherlands = c === "netherlands";
+  const isSpain = c === "spain";
+  const isItaly = c === "italy";
+  const isBelgium = c === "belgium";
+  const isPortugal = c === "portugal";
+  const isEurZone = isIreland || isGermany || isFrance || isNetherlands || isSpain || isItaly || isBelgium || isPortugal;
+  // Countries where the payslip shows a discrete social-security/contributions line we should check
+  const expectsSocialSecurity = isFrance || isSpain || isItaly || isBelgium || isPortugal;
+  const sym = isEurZone ? "€" : "£";
 
   const pct = (curr: number, prev: number) =>
     prev !== 0 ? ((curr - prev) / Math.abs(prev)) * 100 : curr !== 0 ? 100 : 0;
@@ -231,7 +289,19 @@ function runAnomalyChecks(
         ? "Log into Revenue's myAccount and check your tax credits and rate bands. Confirm with payroll that the correct tax credit certificate has been applied."
         : isGermany
           ? "Check your Steuerklasse (tax class) on this payslip — if it's wrong, ask your employer to update it via your local Finanzamt. You can also verify your details in your ELStAM record."
-          : "Check your tax code on this payslip and verify it against your HMRC personal tax account at gov.uk. If the code is wrong, ask payroll to update it.",
+          : isFrance
+            ? "Check your taux de prélèvement à la source on impots.gouv.fr. If it looks wrong, you can update your taux personalisé from your espace particulier."
+            : isNetherlands
+              ? "Check your loonheffingskorting setting with payroll — if you've forgotten to apply it (or it's been applied at a second job too), your loonheffing can be wrong. You can also check your situation on belastingdienst.nl."
+              : isSpain
+                ? "Check the tipo de retención on your payslip and ask payroll to recalculate it via the Agencia Tributaria's IRPF calculator if your circumstances have changed."
+                : isItaly
+                  ? "Check your aliquote IRPEF and any detrazioni applied. Ask the ufficio del personale to confirm your situation on the CU and recalculate."
+                  : isBelgium
+                    ? "Check your barème de précompte / loonschaal with payroll. Ask them to confirm your fiche fiscale 281.10 details."
+                    : isPortugal
+                      ? "Check your tabela de retenção on your payslip and confirm with RH that the correct one is being used (your IRS situation may have changed)."
+                      : "Check your tax code on this payslip and verify it against your HMRC personal tax account at gov.uk. If the code is wrong, ask payroll to update it.",
     });
   }
 
@@ -259,6 +329,27 @@ function runAnomalyChecks(
           suggested_action: "Ask your Personalabteilung (HR) why no Sozialversicherung is being deducted, and confirm your employment status (e.g. Mini-Job vs sozialversicherungspflichtig).",
         });
       }
+    } else if (expectsSocialSecurity) {
+      if (current.social_security_amount == null || current.social_security_amount === 0) {
+        const labelMap: Record<string, { label: string; agency: string }> = {
+          france: { label: "cotisations sociales", agency: "Sécurité sociale" },
+          spain: { label: "Seguridad Social contribution", agency: "Seguridad Social" },
+          italy: { label: "INPS contribution", agency: "INPS" },
+          belgium: { label: "ONSS / RSZ contribution", agency: "ONSS / RSZ" },
+          portugal: { label: "Segurança Social contribution", agency: "Segurança Social" },
+        };
+        const info = labelMap[c] ?? { label: "social security contribution", agency: "social security" };
+        anomalies.push({
+          anomaly_type: "missing_social_security",
+          severity: "medium",
+          confidence: "medium",
+          title: `No ${info.label} found`,
+          description: `What changed: Your payslip shows gross pay of €${current.gross_pay.toFixed(2)} but no ${info.label}.\n\nWhy it matters: Most employees pay into ${info.agency} — missing contributions affect your healthcare, pension and unemployment cover. In rare cases (special schemes, exemptions) it may be correct.\n\nThis may be perfectly valid, but it's worth checking.`,
+          suggested_action: `Ask your HR / payroll team why no ${info.label} is being deducted and confirm your employment status with ${info.agency}.`,
+        });
+      }
+    } else if (isNetherlands) {
+      // Loonheffing already bundles volksverzekeringen — no separate check needed.
     } else {
       if (current.national_insurance_amount == null || current.national_insurance_amount === 0) {
         anomalies.push({
