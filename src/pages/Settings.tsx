@@ -81,6 +81,8 @@ const Settings = () => {
   const [pensionPercent, setPensionPercent] = useState('5');
   const [hasStudentLoan, setHasStudentLoan] = useState(false);
   const [studentLoanPlan, setStudentLoanPlan] = useState('plan2');
+  const [subRegion, setSubRegion] = useState<string | null>(null);
+  const [filingStatus, setFilingStatus] = useState<string | null>(null);
   const [threshold, setThreshold] = useState<number>(5);
   const [loading, setLoading] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState('');
@@ -88,7 +90,8 @@ const Settings = () => {
   const [deleting, setDeleting] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [managingBilling, setManagingBilling] = useState(false);
-  const currencySymbol = getCountryConfig(country).currencySymbol;
+  const countryConfig = getCountryConfig(country);
+  const currencySymbol = countryConfig.currencySymbol;
 
   const planLabel = subscription.plan === 'lifetime' ? 'Lifetime' : subscription.plan === 'plus' ? 'Plus' : 'Free';
 
@@ -131,10 +134,19 @@ const Settings = () => {
           setPensionPercent(data.pension_percent ? String(data.pension_percent) : '5');
           setHasStudentLoan(!!data.has_student_loan);
           setStudentLoanPlan(data.student_loan_plan || 'plan2');
+          setSubRegion((data as { sub_region?: string | null }).sub_region ?? null);
+          setFilingStatus((data as { filing_status?: string | null }).filing_status ?? null);
           setThreshold(data.anomaly_threshold_percent != null ? Number(data.anomaly_threshold_percent) : 5);
         }
       });
   }, [user]);
+
+  // Reset sub-region / filing status when country changes to one without them
+  useEffect(() => {
+    if (!countryConfig.subRegions) setSubRegion(null);
+    if (!countryConfig.filingStatuses) setFilingStatus(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [country]);
 
   const handleSave = async () => {
     if (!user) return;
