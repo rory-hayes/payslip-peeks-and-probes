@@ -15,9 +15,16 @@ function calcIrelandMonthlyTax(annualSalary: number, opts: DeductionOptions): Mo
   const taxCredits = 1_875 + 1_875;
   tax = Math.max(0, tax - taxCredits);
 
+  // PRSI Class A1: 4.1% from 1 Oct 2024 (was 4.0%) — using 4.1% as 2024/25 effective.
+  // Exempt below €352/week (€18,304/year approx).
   const prsiExempt = 352 * 52;
-  const prsi = gross > prsiExempt ? gross * 0.04 : 0;
+  const prsi = gross > prsiExempt ? gross * 0.041 : 0;
 
+  // USC 2024 bands (Budget 2024 cut middle band from 4.5% to 4%):
+  //   0.5% on first €12,012
+  //   2.0% on €12,012 – €25,760
+  //   4.0% on €25,760 – €70,044
+  //   8.0% above €70,044
   let usc = 0;
   const uscBands = [
     { limit: 12_012, rate: 0.005 },
@@ -72,5 +79,5 @@ export const irelandConfig: CountryConfig = {
     'Standard Rate Cut Off', 'Gross Pay', 'Net Pay', 'PPS', 'Pension',
   ],
   calculateMonthly: calcIrelandMonthlyTax,
-  taxAssumptionsBlurb: '2024 Ireland PAYE bands, single-person credits, Class A1 PRSI',
+  taxAssumptionsBlurb: '2024 Ireland: Single person, standard PAYE bands (€42k @20%/40%), Personal + Employee credits (€1,875 ea), Class A1 PRSI 4.1% (post-Oct 2024), USC bands per Revenue.ie. Married/Civil Partner bands not applied — actual deduction will differ if you have additional credits or a different status.',
 };

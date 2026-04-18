@@ -113,5 +113,5 @@ export const germanyConfig: CountryConfig = {
     'Betriebsrente', 'Gehaltsumwandlung',
   ],
   calculateMonthly: calcGermanyMonthlyTax,
-  taxAssumptionsBlurb: '2024 Germany Lohnsteuer (Steuerklasse I), Soli, combined employee Sozialversicherung at average rates',
+  taxAssumptionsBlurb: '2024 Germany: Steuerklasse I (single, no children), West German BBG (RV/AV €90,600, KV/PV €62,100). Lohnsteuer Grundtarif. Soli 5.5% above €18,130 threshold. Sozialversicherung uses average Zusatzbeitrag (KV 7.3% + 0.85%). Excludes: church tax, Pflegeversicherung childless surcharge (+0.6% if no kids ≥23), East German rates, Steuerklasse II–VI.',
 };

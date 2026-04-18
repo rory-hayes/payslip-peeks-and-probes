@@ -49,13 +49,20 @@ const ExpectedVsActual = ({ latestPayslip }: Props) => {
               <TooltipTrigger>
                 <Info className="h-3.5 w-3.5 text-muted-foreground" />
               </TooltipTrigger>
-              <TooltipContent className="max-w-64">
-                <p className="text-xs">
-                  Based on your annual salary of {fmt(profile.annual_salary)} and {config.name} tax rules
-                   {expected.pension > 0 ? `, ${profile.pension_percent ?? 5}% pension contribution` : ''}
-                   {expected.studentLoan > 0 ? `, ${(profile.student_loan_plan ?? 'plan2').replace('plan', 'Plan ')} student loan` : ''}.
-                  Estimates only — may differ from actual deductions.
-                </p>
+              <TooltipContent className="max-w-sm">
+                <div className="space-y-2 text-xs">
+                  <p>
+                    Estimate based on annual gross of <strong>{fmt(profile.annual_salary)}</strong> for {config.name}
+                    {expected.pension > 0 ? `, ${profile.pension_percent ?? 5}% pension` : ''}
+                    {expected.studentLoan > 0 ? `, ${(profile.student_loan_plan ?? 'plan2').replace('plan', 'Plan ')} student loan` : ''}.
+                  </p>
+                  <p className="text-muted-foreground border-t border-border pt-2">
+                    <strong className="text-foreground">Assumptions:</strong> {config.taxAssumptionsBlurb}
+                  </p>
+                  <p className="text-muted-foreground italic">
+                    Estimates only — your actual deductions may differ. Not formal tax advice.
+                  </p>
+                </div>
               </TooltipContent>
             </Tooltip>
           </TooltipProvider>

@@ -90,5 +90,5 @@ export const italyConfig: CountryConfig = {
     'Busta paga', 'Cedolino', 'Previdenza complementare',
   ],
   calculateMonthly: calcItalyMonthlyTax,
-  taxAssumptionsBlurb: '2024 Italy IRPEF (3 bands), employee INPS ≈9.19%, ~2% addizionali, single-person detrazione',
+  taxAssumptionsBlurb: '2024 Italy: Single, no dependants. Post-reform IRPEF 3 bands (23%/35%/43%). INPS dipendente 9.19% (capped at €119,650; 9.49% in upper tier not modelled). Addizionale regionale + comunale ≈2% national average — actual varies 1.23%–3.33% by region/comune. TFR not deducted from net (handled separately by employer).',
 };

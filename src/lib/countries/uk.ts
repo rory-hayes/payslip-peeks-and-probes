@@ -90,5 +90,5 @@ export const ukConfig: CountryConfig = {
     'Plan 1', 'Plan 2', 'Plan 4', 'Plan 5', 'Postgrad',
   ],
   calculateMonthly: calcUKMonthlyTax,
-  taxAssumptionsBlurb: '2024/25 UK tax bands, standard personal allowance, Class 1 NI',
+  taxAssumptionsBlurb: '2024/25 UK: England/Wales/NI rates (Scotland not modelled — Scottish rates differ at 19%/20%/21%/42%/45%/48%). Standard personal allowance £12,570 (tapered above £100k). Class 1 NI at 8% / 2%. Pension treated as relief-at-source (pre-tax). Marriage allowance, blind person allowance not applied.',
 };
