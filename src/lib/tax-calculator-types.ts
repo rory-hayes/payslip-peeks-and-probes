@@ -28,7 +28,7 @@ export interface MonthlyBreakdown {
   pension: number;
   studentLoan: number;
   /** US state income tax (also reusable for any sub-national tax). 0 when not applicable. */
-  stateTax: number;
+  stateTax?: number;
   totalDeductions: number;
   netPay: number;
 }
