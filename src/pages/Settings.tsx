@@ -165,6 +165,8 @@ const Settings = () => {
         pension_percent: hasPension && pensionPercent ? Number(pensionPercent) : null,
         has_student_loan: hasStudentLoan,
         student_loan_plan: hasStudentLoan ? studentLoanPlan : null,
+        sub_region: countryConfig.subRegions ? subRegion : null,
+        filing_status: countryConfig.filingStatuses ? filingStatus : null,
         anomaly_threshold_percent: threshold,
       })
       .eq('user_id', user.id);
