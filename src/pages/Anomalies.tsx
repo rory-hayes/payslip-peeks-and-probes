@@ -23,6 +23,7 @@ const Anomalies = () => {
   const [filter, setFilter] = useState<AnomalyStatus | 'all'>('all');
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const { data: realAnomalies, isLoading } = useAnomalies();
+  const updateStatus = useUpdateAnomalyStatus();
 
   const all = realAnomalies || [];
   const filtered = filter === 'all' ? all : all.filter((a) => a.status === filter);
