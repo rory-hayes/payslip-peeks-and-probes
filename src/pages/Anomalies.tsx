@@ -112,7 +112,7 @@ const Anomalies = () => {
                         </div>
                       )}
                       
-                      <div className="mt-3 flex gap-2">
+                      <div className="mt-3 flex flex-wrap gap-2">
                         <Button variant="ghost" size="sm" className="gap-1 text-xs h-7" onClick={() => setExpanded(prev => ({ ...prev, [anomaly.id]: !prev[anomaly.id] }))}>
                           {expanded[anomaly.id] ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
                           {expanded[anomaly.id] ? 'Less detail' : 'More detail'}
@@ -123,6 +123,28 @@ const Anomalies = () => {
                         <Link to={`/draft/${anomaly.payslip_id}`}>
                           <Button variant="ghost" size="sm" className="gap-1 text-xs h-7"><MessageSquare className="h-3 w-3" /> Draft query</Button>
                         </Link>
+                        <div className="ml-auto flex flex-wrap gap-2">
+                          {anomaly.status !== 'reviewed' && anomaly.status !== 'resolved' && anomaly.status !== 'raised' && (
+                            <Button variant="outline" size="sm" className="gap-1 text-xs h-7" onClick={() => updateStatus.mutate({ id: anomaly.id, status: 'reviewed' })} disabled={updateStatus.isPending}>
+                              <Eye className="h-3 w-3" /> Mark reviewed
+                            </Button>
+                          )}
+                          {anomaly.status !== 'raised' && anomaly.status !== 'resolved' && (
+                            <Button variant="outline" size="sm" className="gap-1 text-xs h-7" onClick={() => updateStatus.mutate({ id: anomaly.id, status: 'raised' })} disabled={updateStatus.isPending}>
+                              <Send className="h-3 w-3" /> Raised with payroll
+                            </Button>
+                          )}
+                          {anomaly.status !== 'resolved' && (
+                            <Button size="sm" className="gap-1 text-xs h-7" onClick={() => updateStatus.mutate({ id: anomaly.id, status: 'resolved' })} disabled={updateStatus.isPending}>
+                              <CheckCircle className="h-3 w-3" /> Resolve
+                            </Button>
+                          )}
+                          {anomaly.status !== 'new' && (
+                            <Button variant="ghost" size="sm" className="gap-1 text-xs h-7 text-muted-foreground" onClick={() => updateStatus.mutate({ id: anomaly.id, status: 'new' })} disabled={updateStatus.isPending}>
+                              <RotateCcw className="h-3 w-3" /> Reopen
+                            </Button>
+                          )}
+                        </div>
                       </div>
                     </div>
                   </div>
