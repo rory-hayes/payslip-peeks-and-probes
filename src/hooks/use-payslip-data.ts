@@ -17,7 +17,8 @@ export function usePayslips() {
           employers(name, payroll_email),
           payslip_extractions(
             gross_pay, net_pay, tax_amount, national_insurance_amount,
-            prsi_amount, usc_amount, pension_amount, student_loan_amount,
+            prsi_amount, usc_amount, social_security_amount, solidarity_amount, church_tax_amount,
+            pension_amount, student_loan_amount,
             bonus_amount, overtime_amount, total_deductions, taxable_pay
           )
         `)
@@ -46,7 +47,7 @@ export function usePayslips() {
           pay_date: p.pay_date || '',
           pay_period_start: p.pay_period_start || '',
           pay_period_end: p.pay_period_end || '',
-          country: (p.country || 'UK') as 'UK' | 'Ireland',
+          country: (p.country || 'UK') as 'UK' | 'Ireland' | 'Germany',
           status: p.status || 'processing',
           gross_pay: Number(ext.gross_pay) || 0,
           net_pay: Number(ext.net_pay) || 0,
@@ -54,6 +55,9 @@ export function usePayslips() {
           ni_amount: ext.national_insurance_amount ? Number(ext.national_insurance_amount) : undefined,
           prsi_amount: ext.prsi_amount ? Number(ext.prsi_amount) : undefined,
           usc_amount: ext.usc_amount ? Number(ext.usc_amount) : undefined,
+          social_security_amount: ext.social_security_amount ? Number(ext.social_security_amount) : undefined,
+          solidarity_amount: ext.solidarity_amount ? Number(ext.solidarity_amount) : undefined,
+          church_tax_amount: ext.church_tax_amount ? Number(ext.church_tax_amount) : undefined,
           pension_amount: ext.pension_amount ? Number(ext.pension_amount) : undefined,
           student_loan_amount: ext.student_loan_amount ? Number(ext.student_loan_amount) : undefined,
           bonus_amount: ext.bonus_amount ? Number(ext.bonus_amount) : undefined,
