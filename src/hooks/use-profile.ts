@@ -2,8 +2,10 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 
+import type { CountryCode } from '@/lib/countries';
+
 export interface UserProfile {
-  country: 'UK' | 'Ireland' | null;
+  country: CountryCode | null;
   currency: 'GBP' | 'EUR';
   annual_salary: number | null;
   first_name: string | null;

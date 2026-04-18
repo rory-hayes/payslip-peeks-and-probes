@@ -1,4 +1,4 @@
-export type Country = 'UK' | 'Ireland';
+export type Country = 'UK' | 'Ireland' | 'Germany';
 export type PayFrequency = 'weekly' | 'fortnightly' | 'monthly' | 'other';
 export type AnomalySeverity = 'low' | 'medium' | 'high';
 export type AnomalyStatus = 'new' | 'reviewed' | 'raised' | 'resolved';
@@ -19,6 +19,12 @@ export interface Payslip {
   ni_amount?: number;
   prsi_amount?: number;
   usc_amount?: number;
+  /** Germany: combined employee Sozialversicherung */
+  social_security_amount?: number;
+  /** Germany: Solidaritätszuschlag */
+  solidarity_amount?: number;
+  /** Germany: Kirchensteuer */
+  church_tax_amount?: number;
   pension_amount?: number;
   student_loan_amount?: number;
   bonus_amount?: number;
