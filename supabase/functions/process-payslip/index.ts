@@ -214,9 +214,19 @@ function runAnomalyChecks(
   threshold = 5
 ): Anomaly[] {
   const anomalies: Anomaly[] = [];
-  const isIreland = country === "Ireland" || country === "ireland";
-  const isGermany = country === "Germany" || country === "germany";
-  const sym = isIreland || isGermany ? "€" : "£";
+  const c = (country ?? "").toLowerCase();
+  const isIreland = c === "ireland";
+  const isGermany = c === "germany";
+  const isFrance = c === "france";
+  const isNetherlands = c === "netherlands";
+  const isSpain = c === "spain";
+  const isItaly = c === "italy";
+  const isBelgium = c === "belgium";
+  const isPortugal = c === "portugal";
+  const isEurZone = isIreland || isGermany || isFrance || isNetherlands || isSpain || isItaly || isBelgium || isPortugal;
+  // Countries where the payslip shows a discrete social-security/contributions line we should check
+  const expectsSocialSecurity = isFrance || isSpain || isItaly || isBelgium || isPortugal;
+  const sym = isEurZone ? "€" : "£";
 
   const pct = (curr: number, prev: number) =>
     prev !== 0 ? ((curr - prev) / Math.abs(prev)) * 100 : curr !== 0 ? 100 : 0;
@@ -279,7 +289,19 @@ function runAnomalyChecks(
         ? "Log into Revenue's myAccount and check your tax credits and rate bands. Confirm with payroll that the correct tax credit certificate has been applied."
         : isGermany
           ? "Check your Steuerklasse (tax class) on this payslip — if it's wrong, ask your employer to update it via your local Finanzamt. You can also verify your details in your ELStAM record."
-          : "Check your tax code on this payslip and verify it against your HMRC personal tax account at gov.uk. If the code is wrong, ask payroll to update it.",
+          : isFrance
+            ? "Check your taux de prélèvement à la source on impots.gouv.fr. If it looks wrong, you can update your taux personalisé from your espace particulier."
+            : isNetherlands
+              ? "Check your loonheffingskorting setting with payroll — if you've forgotten to apply it (or it's been applied at a second job too), your loonheffing can be wrong. You can also check your situation on belastingdienst.nl."
+              : isSpain
+                ? "Check the tipo de retención on your payslip and ask payroll to recalculate it via the Agencia Tributaria's IRPF calculator if your circumstances have changed."
+                : isItaly
+                  ? "Check your aliquote IRPEF and any detrazioni applied. Ask the ufficio del personale to confirm your situation on the CU and recalculate."
+                  : isBelgium
+                    ? "Check your barème de précompte / loonschaal with payroll. Ask them to confirm your fiche fiscale 281.10 details."
+                    : isPortugal
+                      ? "Check your tabela de retenção on your payslip and confirm with RH that the correct one is being used (your IRS situation may have changed)."
+                      : "Check your tax code on this payslip and verify it against your HMRC personal tax account at gov.uk. If the code is wrong, ask payroll to update it.",
     });
   }
 
@@ -307,6 +329,27 @@ function runAnomalyChecks(
           suggested_action: "Ask your Personalabteilung (HR) why no Sozialversicherung is being deducted, and confirm your employment status (e.g. Mini-Job vs sozialversicherungspflichtig).",
         });
       }
+    } else if (expectsSocialSecurity) {
+      if (current.social_security_amount == null || current.social_security_amount === 0) {
+        const labelMap: Record<string, { label: string; agency: string }> = {
+          france: { label: "cotisations sociales", agency: "Sécurité sociale" },
+          spain: { label: "Seguridad Social contribution", agency: "Seguridad Social" },
+          italy: { label: "INPS contribution", agency: "INPS" },
+          belgium: { label: "ONSS / RSZ contribution", agency: "ONSS / RSZ" },
+          portugal: { label: "Segurança Social contribution", agency: "Segurança Social" },
+        };
+        const info = labelMap[c] ?? { label: "social security contribution", agency: "social security" };
+        anomalies.push({
+          anomaly_type: "missing_social_security",
+          severity: "medium",
+          confidence: "medium",
+          title: `No ${info.label} found`,
+          description: `What changed: Your payslip shows gross pay of €${current.gross_pay.toFixed(2)} but no ${info.label}.\n\nWhy it matters: Most employees pay into ${info.agency} — missing contributions affect your healthcare, pension and unemployment cover. In rare cases (special schemes, exemptions) it may be correct.\n\nThis may be perfectly valid, but it's worth checking.`,
+          suggested_action: `Ask your HR / payroll team why no ${info.label} is being deducted and confirm your employment status with ${info.agency}.`,
+        });
+      }
+    } else if (isNetherlands) {
+      // Loonheffing already bundles volksverzekeringen — no separate check needed.
     } else {
       if (current.national_insurance_amount == null || current.national_insurance_amount === 0) {
         anomalies.push({
