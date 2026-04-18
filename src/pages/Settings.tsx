@@ -56,6 +56,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import { Download, Trash2, HelpCircle, Sparkles, ExternalLink } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { deleteUserAccountData } from '@/lib/delete-account';
+import { COUNTRY_LIST, getCountryConfig, type CountryCode } from '@/lib/countries';
 
 const STUDENT_LOAN_PLANS = [
   { value: 'plan1', label: 'Plan 1', desc: 'Started before Sep 2012 (England/Wales)' },
