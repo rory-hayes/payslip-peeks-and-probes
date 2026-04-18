@@ -83,7 +83,7 @@ Return a JSON object using this exact schema (use null for fields you cannot fin
   "pay_period_start": "YYYY-MM-DD or null",
   "pay_period_end": "YYYY-MM-DD or null",
   "employer_name": "string or null",
-  "country": "UK or Ireland or Germany or null",
+  "country": "UK or Ireland or Germany or France or Netherlands or Spain or Italy or Belgium or Portugal or null",
   "gross_pay": number or null,
   "net_pay": number or null,
   "taxable_pay": number or null,
@@ -111,8 +111,14 @@ Return a JSON object using this exact schema (use null for fields you cannot fin
 
 Country detection:
 - If PRSI or USC are present, country is Ireland
-- If "National Insurance" / "NI" is present, country is UK
+- If "National Insurance" / "NI" / "PAYE" with £ is present, country is UK
 - If German terms appear (Brutto, Netto, Lohnsteuer, Solidaritätszuschlag, Sozialversicherung, Steuerklasse, Krankenversicherung, Rentenversicherung, Pflegeversicherung, Arbeitslosenversicherung), country is Germany
+- If French terms appear (Bulletin de paie, Salaire brut, Net à payer, Prélèvement à la source, CSG, CRDS, Sécurité sociale, AGIRC-ARRCO), country is France
+- If Dutch terms appear (Loonstrook, Salarisstrook, Brutoloon, Nettoloon, Loonheffing, Loonbelasting, Heffingskorting, Vakantiegeld, AOW, WLZ), country is Netherlands
+- If Spanish terms appear (Nómina, Recibo de salarios, Salario bruto, IRPF, Seguridad Social, Contingencias comunes, Líquido a percibir), country is Spain
+- If Italian terms appear (Busta paga, Cedolino, Retribuzione lorda, IRPEF, INPS, TFR, Addizionale regionale), country is Italy
+- If Belgian terms appear (Fiche de paie, Loonfiche, Précompte professionnel, Bedrijfsvoorheffing, ONSS, RSZ, Pécule de vacances), country is Belgium
+- If Portuguese terms appear (Recibo de vencimento, Vencimento bruto, IRS, Retenção na fonte, Segurança Social, Subsídio de férias), country is Portugal
 
 Field mapping for Germany:
 - "Brutto" / "Bruttobezüge" → gross_pay
@@ -123,10 +129,52 @@ Field mapping for Germany:
 - Sum of "Krankenversicherung (KV) + Rentenversicherung (RV) + Arbeitslosenversicherung (AV) + Pflegeversicherung (PV)" employee shares → social_security_amount
 - "Betriebsrente" / "Gehaltsumwandlung" / pension contributions → pension_amount
 
+Field mapping for France:
+- "Salaire brut" / "Total brut" → gross_pay
+- "Net à payer" / "Salaire net" → net_pay
+- "Prélèvement à la source" / "PAS" / "Impôt sur le revenu" → tax_amount
+- Sum of "CSG + CRDS + Sécurité sociale + AGIRC-ARRCO + Chômage + Assurance maladie" employee shares (cotisations salariales) → social_security_amount
+- "Retraite complémentaire" or supplementary pension → pension_amount
+
+Field mapping for Netherlands:
+- "Brutoloon" / "Bruto salaris" → gross_pay
+- "Nettoloon" / "Netto salaris" / "Uit te betalen" → net_pay
+- "Loonheffing" / "Loonbelasting" → tax_amount (this already includes premies volksverzekeringen)
+- "Pensioenpremie" / pension contributions → pension_amount
+- Dutch payslips typically do NOT show separate social security (it's bundled into Loonheffing) — leave social_security_amount as null
+
+Field mapping for Spain:
+- "Salario bruto" / "Total devengado" → gross_pay
+- "Líquido a percibir" / "Salario neto" → net_pay
+- "Retención IRPF" / "IRPF" → tax_amount
+- Sum of "Contingencias comunes + Desempleo + Formación profesional + MEI" employee shares → social_security_amount
+- "Plan de pensiones" → pension_amount
+
+Field mapping for Italy:
+- "Retribuzione lorda" / "Imponibile" → gross_pay
+- "Netto a pagare" / "Retribuzione netta" → net_pay
+- "IRPEF" + "Addizionale regionale" + "Addizionale comunale" combined → tax_amount
+- "Contributi INPS" / "Contributo IVS" employee share → social_security_amount
+- "Previdenza complementare" → pension_amount
+
+Field mapping for Belgium:
+- "Salaire brut" / "Brutto loon" → gross_pay
+- "Salaire net" / "Netto loon" → net_pay
+- "Précompte professionnel" / "Bedrijfsvoorheffing" → tax_amount
+- "ONSS" / "RSZ" employee share → social_security_amount
+- "Pension complémentaire" / "Aanvullend pensioen" → pension_amount
+
+Field mapping for Portugal:
+- "Vencimento bruto" / "Total ilíquido" → gross_pay
+- "Líquido a receber" / "Vencimento líquido" → net_pay
+- "Retenção na fonte" / "IRS" → tax_amount
+- "Segurança Social" / "TSU" employee share → social_security_amount
+- "PPR" / pension contributions → pension_amount
+
 Rules:
 - All monetary values should be plain numbers (no currency symbols, no thousand separators)
-- For German payslips, use the EMPLOYEE share (Arbeitnehmer-Anteil), NOT the employer share
-- For German payslips, decimal separator on the document is a comma — convert to a dot in the output
+- Use the EMPLOYEE share, NOT the employer share
+- For European payslips (DE/FR/NL/ES/IT/BE/PT), the decimal separator on the document is often a comma — convert to a dot in the output
 - Be precise with decimal values
 - Only return the JSON object, no other text`;
 
