@@ -208,6 +208,7 @@ export type Database = {
       payslip_extractions: {
         Row: {
           bonus_amount: number | null
+          church_tax_amount: number | null
           confidence_score: number | null
           created_at: string
           extraction_status: string | null
@@ -221,6 +222,8 @@ export type Database = {
           pension_amount: number | null
           prsi_amount: number | null
           raw_extraction_json: Json | null
+          social_security_amount: number | null
+          solidarity_amount: number | null
           student_loan_amount: number | null
           tax_amount: number | null
           taxable_pay: number | null
@@ -231,6 +234,7 @@ export type Database = {
         }
         Insert: {
           bonus_amount?: number | null
+          church_tax_amount?: number | null
           confidence_score?: number | null
           created_at?: string
           extraction_status?: string | null
@@ -244,6 +248,8 @@ export type Database = {
           pension_amount?: number | null
           prsi_amount?: number | null
           raw_extraction_json?: Json | null
+          social_security_amount?: number | null
+          solidarity_amount?: number | null
           student_loan_amount?: number | null
           tax_amount?: number | null
           taxable_pay?: number | null
@@ -254,6 +260,7 @@ export type Database = {
         }
         Update: {
           bonus_amount?: number | null
+          church_tax_amount?: number | null
           confidence_score?: number | null
           created_at?: string
           extraction_status?: string | null
@@ -267,6 +274,8 @@ export type Database = {
           pension_amount?: number | null
           prsi_amount?: number | null
           raw_extraction_json?: Json | null
+          social_security_amount?: number | null
+          solidarity_amount?: number | null
           student_loan_amount?: number | null
           tax_amount?: number | null
           taxable_pay?: number | null

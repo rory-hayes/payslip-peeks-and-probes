@@ -32,6 +32,7 @@ import CommonMistakes from "./pages/guides/CommonMistakes";
 import ComparePayslipsGuide from "./pages/guides/ComparePayslips";
 import UkPayslipGuide from "./pages/guides/UkPayslipGuide";
 import IrelandPayslipGuide from "./pages/guides/IrelandPayslipGuide";
+import GermanyPayslipGuide from "./pages/guides/GermanyPayslipGuide";
 import CookieConsent from "@/components/CookieConsent";
 import { initAnalytics } from "@/lib/analytics";
 
@@ -76,6 +77,7 @@ const App = () => (
             <Route path="/guides/compare-two-payslips" element={<ComparePayslipsGuide />} />
             <Route path="/guides/uk-payslip-guide" element={<UkPayslipGuide />} />
             <Route path="/guides/ireland-payslip-guide" element={<IrelandPayslipGuide />} />
+            <Route path="/guides/germany-payslip-guide" element={<GermanyPayslipGuide />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
           <CookieConsent />

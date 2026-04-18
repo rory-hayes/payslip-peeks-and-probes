@@ -15,6 +15,7 @@ const coreGuides = [
 const countryGuides = [
   { title: 'UK Payslip Guide', desc: 'Tax codes, NI, pension and the parts of a UK payslip every employee should understand.', to: '/guides/uk-payslip-guide', icon: Flag },
   { title: 'Ireland Payslip Guide', desc: 'PAYE, PRSI and USC explained in plain English for Ireland-based employees.', to: '/guides/ireland-payslip-guide', icon: Globe },
+  { title: 'Germany Payslip Guide', desc: 'Lohnsteuer, Sozialversicherung and Soli explained in plain English for Germany-based employees.', to: '/guides/germany-payslip-guide', icon: Globe },
 ];
 
 const GuidesIndex = () => {
