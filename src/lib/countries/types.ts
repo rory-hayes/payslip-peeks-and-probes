@@ -6,7 +6,17 @@
 
 import type { MonthlyBreakdown, DeductionOptions } from '../tax-calculator-types';
 
-export type CountryCode = 'UK' | 'Ireland' | 'Germany';
+export type CountryCode =
+  | 'UK'
+  | 'Ireland'
+  | 'Germany'
+  | 'France'
+  | 'Netherlands'
+  | 'Spain'
+  | 'Italy'
+  | 'Belgium'
+  | 'Portugal';
+
 export type CurrencyCode = 'GBP' | 'EUR';
 
 export interface DeductionLine {
