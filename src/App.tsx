@@ -33,6 +33,12 @@ import ComparePayslipsGuide from "./pages/guides/ComparePayslips";
 import UkPayslipGuide from "./pages/guides/UkPayslipGuide";
 import IrelandPayslipGuide from "./pages/guides/IrelandPayslipGuide";
 import GermanyPayslipGuide from "./pages/guides/GermanyPayslipGuide";
+import FrancePayslipGuide from "./pages/guides/FrancePayslipGuide";
+import NetherlandsPayslipGuide from "./pages/guides/NetherlandsPayslipGuide";
+import SpainPayslipGuide from "./pages/guides/SpainPayslipGuide";
+import ItalyPayslipGuide from "./pages/guides/ItalyPayslipGuide";
+import BelgiumPayslipGuide from "./pages/guides/BelgiumPayslipGuide";
+import PortugalPayslipGuide from "./pages/guides/PortugalPayslipGuide";
 import CookieConsent from "@/components/CookieConsent";
 import { initAnalytics } from "@/lib/analytics";
 
@@ -78,6 +84,12 @@ const App = () => (
             <Route path="/guides/uk-payslip-guide" element={<UkPayslipGuide />} />
             <Route path="/guides/ireland-payslip-guide" element={<IrelandPayslipGuide />} />
             <Route path="/guides/germany-payslip-guide" element={<GermanyPayslipGuide />} />
+            <Route path="/guides/france-payslip-guide" element={<FrancePayslipGuide />} />
+            <Route path="/guides/netherlands-payslip-guide" element={<NetherlandsPayslipGuide />} />
+            <Route path="/guides/spain-payslip-guide" element={<SpainPayslipGuide />} />
+            <Route path="/guides/italy-payslip-guide" element={<ItalyPayslipGuide />} />
+            <Route path="/guides/belgium-payslip-guide" element={<BelgiumPayslipGuide />} />
+            <Route path="/guides/portugal-payslip-guide" element={<PortugalPayslipGuide />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
           <CookieConsent />
