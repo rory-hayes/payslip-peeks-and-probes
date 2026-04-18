@@ -1,6 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useProfile, useCurrency } from '@/hooks/use-profile';
 import { calculateExpectedMonthly } from '@/lib/tax-calculator';
+import { getCountryConfig } from '@/lib/countries';
 import type { Payslip } from '@/lib/types';
 import { ArrowDown, ArrowUp, Minus, Info } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -21,26 +22,21 @@ const ExpectedVsActual = ({ latestPayslip }: Props) => {
     studentLoanPlan: (profile.student_loan_plan as any) ?? 'plan2',
   };
   const expected = calculateExpectedMonthly(profile.annual_salary, profile.country, opts);
-  const actual = latestPayslip;
+  const config = getCountryConfig(profile.country);
+
+  // Build rows from the country's deductionLines, dropping zero-expected optional rows.
+  const deductionRows = config.deductionLines
+    .map((line) => {
+      const expectedAmount = (expected[line.expectedKey] as number) ?? 0;
+      const actualAmount = ((latestPayslip as any)[line.fieldKey] as number) ?? 0;
+      return { label: line.label, expected: expectedAmount, actual: actualAmount, isOptional: line.fieldKey === 'pension_amount' || line.fieldKey === 'student_loan_amount' || line.fieldKey === 'church_tax_amount' };
+    })
+    .filter((row) => !row.isOptional || row.expected > 0 || row.actual > 0);
 
   const rows = [
-    { label: 'Gross pay', expected: expected.grossMonthly, actual: actual.gross_pay },
-    { label: 'Income tax', expected: expected.incomeTax, actual: actual.tax_amount },
-    ...(profile.country === 'Ireland'
-      ? [
-          { label: 'PRSI', expected: expected.nationalInsurance, actual: actual.prsi_amount ?? 0 },
-          { label: 'USC', expected: expected.usc, actual: actual.usc_amount ?? 0 },
-        ]
-      : [
-          { label: 'National Insurance', expected: expected.nationalInsurance, actual: actual.ni_amount ?? 0 },
-        ]),
-    ...(expected.pension > 0
-      ? [{ label: 'Pension', expected: expected.pension, actual: actual.pension_amount ?? 0 }]
-      : []),
-    ...(expected.studentLoan > 0
-      ? [{ label: 'Student loan', expected: expected.studentLoan, actual: actual.student_loan_amount ?? 0 }]
-      : []),
-    { label: 'Net pay', expected: expected.netPay, actual: actual.net_pay },
+    { label: 'Gross pay', expected: expected.grossMonthly, actual: latestPayslip.gross_pay },
+    ...deductionRows,
+    { label: 'Net pay', expected: expected.netPay, actual: latestPayslip.net_pay },
   ];
 
   return (
@@ -55,7 +51,7 @@ const ExpectedVsActual = ({ latestPayslip }: Props) => {
               </TooltipTrigger>
               <TooltipContent className="max-w-64">
                 <p className="text-xs">
-                  Based on your annual salary of {fmt(profile.annual_salary)} and {profile.country ?? 'UK'} tax rates
+                  Based on your annual salary of {fmt(profile.annual_salary)} and {config.name} tax rules
                    {expected.pension > 0 ? `, ${profile.pension_percent ?? 5}% pension contribution` : ''}
                    {expected.studentLoan > 0 ? `, ${(profile.student_loan_plan ?? 'plan2').replace('plan', 'Plan ')} student loan` : ''}.
                   Estimates only — may differ from actual deductions.
@@ -66,7 +62,6 @@ const ExpectedVsActual = ({ latestPayslip }: Props) => {
         </div>
       </CardHeader>
       <CardContent>
-        {/* Table header */}
         <div className="grid grid-cols-4 gap-2 text-xs font-medium text-muted-foreground pb-2 border-b border-border">
           <span />
           <span className="text-right">Expected</span>
@@ -74,13 +69,11 @@ const ExpectedVsActual = ({ latestPayslip }: Props) => {
           <span className="text-right">Diff</span>
         </div>
 
-        {/* Rows */}
         <div className="divide-y divide-border">
           {rows.map((row) => {
             const diff = row.actual - row.expected;
             const isLast = row.label === 'Net pay';
             const isDeduction = !isLast && row.label !== 'Gross pay';
-            // For deductions, paying more than expected is bad (red). For net pay, receiving less is bad.
             const isGood = isDeduction ? diff <= 0 : diff >= 0;
             const absDiff = Math.abs(diff);
 
