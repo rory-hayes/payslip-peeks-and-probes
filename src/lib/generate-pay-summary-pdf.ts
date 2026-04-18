@@ -7,7 +7,7 @@ import { getCountryConfig } from '@/lib/countries';
 
 interface PdfOptions {
   payslips: Payslip[];
-  currency: 'GBP' | 'EUR';
+  currency: 'GBP' | 'EUR' | 'USD';
   country: CountryCode | null;
   annualSalary?: number | null;
   deductionOpts?: DeductionOptions;
@@ -20,7 +20,8 @@ function fmt(amount: number, symbol: string) {
 
 export function generatePaySummaryPdf(options: PdfOptions) {
   const { payslips, currency, country, annualSalary, deductionOpts = {}, firstName } = options;
-  const sym = currency === 'EUR' ? '€' : '£';
+  const symbolMap = { GBP: '£', EUR: '€', USD: '$' } as const;
+  const sym = symbolMap[currency];
   const regionLabel = getCountryConfig(country).name;
 
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
