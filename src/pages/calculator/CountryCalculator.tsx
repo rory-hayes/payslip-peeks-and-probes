@@ -27,15 +27,14 @@ const SLUG_MAP: Record<string, CountryCode> = {
 const CountryCalculator = () => {
   const { country: slug } = useParams<{ country: string }>();
   const [searchParams] = useSearchParams();
-  const code = slug ? SLUG_MAP[slug.toLowerCase()] : null;
-
-  if (!code) return <Navigate to="/calculator" replace />;
-
+  const code: CountryCode | null = slug ? SLUG_MAP[slug.toLowerCase()] ?? null : null;
+  // Always call hooks; render <Navigate /> below if invalid.
   const config = getCountryConfig(code);
   const grossParam = Number(searchParams.get('gross'));
   const grossForSeo = Number.isFinite(grossParam) && grossParam > 0 ? grossParam : null;
 
   const sampleSalaries = useMemo(() => {
+    if (!code) return [];
     const seeds = code === 'UK' ? [25000, 35000, 50000, 75000, 100000] : [30000, 45000, 60000, 80000, 100000];
     return seeds.map((s) => ({
       gross: s,
@@ -44,6 +43,7 @@ const CountryCalculator = () => {
   }, [code]);
 
   useEffect(() => {
+    if (!code) return;
     const titleBase = grossForSeo
       ? `${config.currencySymbol}${grossForSeo.toLocaleString(config.locale)} after tax in ${config.name} — 2024/25`
       : `${config.name} take-home pay calculator — 2024/25`;
@@ -95,6 +95,8 @@ const CountryCalculator = () => {
       ],
     });
   }, [code, config, grossForSeo]);
+
+  if (!code) return <Navigate to="/calculator" replace />;
 
   return (
     <div className="min-h-screen bg-card">
