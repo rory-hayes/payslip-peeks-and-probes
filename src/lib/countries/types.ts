@@ -15,9 +15,10 @@ export type CountryCode =
   | 'Spain'
   | 'Italy'
   | 'Belgium'
-  | 'Portugal';
+  | 'Portugal'
+  | 'US';
 
-export type CurrencyCode = 'GBP' | 'EUR';
+export type CurrencyCode = 'GBP' | 'EUR' | 'USD';
 
 export interface DeductionLine {
   /** Stable key matching a Payslip field (e.g. 'tax_amount', 'national_insurance_amount') */

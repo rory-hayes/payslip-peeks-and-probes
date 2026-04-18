@@ -8,6 +8,7 @@ import { spainConfig } from './spain';
 import { italyConfig } from './italy';
 import { belgiumConfig } from './belgium';
 import { portugalConfig } from './portugal';
+import { usConfig } from './us';
 
 export type { CountryCode, CountryConfig, CurrencyCode, DeductionLine } from './types';
 
@@ -21,6 +22,7 @@ export const COUNTRIES: Record<CountryCode, CountryConfig> = {
   Italy: italyConfig,
   Belgium: belgiumConfig,
   Portugal: portugalConfig,
+  US: usConfig,
 };
 
 export const COUNTRY_LIST: CountryConfig[] = [
@@ -33,6 +35,7 @@ export const COUNTRY_LIST: CountryConfig[] = [
   italyConfig,
   belgiumConfig,
   portugalConfig,
+  usConfig,
 ];
 
 export function getCountryConfig(code: CountryCode | null | undefined): CountryConfig {
