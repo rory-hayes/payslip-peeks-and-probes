@@ -27,6 +27,7 @@ const Onboarding = () => {
   const [country, setCountry] = useState<CountryCode | ''>('');
   const [frequency, setFrequency] = useState<string>('');
   const [employer, setEmployer] = useState('');
+  const [annualSalary, setAnnualSalary] = useState<string>('');
   const [threshold, setThreshold] = useState<number>(5);
   const [flags, setFlags] = useState({ pension: false, studentLoan: false, bonus: false, benefits: false });
   const [saving, setSaving] = useState(false);
@@ -51,6 +52,7 @@ const Onboarding = () => {
     setSaving(true);
 
     const cfg = country ? getCountryConfig(country) : null;
+    const parsedSalary = annualSalary.trim() ? Number(annualSalary.replace(/[^0-9.]/g, '')) : null;
     const { error: profileError } = await supabase
       .from('profiles')
       .update({
@@ -58,6 +60,7 @@ const Onboarding = () => {
         currency: cfg?.currency ?? 'GBP',
         pay_frequency: frequency,
         employer_name: employer.trim(),
+        annual_salary: parsedSalary && parsedSalary > 0 ? parsedSalary : null,
         anomaly_threshold_percent: threshold,
         has_pension: flags.pension,
         has_student_loan: flags.studentLoan,
@@ -198,6 +201,30 @@ const Onboarding = () => {
                       onChange={(e) => setEmployer(e.target.value)}
                       maxLength={200}
                     />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="annualSalary" className="flex items-center gap-1.5">
+                      Annual gross salary
+                      <span className="text-xs font-normal text-muted-foreground">(optional)</span>
+                    </Label>
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">
+                        {countryCfg?.currencySymbol ?? '£'}
+                      </span>
+                      <Input
+                        id="annualSalary"
+                        type="text"
+                        inputMode="decimal"
+                        placeholder="e.g. 45000"
+                        value={annualSalary}
+                        onChange={(e) => setAnnualSalary(e.target.value)}
+                        className="pl-7"
+                        maxLength={12}
+                      />
+                    </div>
+                    <p className="text-xs text-muted-foreground leading-relaxed">
+                      Powers your <strong className="text-foreground">Expected vs Actual</strong> breakdown so we can spot under-payments. You can add this later in Settings.
+                    </p>
                   </div>
                 </div>
               </div>
