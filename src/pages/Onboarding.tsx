@@ -25,6 +25,8 @@ const Onboarding = () => {
   const queryClient = useQueryClient();
   const [step, setStep] = useState(0);
   const [country, setCountry] = useState<CountryCode | ''>('');
+  const [subRegion, setSubRegion] = useState<string>('');
+  const [filingStatus, setFilingStatus] = useState<string>('');
   const [frequency, setFrequency] = useState<string>('');
   const [employer, setEmployer] = useState('');
   const [annualSalary, setAnnualSalary] = useState<string>('');
@@ -34,9 +36,18 @@ const Onboarding = () => {
 
   const progress = ((step + 1) / STEPS.length) * 100;
 
+  const countryCfgEarly = country ? getCountryConfig(country) : null;
+  const needsSubRegion = !!countryCfgEarly?.subRegions?.length;
+  const needsFilingStatus = !!countryCfgEarly?.filingStatuses?.length;
+
   const canNext = (() => {
     if (step === 0) return true;
-    if (step === 1) return !!country;
+    if (step === 1) {
+      if (!country) return false;
+      if (needsSubRegion && !subRegion) return false;
+      if (needsFilingStatus && !filingStatus) return false;
+      return true;
+    }
     if (step === 2) return !!frequency && employer.trim().length > 0;
     if (step === 3) return threshold >= 1 && threshold <= 25;
     if (step === 4) return true;
@@ -46,6 +57,13 @@ const Onboarding = () => {
 
   const next = () => { if (canNext && step < STEPS.length - 1) setStep(step + 1); };
   const back = () => { if (step > 0) setStep(step - 1); };
+
+  const handleCountrySelect = (code: CountryCode) => {
+    setCountry(code);
+    const cfg = getCountryConfig(code);
+    setSubRegion(cfg.subRegions?.[0]?.code ?? '');
+    setFilingStatus(cfg.filingStatuses?.[0]?.code ?? '');
+  };
 
   const handleFinish = async () => {
     if (!user) return;
@@ -58,6 +76,8 @@ const Onboarding = () => {
       .update({
         country: country || null,
         currency: cfg?.currency ?? 'GBP',
+        sub_region: needsSubRegion ? (subRegion || null) : null,
+        filing_status: needsFilingStatus ? (filingStatus || null) : null,
         pay_frequency: frequency,
         employer_name: employer.trim(),
         annual_salary: parsedSalary && parsedSalary > 0 ? parsedSalary : null,
@@ -147,7 +167,7 @@ const Onboarding = () => {
                   {COUNTRY_LIST.map((c) => (
                     <button
                       key={c.code}
-                      onClick={() => setCountry(c.code)}
+                      onClick={() => handleCountrySelect(c.code)}
                       className={`flex flex-col items-center gap-2 rounded-xl border-2 p-4 transition-all ${
                         country === c.code
                           ? 'border-primary bg-primary/5'
@@ -160,6 +180,59 @@ const Onboarding = () => {
                     </button>
                   ))}
                 </div>
+
+                {country && (needsSubRegion || needsFilingStatus) && (
+                  <div className="space-y-4 rounded-xl border border-border p-4 bg-muted/30">
+                    {needsSubRegion && (
+                      <div className="space-y-2">
+                        <Label htmlFor="subRegion">
+                          {countryCfgEarly?.subRegionLabel ?? 'Region'} <span className="text-destructive">*</span>
+                        </Label>
+                        <select
+                          id="subRegion"
+                          value={subRegion}
+                          onChange={(e) => setSubRegion(e.target.value)}
+                          className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                        >
+                          <option value="">Select…</option>
+                          {countryCfgEarly?.subRegions?.map((r) => (
+                            <option key={r.code} value={r.code}>{r.name}</option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
+                    {needsFilingStatus && (
+                      <div className="space-y-2">
+                        <Label htmlFor="filingStatus">
+                          {countryCfgEarly?.filingStatusLabel ?? 'Filing status'} <span className="text-destructive">*</span>
+                        </Label>
+                        <div className="grid grid-cols-1 gap-2">
+                          {countryCfgEarly?.filingStatuses?.map((fs) => (
+                            <button
+                              key={fs.code}
+                              type="button"
+                              onClick={() => setFilingStatus(fs.code)}
+                              className={`text-left rounded-lg border px-3 py-2.5 text-sm transition-all ${
+                                filingStatus === fs.code
+                                  ? 'border-primary bg-primary/5'
+                                  : 'border-border hover:border-muted-foreground/30'
+                              }`}
+                            >
+                              <span className="font-medium text-foreground">{fs.label}</span>
+                              {fs.description && (
+                                <span className="block text-xs text-muted-foreground mt-0.5">{fs.description}</span>
+                              )}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    <p className="text-[11px] text-muted-foreground">
+                      Used to calculate your expected take-home. You can change this later in Settings.
+                    </p>
+                  </div>
+                )}
+
                 <p className="text-xs text-center text-muted-foreground pt-1">
                   More EMEA countries coming soon. Pick the closest match for now.
                 </p>
@@ -334,6 +407,22 @@ const Onboarding = () => {
                     <span className="text-muted-foreground">Country</span>
                     <span className="font-medium text-foreground">{countryLabel}</span>
                   </div>
+                  {needsSubRegion && (
+                    <div className="flex justify-between px-4 py-3">
+                      <span className="text-muted-foreground">{countryCfg?.subRegionLabel ?? 'Region'}</span>
+                      <span className="font-medium text-foreground">
+                        {countryCfg?.subRegions?.find((r) => r.code === subRegion)?.name ?? '—'}
+                      </span>
+                    </div>
+                  )}
+                  {needsFilingStatus && (
+                    <div className="flex justify-between px-4 py-3">
+                      <span className="text-muted-foreground">{countryCfg?.filingStatusLabel ?? 'Filing status'}</span>
+                      <span className="font-medium text-foreground">
+                        {countryCfg?.filingStatuses?.find((f) => f.code === filingStatus)?.label ?? '—'}
+                      </span>
+                    </div>
+                  )}
                   <div className="flex justify-between px-4 py-3">
                     <span className="text-muted-foreground">Currency</span>
                     <span className="font-medium text-foreground">{currencyLabel}</span>
