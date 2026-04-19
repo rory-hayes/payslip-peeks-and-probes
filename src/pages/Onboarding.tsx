@@ -407,6 +407,22 @@ const Onboarding = () => {
                     <span className="text-muted-foreground">Country</span>
                     <span className="font-medium text-foreground">{countryLabel}</span>
                   </div>
+                  {needsSubRegion && (
+                    <div className="flex justify-between px-4 py-3">
+                      <span className="text-muted-foreground">{countryCfg?.subRegionLabel ?? 'Region'}</span>
+                      <span className="font-medium text-foreground">
+                        {countryCfg?.subRegions?.find((r) => r.code === subRegion)?.name ?? '—'}
+                      </span>
+                    </div>
+                  )}
+                  {needsFilingStatus && (
+                    <div className="flex justify-between px-4 py-3">
+                      <span className="text-muted-foreground">{countryCfg?.filingStatusLabel ?? 'Filing status'}</span>
+                      <span className="font-medium text-foreground">
+                        {countryCfg?.filingStatuses?.find((f) => f.code === filingStatus)?.label ?? '—'}
+                      </span>
+                    </div>
+                  )}
                   <div className="flex justify-between px-4 py-3">
                     <span className="text-muted-foreground">Currency</span>
                     <span className="font-medium text-foreground">{currencyLabel}</span>
