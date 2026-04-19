@@ -7,10 +7,24 @@ interface GuideLayoutProps {
   title: string;
   description: string;
   breadcrumbLabel: string;
+  /** ISO date the guide was first published, e.g. '2025-01-15'. Used in JSON-LD Article schema. */
+  datePublished?: string;
+  /** ISO date the guide was last updated. Falls back to datePublished. */
+  dateModified?: string;
   children: ReactNode;
 }
 
-const GuideLayout = ({ title, description, breadcrumbLabel, children }: GuideLayoutProps) => {
+const ORG_NAME = 'Payslip Insights';
+const DEFAULT_DATE_PUBLISHED = '2025-01-01';
+
+const GuideLayout = ({
+  title,
+  description,
+  breadcrumbLabel,
+  datePublished = DEFAULT_DATE_PUBLISHED,
+  dateModified,
+  children,
+}: GuideLayoutProps) => {
   useEffect(() => {
     document.title = `${title} | Payslip Insights`;
     const meta =
@@ -24,6 +38,7 @@ const GuideLayout = ({ title, description, breadcrumbLabel, children }: GuideLay
     meta.setAttribute('content', description);
 
     // Canonical
+    const url = window.location.origin + window.location.pathname;
     const canonical =
       document.querySelector('link[rel="canonical"]') ||
       (() => {
@@ -32,8 +47,39 @@ const GuideLayout = ({ title, description, breadcrumbLabel, children }: GuideLay
         document.head.appendChild(l);
         return l;
       })();
-    canonical.setAttribute('href', window.location.origin + window.location.pathname);
-  }, [title, description]);
+    canonical.setAttribute('href', url);
+
+    // JSON-LD Article schema for SEO
+    const SCHEMA_ID = 'guide-article-schema';
+    const articleSchema = {
+      '@context': 'https://schema.org',
+      '@type': 'Article',
+      headline: title,
+      description,
+      datePublished,
+      dateModified: dateModified ?? datePublished,
+      mainEntityOfPage: { '@type': 'WebPage', '@id': url },
+      author: { '@type': 'Organization', name: ORG_NAME, url: window.location.origin },
+      publisher: {
+        '@type': 'Organization',
+        name: ORG_NAME,
+        url: window.location.origin,
+      },
+      inLanguage: 'en',
+    };
+    let scriptEl = document.getElementById(SCHEMA_ID) as HTMLScriptElement | null;
+    if (!scriptEl) {
+      scriptEl = document.createElement('script');
+      scriptEl.type = 'application/ld+json';
+      scriptEl.id = SCHEMA_ID;
+      document.head.appendChild(scriptEl);
+    }
+    scriptEl.textContent = JSON.stringify(articleSchema);
+
+    return () => {
+      document.getElementById(SCHEMA_ID)?.remove();
+    };
+  }, [title, description, datePublished, dateModified]);
 
   return (
     <div className="min-h-screen bg-card">
