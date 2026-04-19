@@ -36,9 +36,18 @@ const Onboarding = () => {
 
   const progress = ((step + 1) / STEPS.length) * 100;
 
+  const countryCfgEarly = country ? getCountryConfig(country) : null;
+  const needsSubRegion = !!countryCfgEarly?.subRegions?.length;
+  const needsFilingStatus = !!countryCfgEarly?.filingStatuses?.length;
+
   const canNext = (() => {
     if (step === 0) return true;
-    if (step === 1) return !!country;
+    if (step === 1) {
+      if (!country) return false;
+      if (needsSubRegion && !subRegion) return false;
+      if (needsFilingStatus && !filingStatus) return false;
+      return true;
+    }
     if (step === 2) return !!frequency && employer.trim().length > 0;
     if (step === 3) return threshold >= 1 && threshold <= 25;
     if (step === 4) return true;
@@ -48,6 +57,13 @@ const Onboarding = () => {
 
   const next = () => { if (canNext && step < STEPS.length - 1) setStep(step + 1); };
   const back = () => { if (step > 0) setStep(step - 1); };
+
+  const handleCountrySelect = (code: CountryCode) => {
+    setCountry(code);
+    const cfg = getCountryConfig(code);
+    setSubRegion(cfg.subRegions?.[0]?.code ?? '');
+    setFilingStatus(cfg.filingStatuses?.[0]?.code ?? '');
+  };
 
   const handleFinish = async () => {
     if (!user) return;
