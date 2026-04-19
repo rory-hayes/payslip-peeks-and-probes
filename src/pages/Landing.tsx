@@ -80,7 +80,7 @@ const Landing = () => {
           <div className="grid gap-12 md:grid-cols-2 md:items-center">
             <div className="animate-fade-in">
               <Badge variant="secondary" className="mb-4 rounded-full px-4 py-1.5 text-xs font-medium">
-                Built for UK & Ireland employees
+                UK, Ireland, US & 7 European countries
               </Badge>
               <h1 className="text-4xl font-extrabold tracking-tight text-foreground md:text-5xl lg:text-6xl">
                 Upload your payslip.{' '}
@@ -150,7 +150,7 @@ const Landing = () => {
         <div className="container">
           <div className="text-center">
             <h2 className="text-3xl font-bold text-foreground md:text-4xl">Everything you need to stay on top of your pay</h2>
-            <p className="mt-4 text-muted-foreground max-w-2xl mx-auto">Built specifically for employees in the UK and Ireland</p>
+            <p className="mt-4 text-muted-foreground max-w-2xl mx-auto">Country-specific checks for employees across the UK, Ireland, US and Europe</p>
           </div>
           <div className="mt-16 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
             {[
@@ -176,23 +176,40 @@ const Landing = () => {
       </section>
 
       {/* Country support */}
-      <section className="bg-background py-20">
+      <section className="bg-background py-20 md:py-28">
         <div className="container">
-          <div className="grid gap-8 md:grid-cols-2">
-            <Card className="border-0 shadow-md">
-              <CardContent className="p-8">
-                <div className="text-3xl mb-4">🇬🇧</div>
-                <h3 className="text-xl font-bold text-foreground">United Kingdom</h3>
-                <p className="mt-2 text-sm text-muted-foreground">Tax code checks, National Insurance validation, student loan tracking, pension monitoring, and HMRC-aware analysis.</p>
-              </CardContent>
-            </Card>
-            <Card className="border-0 shadow-md">
-              <CardContent className="p-8">
-                <div className="text-3xl mb-4">🇮🇪</div>
-                <h3 className="text-xl font-bold text-foreground">Ireland</h3>
-                <p className="mt-2 text-sm text-muted-foreground">Income tax, PRSI, and USC validation. LPT tracking, pension monitoring, and Revenue-aware analysis.</p>
-              </CardContent>
-            </Card>
+          <div className="text-center mb-12">
+            <h2 className="text-3xl font-bold text-foreground md:text-4xl">Country-aware payslip checks</h2>
+            <p className="mt-4 text-muted-foreground max-w-2xl mx-auto">
+              Each country uses its own tax bands, social-security rates and payslip conventions. PayCheck handles them all.
+            </p>
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5">
+            {[
+              { flag: '🇬🇧', name: 'United Kingdom', desc: 'Income Tax, NI, student loans' },
+              { flag: '🇮🇪', name: 'Ireland', desc: 'PAYE, PRSI, USC' },
+              { flag: '🇺🇸', name: 'United States', desc: 'FIT, FICA, state tax' },
+              { flag: '🇩🇪', name: 'Germany', desc: 'Lohnsteuer, Soli, KV/RV' },
+              { flag: '🇫🇷', name: 'France', desc: 'IR, CSG/CRDS, cotisations' },
+              { flag: '🇳🇱', name: 'Netherlands', desc: 'Loonheffing, ZVW' },
+              { flag: '🇪🇸', name: 'Spain', desc: 'IRPF, Seguridad Social' },
+              { flag: '🇮🇹', name: 'Italy', desc: 'IRPEF, INPS, addizionali' },
+              { flag: '🇧🇪', name: 'Belgium', desc: 'Bedrijfsvoorheffing, ONSS' },
+              { flag: '🇵🇹', name: 'Portugal', desc: 'IRS, Segurança Social' },
+            ].map((c) => (
+              <Card key={c.name} className="border-0 shadow-sm hover:shadow-md transition-shadow">
+                <CardContent className="p-5">
+                  <div className="text-2xl mb-2" aria-hidden="true">{c.flag}</div>
+                  <h3 className="text-sm font-semibold text-foreground">{c.name}</h3>
+                  <p className="mt-1 text-xs text-muted-foreground leading-relaxed">{c.desc}</p>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+          <div className="mt-10 text-center">
+            <Link to="/calculator" className="text-sm text-primary hover:underline">
+              Try our free take-home calculators →
+            </Link>
           </div>
         </div>
       </section>
