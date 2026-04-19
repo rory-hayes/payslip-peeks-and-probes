@@ -6,6 +6,7 @@ const BelgiumPayslipGuide = () => (
   <GuideLayout
     title="Belgium Payslip Guide"
     description="Précompte professionnel, ONSS / RSZ and pécule de vacances explained in plain English for Belgium-based employees, with the issues most often worth checking."
+    datePublished="2025-03-22"
     breadcrumbLabel="Belgium Payslip Guide"
   >
     <h1 className="text-4xl font-extrabold tracking-tight text-foreground">Belgium Payslip Guide</h1>
