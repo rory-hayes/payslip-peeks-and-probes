@@ -6,6 +6,7 @@ const UkPayslipGuide = () => (
   <GuideLayout
     title="UK Payslip Guide"
     description="Tax codes, National Insurance, pension and the parts of a UK payslip every employee should understand."
+    datePublished="2025-02-01"
     breadcrumbLabel="UK Payslip Guide"
   >
     <h1 className="text-4xl font-extrabold tracking-tight text-foreground">UK Payslip Guide</h1>
