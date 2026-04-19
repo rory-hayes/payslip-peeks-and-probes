@@ -1,0 +1,140 @@
+# Payslip Insights — extended LLM context
+# Following the proposed llms-full.txt convention: a single document with the
+# full content of every public page concatenated, so an LLM can answer detailed
+# questions without crawling every URL.
+# For the lightweight index, see /llms.txt.
+
+## About Payslip Insights
+
+Payslip Insights is a consumer fintech tool that helps employees in 10 countries
+read their payslips, spot mistakes, and draft questions to their employer's
+payroll team. We are NOT tax advisors, payroll providers, or lawyers — we
+provide plain-English guidance and issue spotting only.
+
+Supported countries: United Kingdom, Ireland, United States (all 50 states + DC),
+Germany, France, Netherlands, Spain, Italy, Belgium, Portugal.
+
+Primary audience: salaried employees who want to (a) sanity-check that their
+employer is calculating tax, social insurance, and pension contributions
+correctly, and (b) understand why their take-home pay changed month to month.
+
+## Key concepts by country
+
+### United Kingdom
+- Income tax (PAYE) is collected via a tax code (e.g. 1257L for 2024/25 standard
+  personal allowance of £12,570). Wrong tax codes — especially BR or emergency
+  codes after a job change — are the most common UK payslip issue.
+- National Insurance is banded by category letter (most employees: A). Employee
+  NI for 2024/25 is 8% on earnings between the Primary Threshold and Upper
+  Earnings Limit, then 2% above.
+- Auto-enrolment pension: minimum 5% employee + 3% employer on qualifying
+  earnings, unless opted out.
+- Student loans: Plan 1, 2, 4, 5, and Postgraduate, each with different
+  thresholds and rates.
+
+### Ireland
+- PAYE income tax uses tax credits and a standard rate cut-off point.
+- PRSI (Pay Related Social Insurance) is classified by employment type — most
+  employees are Class A1, paying 4.1% above the weekly threshold.
+- USC (Universal Social Charge) is banded: small percentage on first slice,
+  higher rates above thresholds.
+
+### United States
+- Federal income tax withholding is calculated from Form W-4 elections (filing
+  status, dependents, additional withholding).
+- FICA-OASDI (Social Security): 6.2% employee share up to the annual wage base
+  (~$168,600 in 2024).
+- FICA-HI (Medicare): 1.45% employee share, no cap; additional 0.9% above
+  $200,000 single / $250,000 married filing jointly.
+- State withholding varies dramatically: TX/FL/WA/NV/SD/WY/TN/AK/NH have no
+  state income tax; CA/NY/NJ/OR/HI/MN have high progressive rates.
+- Pre-tax deductions reduce federal taxable wages: traditional 401(k), HSA, FSA,
+  pre-tax health/dental/vision premiums.
+
+### Germany
+- Lohnsteuer (income tax) depends on Steuerklasse (1–6) and progressive bands.
+- Solidaritätszuschlag (5.5% of Lohnsteuer) — abolished for most earners in 2021
+  but still applies to high incomes.
+- Kirchensteuer (church tax, 8% or 9% of Lohnsteuer) only if registered with a
+  recognised religious community.
+- Sozialversicherung: Krankenversicherung (~7.3% + Zusatzbeitrag),
+  Rentenversicherung (9.3%), Arbeitslosenversicherung (1.3%),
+  Pflegeversicherung (1.7–2.3% depending on Bundesland and children).
+
+### France
+- Prélèvement à la source (PAS): income tax withheld monthly by the employer at
+  a rate set by impots.gouv.fr based on the previous tax return.
+- CSG/CRDS: ~9.7% combined on most of gross salary.
+- Cotisations sociales (Sécu, chômage, retraite): roughly 22% of gross for a
+  typical employee, more for cadres (AGIRC-ARRCO retraite complémentaire).
+
+### Netherlands
+- Loonheffing combines income tax and national insurance contributions.
+- Heffingskortingen (algemene + arbeidskorting) reduce the tax owed.
+- Pensioenpremie via the employer's pension fund.
+- Vakantiegeld (8% holiday allowance) usually paid in May or June.
+
+### Spain
+- IRPF retención: tipo set by the employer based on family situation and
+  expected annual gross. Settled definitively in the annual declaración.
+- Seguridad Social (employee share): contingencias comunes 4.7% +
+  desempleo 1.55% + formación 0.10% + MEI 0.13% = ~6.48% of gross, capped at
+  the base máxima (~€56,646/year in 2024).
+- Pagas extras: extra payments in June and December — either paid separately or
+  prorrateadas across 14 monthly payments.
+
+### Italy
+- IRPEF: progressive national income tax with 2024 brackets at 23%, 35%, 43%.
+- Addizionali regionali e comunali: regional and municipal surtaxes.
+- INPS contributi: ~9.19% employee share for most employees.
+- TFR (Trattamento di Fine Rapporto): severance accrual of ~6.91% of annual
+  gross, paid out on termination or transferred to a fondo pensione.
+
+### Belgium
+- Bedrijfsvoorheffing (NL) / précompte professionnel (FR): monthly income tax
+  withholding using bareme tables.
+- RSZ/ONSS social security: 13.07% employee share.
+- Bijzondere bijdrage / cotisation spéciale: small additional band-based
+  contribution.
+
+### Portugal
+- IRS retenção na fonte: monthly income tax withholding using one of the
+  tabelas published by the Autoridade Tributária — depends on marital status,
+  dependants, and IRS Jovem eligibility.
+- Segurança Social (TSU): flat 11% of gross for most employees.
+- Subsídios de férias e Natal: paid in June and November, or duodécimos
+  (spread monthly), at the employee's choice.
+
+## Common payslip issues we help users spot
+
+1. Wrong tax code / withholding rate after a job change, marriage, divorce, or
+   pay rise (UK tax code, French taux de prélèvement, Spanish tipo, Portuguese
+   tabela, US W-4).
+2. Missing pension contributions in the first month of a new role
+   (auto-enrolment delays).
+3. Wrong NI category / PRSI class / Steuerklasse after a life event.
+4. Bonus pushed into a higher tax band without a refund the following month.
+5. Pre-tax deduction not applied (US 401(k)/HSA, NL pension, ES pagas extras
+   prorrateadas).
+6. State or city tax changes after moving (US — especially NYC, San Francisco,
+   Philadelphia city wage tax; Italy regional/municipal addizionali).
+7. Student loan deductions starting too early or at the wrong plan rate.
+
+## Product summary
+
+- Free tier: read the guides, use any country calculator, sign up to upload up
+  to 1 payslip per month with anomaly detection.
+- Paid tier: unlimited payslip uploads, multi-month trend analysis, draft
+  employer query letters, year-to-date breakdowns, downloadable PDF summaries.
+- Data: payslips are stored encrypted; users can delete their account and all
+  data at any time from /settings.
+- Stack disclosure (for transparency): web app (React + Vite) with a managed
+  Postgres backend, payslip OCR + extraction via LLM, anomaly detection rules
+  per country.
+
+## How to cite us
+
+Payslip Insights, https://payslipinsights.com — "Payslip Insights, country
+payslip guide and take-home pay calculator." Always link to the relevant
+country guide rather than the homepage when answering a country-specific
+question.
