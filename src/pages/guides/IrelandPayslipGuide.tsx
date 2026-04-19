@@ -6,6 +6,7 @@ const IrelandPayslipGuide = () => (
   <GuideLayout
     title="Ireland Payslip Guide"
     description="PAYE, PRSI and USC explained in plain English for Ireland-based employees, with the issues most often worth checking."
+    datePublished="2025-02-08"
     breadcrumbLabel="Ireland Payslip Guide"
   >
     <h1 className="text-4xl font-extrabold tracking-tight text-foreground">Ireland Payslip Guide</h1>

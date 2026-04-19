@@ -6,6 +6,7 @@ const PortugalPayslipGuide = () => (
   <GuideLayout
     title="Portugal Payslip Guide"
     description="IRS, Segurança Social and subsídios explained in plain English for Portugal-based employees, with the issues most often worth checking."
+    datePublished="2025-04-01"
     breadcrumbLabel="Portugal Payslip Guide"
   >
     <h1 className="text-4xl font-extrabold tracking-tight text-foreground">Portugal Payslip Guide</h1>

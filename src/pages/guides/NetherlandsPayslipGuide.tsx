@@ -6,6 +6,7 @@ const NetherlandsPayslipGuide = () => (
   <GuideLayout
     title="Netherlands Payslip Guide"
     description="Loonheffing, heffingskorting and vakantiegeld explained in plain English for Netherlands-based employees, with the issues most often worth checking."
+    datePublished="2025-03-01"
     breadcrumbLabel="Netherlands Payslip Guide"
   >
     <h1 className="text-4xl font-extrabold tracking-tight text-foreground">Netherlands Payslip Guide</h1>

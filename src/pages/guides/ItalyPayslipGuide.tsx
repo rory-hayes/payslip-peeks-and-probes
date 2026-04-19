@@ -6,6 +6,7 @@ const ItalyPayslipGuide = () => (
   <GuideLayout
     title="Italy Payslip Guide"
     description="IRPEF, INPS, addizionali and TFR explained in plain English for Italy-based employees, with the issues most often worth checking."
+    datePublished="2025-03-15"
     breadcrumbLabel="Italy Payslip Guide"
   >
     <h1 className="text-4xl font-extrabold tracking-tight text-foreground">Italy Payslip Guide</h1>

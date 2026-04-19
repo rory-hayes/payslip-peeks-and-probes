@@ -6,6 +6,7 @@ const UsPayslipGuide = () => (
   <GuideLayout
     title="US Payslip Guide"
     description="Federal Withholding, FICA (OASDI + Medicare), state tax and pre-tax 401(k)/HSA/FSA explained for US employees on ADP, Gusto and Paychex."
+    datePublished="2025-04-15"
     breadcrumbLabel="US Payslip Guide"
   >
     <h1 className="text-4xl font-extrabold tracking-tight text-foreground">US Payslip Guide</h1>

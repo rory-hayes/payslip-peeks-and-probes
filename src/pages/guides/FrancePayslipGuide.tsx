@@ -6,6 +6,7 @@ const FrancePayslipGuide = () => (
   <GuideLayout
     title="France Payslip Guide"
     description="Prélèvement à la source, cotisations sociales and AGIRC-ARRCO explained in plain English for France-based employees, with the issues most often worth checking."
+    datePublished="2025-02-22"
     breadcrumbLabel="France Payslip Guide"
   >
     <h1 className="text-4xl font-extrabold tracking-tight text-foreground">France Payslip Guide</h1>

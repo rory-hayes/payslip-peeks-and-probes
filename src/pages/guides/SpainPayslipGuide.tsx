@@ -6,6 +6,7 @@ const SpainPayslipGuide = () => (
   <GuideLayout
     title="Spain Payslip Guide"
     description="IRPF, Seguridad Social and bases de cotización explained in plain English for Spain-based employees, with the issues most often worth checking."
+    datePublished="2025-03-08"
     breadcrumbLabel="Spain Payslip Guide"
   >
     <h1 className="text-4xl font-extrabold tracking-tight text-foreground">Spain Payslip Guide</h1>

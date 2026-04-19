@@ -6,6 +6,7 @@ const GermanyPayslipGuide = () => (
   <GuideLayout
     title="Germany Payslip Guide"
     description="Lohnsteuer, Sozialversicherung and Solidaritätszuschlag explained in plain English for Germany-based employees, with the issues most often worth checking."
+    datePublished="2025-02-15"
     breadcrumbLabel="Germany Payslip Guide"
   >
     <h1 className="text-4xl font-extrabold tracking-tight text-foreground">Germany Payslip Guide</h1>
