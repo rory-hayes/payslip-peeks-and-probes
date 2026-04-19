@@ -76,6 +76,8 @@ const Onboarding = () => {
       .update({
         country: country || null,
         currency: cfg?.currency ?? 'GBP',
+        sub_region: needsSubRegion ? (subRegion || null) : null,
+        filing_status: needsFilingStatus ? (filingStatus || null) : null,
         pay_frequency: frequency,
         employer_name: employer.trim(),
         annual_salary: parsedSalary && parsedSalary > 0 ? parsedSalary : null,
