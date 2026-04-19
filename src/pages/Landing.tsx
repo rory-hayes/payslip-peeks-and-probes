@@ -276,7 +276,7 @@ const Landing = () => {
               { q: 'Is PayCheck tax advice?', a: 'No. PayCheck is a payslip checking and issue-spotting tool. Our findings are guidance only — not formal tax, legal, or payroll advice. Always confirm with your employer or a professional if you\'re unsure.' },
               { q: 'Is my payslip data secure?', a: 'Absolutely. Your data is encrypted in transit and at rest. We use bank-level security practices. Only you can access your payslips — we never share your data with third parties.' },
               { q: 'Which payslip formats do you support?', a: 'We support PDF payslips and photos/images of payslips. We\'re continually improving our extraction engine to handle more formats.' },
-              { q: 'Does PayCheck work for both UK and Ireland?', a: 'Yes. PayCheck supports employees in the UK and Ireland with country-specific checks — including tax, NI/PRSI, USC, student loans, and pension deductions.' },
+              { q: 'Which countries does PayCheck support?', a: 'PayCheck supports the UK, Ireland, United States, Germany, France, Netherlands, Spain, Italy, Belgium and Portugal — each with country-specific tax bands, social-security rates and payslip conventions. US users can also pick their state and filing status.' },
               { q: 'Can I cancel my subscription anytime?', a: 'Yes. You can cancel your Plus subscription at any time. You\'ll keep access until the end of your current billing period.' },
               { q: 'What if the extraction gets something wrong?', a: 'You can review and edit any extracted values before confirming. We also show confidence scores so you know when to double-check a figure.' },
             ].map((item, i) => (
