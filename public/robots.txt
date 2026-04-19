@@ -1,15 +1,92 @@
+# robots.txt — Payslip Insights
+# Public marketing, guides and calculator pages are open to all crawlers,
+# including AI/LLM training and retrieval bots. Authenticated app routes
+# (dashboard, vault, settings, etc.) are disallowed for everyone.
+
+# --- Search engines ---
 User-agent: Googlebot
 Allow: /
 
 User-agent: Bingbot
 Allow: /
 
+User-agent: DuckDuckBot
+Allow: /
+
+User-agent: Applebot
+Allow: /
+
+# --- Social card unfurlers ---
 User-agent: Twitterbot
 Allow: /
 
 User-agent: facebookexternalhit
 Allow: /
 
+User-agent: LinkedInBot
+Allow: /
+
+User-agent: Slackbot
+Allow: /
+
+User-agent: Discordbot
+Allow: /
+
+# --- AI / LLM crawlers (training + retrieval) ---
+# We explicitly allow these so ChatGPT, Claude, Perplexity, Gemini and others
+# can surface our country payslip guides when users ask payroll questions.
+User-agent: GPTBot
+Allow: /
+
+User-agent: ChatGPT-User
+Allow: /
+
+User-agent: OAI-SearchBot
+Allow: /
+
+User-agent: ClaudeBot
+Allow: /
+
+User-agent: Claude-Web
+Allow: /
+
+User-agent: anthropic-ai
+Allow: /
+
+User-agent: PerplexityBot
+Allow: /
+
+User-agent: Perplexity-User
+Allow: /
+
+User-agent: Google-Extended
+Allow: /
+
+User-agent: GoogleOther
+Allow: /
+
+User-agent: Bytespider
+Allow: /
+
+User-agent: Amazonbot
+Allow: /
+
+User-agent: Meta-ExternalAgent
+Allow: /
+
+User-agent: cohere-ai
+Allow: /
+
+User-agent: YouBot
+Allow: /
+
+User-agent: Diffbot
+Allow: /
+
+User-agent: CCBot
+Allow: /
+
+# --- Default: allow everyone, but keep authenticated app routes private ---
 User-agent: *
 Allow: /
 Disallow: /dashboard
