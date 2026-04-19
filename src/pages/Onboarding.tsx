@@ -25,6 +25,8 @@ const Onboarding = () => {
   const queryClient = useQueryClient();
   const [step, setStep] = useState(0);
   const [country, setCountry] = useState<CountryCode | ''>('');
+  const [subRegion, setSubRegion] = useState<string>('');
+  const [filingStatus, setFilingStatus] = useState<string>('');
   const [frequency, setFrequency] = useState<string>('');
   const [employer, setEmployer] = useState('');
   const [annualSalary, setAnnualSalary] = useState<string>('');
