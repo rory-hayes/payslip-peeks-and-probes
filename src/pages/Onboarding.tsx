@@ -167,7 +167,7 @@ const Onboarding = () => {
                   {COUNTRY_LIST.map((c) => (
                     <button
                       key={c.code}
-                      onClick={() => setCountry(c.code)}
+                      onClick={() => handleCountrySelect(c.code)}
                       className={`flex flex-col items-center gap-2 rounded-xl border-2 p-4 transition-all ${
                         country === c.code
                           ? 'border-primary bg-primary/5'
@@ -180,6 +180,59 @@ const Onboarding = () => {
                     </button>
                   ))}
                 </div>
+
+                {country && (needsSubRegion || needsFilingStatus) && (
+                  <div className="space-y-4 rounded-xl border border-border p-4 bg-muted/30">
+                    {needsSubRegion && (
+                      <div className="space-y-2">
+                        <Label htmlFor="subRegion">
+                          {countryCfgEarly?.subRegionLabel ?? 'Region'} <span className="text-destructive">*</span>
+                        </Label>
+                        <select
+                          id="subRegion"
+                          value={subRegion}
+                          onChange={(e) => setSubRegion(e.target.value)}
+                          className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                        >
+                          <option value="">Select…</option>
+                          {countryCfgEarly?.subRegions?.map((r) => (
+                            <option key={r.code} value={r.code}>{r.name}</option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
+                    {needsFilingStatus && (
+                      <div className="space-y-2">
+                        <Label htmlFor="filingStatus">
+                          {countryCfgEarly?.filingStatusLabel ?? 'Filing status'} <span className="text-destructive">*</span>
+                        </Label>
+                        <div className="grid grid-cols-1 gap-2">
+                          {countryCfgEarly?.filingStatuses?.map((fs) => (
+                            <button
+                              key={fs.code}
+                              type="button"
+                              onClick={() => setFilingStatus(fs.code)}
+                              className={`text-left rounded-lg border px-3 py-2.5 text-sm transition-all ${
+                                filingStatus === fs.code
+                                  ? 'border-primary bg-primary/5'
+                                  : 'border-border hover:border-muted-foreground/30'
+                              }`}
+                            >
+                              <span className="font-medium text-foreground">{fs.label}</span>
+                              {fs.description && (
+                                <span className="block text-xs text-muted-foreground mt-0.5">{fs.description}</span>
+                              )}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    <p className="text-[11px] text-muted-foreground">
+                      Used to calculate your expected take-home. You can change this later in Settings.
+                    </p>
+                  </div>
+                )}
+
                 <p className="text-xs text-center text-muted-foreground pt-1">
                   More EMEA countries coming soon. Pick the closest match for now.
                 </p>
