@@ -12,3 +12,14 @@ Allow: /
 
 User-agent: *
 Allow: /
+Disallow: /dashboard
+Disallow: /vault
+Disallow: /payslip/
+Disallow: /compare
+Disallow: /anomalies
+Disallow: /draft/
+Disallow: /settings
+Disallow: /onboarding
+Disallow: /checkout
+
+Sitemap: https://payslipinsights.com/sitemap.xml

@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <!-- Marketing -->
+  <url><loc>https://payslipinsights.com/</loc><changefreq>weekly</changefreq><priority>1.0</priority></url>
+  <url><loc>https://payslipinsights.com/pricing</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://payslipinsights.com/privacy</loc><changefreq>yearly</changefreq><priority>0.3</priority></url>
+  <url><loc>https://payslipinsights.com/terms</loc><changefreq>yearly</changefreq><priority>0.3</priority></url>
+
+  <!-- Auth entry points (useful for branded queries) -->
+  <url><loc>https://payslipinsights.com/sign-in</loc><changefreq>yearly</changefreq><priority>0.4</priority></url>
+  <url><loc>https://payslipinsights.com/sign-up</loc><changefreq>yearly</changefreq><priority>0.5</priority></url>
+
+  <!-- Guides hub -->
+  <url><loc>https://payslipinsights.com/guides</loc><changefreq>weekly</changefreq><priority>0.9</priority></url>
+
+  <!-- Topic guides -->
+  <url><loc>https://payslipinsights.com/guides/how-to-check-your-payslip</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://payslipinsights.com/guides/why-did-my-net-pay-go-down</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://payslipinsights.com/guides/common-payslip-mistakes</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://payslipinsights.com/guides/compare-two-payslips</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>
+
+  <!-- Country payslip guides -->
+  <url><loc>https://payslipinsights.com/guides/uk-payslip-guide</loc><lastmod>2025-02-01</lastmod><changefreq>monthly</changefreq><priority>0.9</priority></url>
+  <url><loc>https://payslipinsights.com/guides/ireland-payslip-guide</loc><lastmod>2025-02-08</lastmod><changefreq>monthly</changefreq><priority>0.9</priority></url>
+  <url><loc>https://payslipinsights.com/guides/us-payslip-guide</loc><lastmod>2025-01-15</lastmod><changefreq>monthly</changefreq><priority>0.9</priority></url>
+  <url><loc>https://payslipinsights.com/guides/germany-payslip-guide</loc><lastmod>2025-02-15</lastmod><changefreq>monthly</changefreq><priority>0.9</priority></url>
+  <url><loc>https://payslipinsights.com/guides/france-payslip-guide</loc><lastmod>2025-02-22</lastmod><changefreq>monthly</changefreq><priority>0.9</priority></url>
+  <url><loc>https://payslipinsights.com/guides/netherlands-payslip-guide</loc><lastmod>2025-03-01</lastmod><changefreq>monthly</changefreq><priority>0.9</priority></url>
+  <url><loc>https://payslipinsights.com/guides/spain-payslip-guide</loc><lastmod>2025-03-08</lastmod><changefreq>monthly</changefreq><priority>0.9</priority></url>
+  <url><loc>https://payslipinsights.com/guides/italy-payslip-guide</loc><lastmod>2025-03-15</lastmod><changefreq>monthly</changefreq><priority>0.9</priority></url>
+  <url><loc>https://payslipinsights.com/guides/belgium-payslip-guide</loc><lastmod>2025-03-22</lastmod><changefreq>monthly</changefreq><priority>0.9</priority></url>
+  <url><loc>https://payslipinsights.com/guides/portugal-payslip-guide</loc><lastmod>2025-04-01</lastmod><changefreq>monthly</changefreq><priority>0.9</priority></url>
+
+  <!-- Calculator hub -->
+  <url><loc>https://payslipinsights.com/calculator</loc><changefreq>monthly</changefreq><priority>0.9</priority></url>
+
+  <!-- Per-country calculators -->
+  <url><loc>https://payslipinsights.com/calculator/uk</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://payslipinsights.com/calculator/ireland</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://payslipinsights.com/calculator/us</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://payslipinsights.com/calculator/germany</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://payslipinsights.com/calculator/france</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://payslipinsights.com/calculator/netherlands</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://payslipinsights.com/calculator/spain</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://payslipinsights.com/calculator/italy</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://payslipinsights.com/calculator/belgium</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://payslipinsights.com/calculator/portugal</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>
+</urlset>
