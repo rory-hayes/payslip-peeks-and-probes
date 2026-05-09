@@ -1,0 +1,44 @@
+[
+  {
+    "name": "00 Repo Audit & Setup",
+    "description": "Stabilize the repo, exports, security hygiene, lint baseline, dependency posture, and CI prerequisites.",
+    "order": 1,
+    "target_date": null,
+    "linear_milestone_id": "f26f4217-0e8b-4490-8cd8-b736651bff82"
+  },
+  {
+    "name": "01 MVP Foundation",
+    "description": "Verify auth, Supabase schema, data isolation, environment setup, and foundational route behavior.",
+    "order": 2,
+    "target_date": null,
+    "linear_milestone_id": "e3e9e331-cff2-4fad-8ac7-85529c2a2a3d"
+  },
+  {
+    "name": "02 Core Product Flow",
+    "description": "Harden upload, extraction, anomaly, draft, export, delete, and billing flows for MVP usage.",
+    "order": 3,
+    "target_date": null,
+    "linear_milestone_id": "54455c9d-67ab-4f5e-95c7-203910b35ff2"
+  },
+  {
+    "name": "03 Production Readiness",
+    "description": "Add operational, privacy, security, observability, deployment, and regression coverage.",
+    "order": 4,
+    "target_date": null,
+    "linear_milestone_id": "fc4819e7-3c6a-4fa4-8f35-81cf688bc8db"
+  },
+  {
+    "name": "04 Launch Candidate",
+    "description": "Complete final responsive, accessibility, deployment, monitoring, and beta acceptance checks.",
+    "order": 5,
+    "target_date": null,
+    "linear_milestone_id": "5c23060d-01a4-4153-af1a-8e1173c135a6"
+  },
+  {
+    "name": "05 Later Enhancements",
+    "description": "Hold non-MVP support/admin and scale enhancements until the core product is production-safe.",
+    "order": 6,
+    "target_date": null,
+    "linear_milestone_id": "8577325e-483b-4301-8cfa-479693a44c50"
+  }
+]

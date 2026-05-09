@@ -1,0 +1,61 @@
+[
+  {
+    "id": "RISK-001",
+    "title": "Tracked secrets and credential history",
+    "severity": "High",
+    "owner": "Human credential owner",
+    "mitigation": "Complete PPP-SEC-001 and PPP-SEC-002 before adding more production integrations.",
+    "related_tasks": [
+      "PPP-SEC-001",
+      "PPP-SEC-002"
+    ]
+  },
+  {
+    "id": "RISK-002",
+    "title": "Sensitive payroll data isolation",
+    "severity": "High",
+    "owner": "Engineering",
+    "mitigation": "Verify RLS, storage policies, and function ownership checks before MVP runtime testing.",
+    "related_tasks": [
+      "PPP-DATA-001",
+      "PPP-SEC-004",
+      "PPP-SEC-006"
+    ]
+  },
+  {
+    "id": "RISK-003",
+    "title": "AI output trust boundary",
+    "severity": "High",
+    "owner": "Engineering",
+    "mitigation": "Validate AI output and handle low-confidence/failure states before relying on extraction.",
+    "related_tasks": [
+      "PPP-AI-001",
+      "PPP-AI-002",
+      "PPP-AI-003",
+      "PPP-AI-004"
+    ]
+  },
+  {
+    "id": "RISK-004",
+    "title": "Billing entitlement correctness",
+    "severity": "High",
+    "owner": "Engineering and product",
+    "mitigation": "Verify Stripe sandbox checkout, webhook signatures, cancellation, and entitlement state.",
+    "related_tasks": [
+      "PPP-PAY-001",
+      "PPP-PAY-002"
+    ]
+  },
+  {
+    "id": "RISK-005",
+    "title": "Country support mismatch",
+    "severity": "Medium",
+    "owner": "Product",
+    "mitigation": "Decide and align MVP country support across UI, schema, and extraction.",
+    "related_tasks": [
+      "PPP-PROD-001",
+      "PPP-PROD-002",
+      "PPP-DATA-003"
+    ]
+  }
+]

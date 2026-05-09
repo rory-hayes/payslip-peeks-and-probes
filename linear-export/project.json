@@ -1,0 +1,42 @@
+{
+  "project_name": "PayCheck",
+  "project_slug": "payslip-peeks-and-probes",
+  "repo_url": "https://github.com/rory-hayes/payslip-peeks-and-probes",
+  "deployment_url": null,
+  "product_summary": "PayCheck is a Vite React SaaS app for employees to upload payslips, extract key pay figures, compare pay over time, flag anomalies, and draft payroll queries.",
+  "current_stage": "Audited Lovable-migrated product shell. Build, typecheck, tests, and dev smoke pass; lint, dependency security, live backend verification, and production operations remain blockers.",
+  "mvp_readiness_score": 5,
+  "production_readiness_score": 5,
+  "target_readiness_score": 10,
+  "top_blockers": [
+    "Tracked local env files and repository history require cleanup and credential rotation.",
+    "npm run lint fails and cannot yet be used as a CI gate.",
+    "Production dependency audit reports high-severity vulnerabilities.",
+    "Supabase migrations, RLS, storage policies, and Edge Functions need fresh-project verification.",
+    "Country support claims and persistence/extraction support disagree, especially around US support.",
+    "Stripe, AI extraction, export, delete, and full MVP runtime flows need sandbox verification."
+  ],
+  "top_risks": [
+    "Sensitive payroll data increases the impact of auth, RLS, storage, logging, and deletion mistakes.",
+    "Lovable gateway dependencies for AI and Stripe need explicit production ownership.",
+    "Client route protection is present but is not a security boundary.",
+    "AI output is parsed and persisted without strict runtime schema validation.",
+    "There is no verified E2E coverage for signup through upload, anomaly review, billing, export, and deletion."
+  ],
+  "recommended_next_focus": [
+    "Secrets and credential hygiene",
+    "Security dependency updates",
+    "Lint/type-safety baseline",
+    "Supabase sandbox verification",
+    "First E2E smoke tests"
+  ],
+  "audit_date": "2026-05-06",
+  "linear_team": {
+    "workspace": "TallyRec",
+    "team_name": "TallyRec",
+    "team_id": "a8449c74-73fb-406b-9df3-26042598d103",
+    "issue_key_prefix": "TAL"
+  },
+  "linear_project_url": "https://linear.app/tallyrec/project/paycheck-2f7b58286b26",
+  "linear_project_id": "fa531699-47a0-46cc-9ff1-083b6653df63"
+}

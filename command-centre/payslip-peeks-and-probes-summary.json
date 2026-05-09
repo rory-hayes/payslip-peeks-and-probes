@@ -1,0 +1,20 @@
+{
+  "project_name": "PayCheck",
+  "project_slug": "payslip-peeks-and-probes",
+  "repo_url": "https://github.com/rory-hayes/payslip-peeks-and-probes",
+  "deployment_url": "",
+  "generated_at": "2026-05-06T18:19:44.852Z",
+  "production_readiness_score": 5,
+  "row_count": 19,
+  "priority_counts": {
+    "P0": 7,
+    "P1": 8,
+    "P2": 3,
+    "P3": 1
+  },
+  "status_counts": {
+    "Ready": 7,
+    "Backlog": 12
+  },
+  "source": "Code Audit"
+}

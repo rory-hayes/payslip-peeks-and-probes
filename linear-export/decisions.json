@@ -1,0 +1,57 @@
+[
+  {
+    "id": "DEC-001",
+    "title": "MVP country support",
+    "status": "Open",
+    "needed_by": "Before implementing PPP-PROD-002 or PPP-DATA-003",
+    "options": [
+      "Include US in MVP and add full schema/extraction support",
+      "Remove US claims/options until post-MVP"
+    ],
+    "related_tasks": [
+      "PPP-PROD-001"
+    ]
+  },
+  {
+    "id": "DEC-002",
+    "title": "Canonical brand and domain",
+    "status": "Open",
+    "needed_by": "Before updating SEO, legal, auth, billing, and deployment copy",
+    "options": [
+      "PayCheck with a chosen production domain",
+      "Payslip Insights with aligned domain"
+    ],
+    "related_tasks": [
+      "PPP-BRAND-001"
+    ]
+  },
+  {
+    "id": "DEC-003",
+    "title": "Deployment target",
+    "status": "Open",
+    "needed_by": "Before CI/CD and production runbook implementation",
+    "options": [
+      "Static host plus Supabase",
+      "Vercel static deployment",
+      "Netlify static deployment",
+      "Other selected host"
+    ],
+    "related_tasks": [
+      "PPP-DEP-001"
+    ]
+  },
+  {
+    "id": "DEC-004",
+    "title": "Observability providers",
+    "status": "Open",
+    "needed_by": "Before wiring analytics or server error reporting",
+    "options": [
+      "PostHog/Sentry-style provider pair",
+      "Minimal provider-free logs for MVP",
+      "Other privacy-approved stack"
+    ],
+    "related_tasks": [
+      "PPP-OBS-001"
+    ]
+  }
+]

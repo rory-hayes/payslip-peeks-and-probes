@@ -1,0 +1,63 @@
+{
+  "project_name": "PayCheck",
+  "project_slug": "payslip-peeks-and-probes",
+  "repo_url": "https://github.com/rory-hayes/payslip-peeks-and-probes",
+  "branch": "codex/bootstrap-audit-roadmap",
+  "audit_date": "2026-05-06",
+  "production_readiness_score": 5,
+  "current_status": "Builds and tests pass, TypeScript passes, lint fails, production dependency audit has high vulnerabilities, and backend/payment/AI flows need sandbox verification.",
+  "commands": [
+    {
+      "command": "npm install",
+      "result": "pass",
+      "notes": "Installed 529 packages and refreshed package-lock.json. npm reported 18 total vulnerabilities."
+    },
+    {
+      "command": "npm run lint",
+      "result": "fail",
+      "notes": "25 errors and 9 warnings across app, shadcn template files, Tailwind config, and Supabase functions."
+    },
+    {
+      "command": "npx tsc --noEmit",
+      "result": "pass",
+      "notes": "No TypeScript errors reported."
+    },
+    {
+      "command": "npm test",
+      "result": "pass",
+      "notes": "4 test files and 5 tests passed."
+    },
+    {
+      "command": "npm run build",
+      "result": "pass",
+      "notes": "Build succeeded with a large chunk warning and stale Browserslist data warning."
+    },
+    {
+      "command": "npm audit --omit=dev --json",
+      "result": "fail",
+      "notes": "9 production vulnerabilities: 3 moderate and 6 high."
+    },
+    {
+      "command": "npm run dev -- --host 127.0.0.1 --port 8080",
+      "result": "pass",
+      "notes": "Port 8080 was busy; Vite served on 8081. HTTP GET returned the app shell."
+    }
+  ],
+  "google_sheet_update": {
+    "status": "fallback_exports_created",
+    "reason": "COMMAND_CENTRE_WEBHOOK_URL and Google service account variables were not available.",
+    "files": [
+      "command-centre/payslip-peeks-and-probes-roadmap.csv",
+      "command-centre/payslip-peeks-and-probes-roadmap.json",
+      "command-centre/payslip-peeks-and-probes-summary.json"
+    ]
+  },
+  "top_risks": [
+    "Tracked env files in repository history need removal and credential rotation.",
+    "Lint is not a passing quality gate.",
+    "Production dependency audit reports high vulnerabilities.",
+    "Supabase migrations and Edge Functions were not verified in a fresh project.",
+    "US support is inconsistent between UI, schema, types, and extraction.",
+    "Stripe and Lovable gateway flows need sandbox verification."
+  ]
+}
