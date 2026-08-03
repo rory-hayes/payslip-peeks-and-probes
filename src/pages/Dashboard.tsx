@@ -16,6 +16,7 @@ import { formatDate } from '@/lib/date-utils';
 import { generatePaySummaryPdf } from '@/lib/generate-pay-summary-pdf';
 import type { DeductionOptions } from '@/lib/tax-calculator';
 import { useDemo } from '@/contexts/DemoContext';
+import DemoReadOnlyLink from '@/components/DemoReadOnlyLink';
 import { DEMO_PAYSLIPS, DEMO_ANOMALIES, DEMO_TRENDS } from '@/lib/demo-data';
 import type { Payslip, AnomalyResult, PayTrend } from '@/lib/types';
 import {
@@ -54,6 +55,10 @@ const Dashboard = () => {
   const fmtCurrency = isDemo ? demoCurrencyFormat : formatCurrency;
   const sym = isDemo ? '£' : currSym;
 
+  const leaveDemoForSignUp = () => {
+    navigate('/sign-up', { state: { exitDemo: true } });
+  };
+
   const handleExportPdf = () => {
     if (!allPayslips || allPayslips.length === 0) return;
     const studentLoanPlan = profile?.student_loan_plan;
@@ -82,12 +87,10 @@ const Dashboard = () => {
           <div className="flex items-center justify-between rounded-lg border border-primary/30 bg-primary/5 px-4 py-3">
             <p className="text-sm text-foreground">
               <span className="font-medium">You're viewing sample data.</span>{' '}
-              <span className="text-muted-foreground">Sign up to upload your own payslips.</span>
+              <span className="text-muted-foreground">This read-only demo keeps sample payslips on this dashboard.</span>
             </p>
             <div className="flex gap-2">
-              <Link to="/sign-up">
-                <Button size="sm" className="gap-1.5"><Sparkles className="h-3 w-3" /> Sign up free</Button>
-              </Link>
+              <Button size="sm" className="gap-1.5" onClick={leaveDemoForSignUp}><Sparkles className="h-3 w-3" /> Sign up free</Button>
               <Button variant="ghost" size="sm" onClick={() => { disableDemo(); navigate('/'); }}>
                 <X className="h-4 w-4" />
               </Button>
@@ -109,9 +112,13 @@ const Dashboard = () => {
                 <Download className="h-4 w-4" /> Export PDF
               </Button>
             )}
-            <Link to="/vault">
-              <Button className="gap-2"><Upload className="h-4 w-4" /> Upload payslip</Button>
-            </Link>
+            {isDemo ? (
+              <Button className="gap-2" onClick={leaveDemoForSignUp}><Upload className="h-4 w-4" /> Sign up to upload</Button>
+            ) : (
+              <Link to="/vault">
+                <Button className="gap-2"><Upload className="h-4 w-4" /> Upload payslip</Button>
+              </Link>
+            )}
           </div>
         </div>
 
@@ -202,10 +209,12 @@ const Dashboard = () => {
                     <AlertTriangle className="h-4 w-4 text-anomaly" />
                   </div>
                   <div className="mt-2 text-2xl font-bold text-foreground">{unresolvedCount}</div>
-                  {unresolvedCount > 0 ? (
+                  {unresolvedCount > 0 && !isDemo ? (
                     <Link to="/anomalies" className="mt-1 inline-flex items-center gap-1 text-xs text-primary hover:underline">
                       Review now <ArrowRight className="h-3 w-3" />
                     </Link>
+                  ) : unresolvedCount > 0 ? (
+                    <p className="mt-1 text-xs text-muted-foreground">Sample issues are listed below</p>
                   ) : (
                     <p className="mt-1 text-xs text-success">No changes currently flagged</p>
                   )}
@@ -307,13 +316,17 @@ const Dashboard = () => {
                   <CardHeader className="pb-2">
                     <div className="flex items-center justify-between">
                       <CardTitle className="text-base">Recent anomalies</CardTitle>
-                      <Link to="/anomalies" className="text-xs text-primary hover:underline">View all</Link>
+                      {isDemo ? (
+                        <span className="text-xs text-muted-foreground">Sample data</span>
+                      ) : (
+                        <Link to="/anomalies" className="text-xs text-primary hover:underline">View all</Link>
+                      )}
                     </div>
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-3">
                       {allAnomalies.filter((a) => a.status === 'new').slice(0, 4).map((anomaly) => (
-                        <Link key={anomaly.id} to={`/payslip/${anomaly.payslip_id}`} className="flex items-start gap-3 rounded-lg p-2 -mx-2 hover:bg-muted/50 transition-colors">
+                        <DemoReadOnlyLink key={anomaly.id} isDemo={isDemo} to={`/payslip/${anomaly.payslip_id}`} className={`flex items-start gap-3 rounded-lg p-2 -mx-2 transition-colors ${isDemo ? 'cursor-default' : 'hover:bg-muted/50'}`}>
                           <div className={`mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full ${
                             anomaly.severity === 'high' ? 'bg-destructive/10 text-destructive' :
                             anomaly.severity === 'medium' ? 'bg-anomaly/10 text-anomaly' :
@@ -326,7 +339,7 @@ const Dashboard = () => {
                             <p className="text-xs text-muted-foreground">{formatDate(anomaly.payslip_date)}</p>
                           </div>
                           <Badge variant="outline" className="ml-auto shrink-0 text-xs capitalize">{anomaly.severity}</Badge>
-                        </Link>
+                        </DemoReadOnlyLink>
                       ))}
                     </div>
                   </CardContent>
@@ -339,13 +352,17 @@ const Dashboard = () => {
               <CardHeader className="pb-2">
                 <div className="flex items-center justify-between">
                   <CardTitle className="text-base">Recent payslips</CardTitle>
-                  <Link to="/vault" className="text-xs text-primary hover:underline">View all</Link>
+                  {isDemo ? (
+                    <span className="text-xs text-muted-foreground">Sample data</span>
+                  ) : (
+                    <Link to="/vault" className="text-xs text-primary hover:underline">View all</Link>
+                  )}
                 </div>
               </CardHeader>
               <CardContent>
                 <div className="divide-y divide-border">
                   {allPayslips.slice().reverse().slice(0, 4).map((slip) => (
-                    <Link key={slip.id} to={`/payslip/${slip.id}`} className="flex items-center gap-4 py-3 hover:bg-muted/30 -mx-2 px-2 rounded-lg transition-colors">
+                    <DemoReadOnlyLink key={slip.id} isDemo={isDemo} to={`/payslip/${slip.id}`} className={`flex items-center gap-4 py-3 -mx-2 px-2 rounded-lg transition-colors ${isDemo ? 'cursor-default' : 'hover:bg-muted/30'}`}>
                       <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10">
                         <FileText className="h-5 w-5 text-primary" />
                       </div>
@@ -360,7 +377,7 @@ const Dashboard = () => {
                       {slip.anomaly_count > 0 && (
                         <Badge variant="destructive" className="text-xs">{slip.anomaly_count}</Badge>
                       )}
-                    </Link>
+                    </DemoReadOnlyLink>
                   ))}
                 </div>
               </CardContent>

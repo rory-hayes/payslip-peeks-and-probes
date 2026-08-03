@@ -1,7 +1,10 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { partitionSecureOwnedPayslipPaths } from "../_shared/account-deletion.ts";
+import {
+  AccountDeletionStoragePathVerificationError,
+  requireSecureOwnedPayslipPathsForAccountDeletion,
+} from "../_shared/account-deletion.ts";
 import {
   createStripeClient,
   getCheckoutIntentId,
@@ -50,7 +53,7 @@ interface StoredCheckoutIntent {
 class AccountDeletionBlockedError extends Error {
   constructor(
     message: string,
-    readonly code: "checkout_pending" | "billing_needs_review",
+    readonly code: "checkout_pending" | "billing_needs_review" | "payslip_cleanup_needs_review",
   ) {
     super(message);
   }
@@ -252,10 +255,12 @@ async function expireOpenCheckoutSessionsBeforeDeletion(userId: string) {
 }
 
 async function deleteSecureOwnedPayslipFiles(userId: string) {
-  const removedPaths = new Set<string>();
-  let rejectedPathCount = 0;
+  const filePaths: Array<string | null> = [];
   let offset = 0;
 
+  // Validate the complete set before removing a single object. A malformed
+  // legacy row must block deletion, not be skipped and then cascaded away with
+  // the auth user, because that would orphan a confidential payslip object.
   while (true) {
     const { data, error } = await supabase
       .from("payslips")
@@ -267,29 +272,30 @@ async function deleteSecureOwnedPayslipFiles(userId: string) {
     if (error) throw new Error("Could not load payslip files for account deletion");
 
     const payslips = (data ?? []) as StoredPayslip[];
-    const partition = partitionSecureOwnedPayslipPaths(
-      payslips.map((payslip) => payslip.file_path),
-      userId,
-    );
-    rejectedPathCount += partition.rejectedPathCount;
-    const paths = partition.paths.filter((path) => !removedPaths.has(path));
-
-    for (let start = 0; start < paths.length; start += STORAGE_DELETE_BATCH_SIZE) {
-      const batch = paths.slice(start, start + STORAGE_DELETE_BATCH_SIZE);
-      const { error: storageError } = await supabase.storage.from("payslips").remove(batch);
-
-      if (storageError) throw new Error("Could not remove payslip files for account deletion");
-      batch.forEach((path) => removedPaths.add(path));
-    }
+    filePaths.push(...payslips.map((payslip) => payslip.file_path));
 
     if (payslips.length < PAYSLIP_QUERY_PAGE_SIZE) break;
     offset += payslips.length;
   }
 
-  if (rejectedPathCount > 0) {
-    // Never use service-role storage access on a path outside the caller's
-    // namespace. The row is removed by the auth-user cascade below.
-    console.warn("[delete-account] skipped unsafe payslip storage paths", { rejectedPathCount });
+  let paths: string[];
+  try {
+    paths = requireSecureOwnedPayslipPathsForAccountDeletion(filePaths, userId);
+  } catch (error) {
+    if (error instanceof AccountDeletionStoragePathVerificationError) {
+      throw new AccountDeletionBlockedError(
+        "We need to safely confirm removal of a stored payslip before deleting this account. Please contact support.",
+        "payslip_cleanup_needs_review",
+      );
+    }
+    throw error;
+  }
+
+  for (let start = 0; start < paths.length; start += STORAGE_DELETE_BATCH_SIZE) {
+    const batch = paths.slice(start, start + STORAGE_DELETE_BATCH_SIZE);
+    const { error: storageError } = await supabase.storage.from("payslips").remove(batch);
+
+    if (storageError) throw new Error("Could not remove payslip files for account deletion");
   }
 }
 

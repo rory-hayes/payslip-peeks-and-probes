@@ -6,6 +6,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { DemoProvider } from "@/contexts/DemoContext";
+import DemoExitOnArrival from "@/components/DemoExitOnArrival";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import CookieConsent from "@/components/CookieConsent";
 import { initAnalytics } from "@/lib/analytics";
@@ -63,6 +64,7 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <DemoProvider>
+        <DemoExitOnArrival />
         <AuthProvider>
           <Suspense fallback={<RouteLoadingFallback />}>
             <Routes>
