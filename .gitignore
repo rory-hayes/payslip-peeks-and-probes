@@ -14,9 +14,9 @@ dist-ssr
 
 # Local environment configuration. Store deploy-time secrets in the provider's
 # secret manager; commit only the key-only template below.
-.env
 .env.*
 !.env.example
+!.env
 
 # Editor directories and files
 .vscode/*
