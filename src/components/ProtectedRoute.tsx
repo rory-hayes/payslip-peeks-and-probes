@@ -9,10 +9,10 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { data: profile, isLoading: profileLoading } = useProfile();
   const { isDemo } = useDemo();
 
-  // Demo mode only grants access to the dashboard. Any other protected
-  // route while in demo mode bounces back to /dashboard so the user
-  // doesn't end up on a blank screen or get kicked to /sign-in.
-  if (isDemo) {
+  // Demo mode only grants an unauthenticated visitor access to the dashboard.
+  // A real signed-in user takes precedence over a stale demo flag so sign-up
+  // and onboarding cannot be redirected back into the demo.
+  if (isDemo && !user) {
     if (location.pathname === '/dashboard') return <>{children}</>;
     return <Navigate to="/dashboard" replace />;
   }

@@ -1,8 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
 import { deleteCurrentUserAccount } from "@/lib/delete-account";
 import {
+  AccountDeletionStoragePathVerificationError,
   isSecureOwnedPayslipPath,
   partitionSecureOwnedPayslipPaths,
+  requireSecureOwnedPayslipPathsForAccountDeletion,
 } from "../../supabase/functions/_shared/account-deletion.ts";
 
 describe("deleteCurrentUserAccount", () => {
@@ -48,5 +50,29 @@ describe("payslip storage ownership guard", () => {
     expect(isSecureOwnedPayslipPath(`${userId}/`, userId)).toBe(false);
     expect(isSecureOwnedPayslipPath(`${userId}/./payslip.pdf`, userId)).toBe(false);
     expect(isSecureOwnedPayslipPath("foreign-user/payslip.pdf", userId)).toBe(false);
+    expect(partitionSecureOwnedPayslipPaths([null, ""], userId)).toEqual({
+      paths: [],
+      rejectedPathCount: 1,
+    });
+  });
+
+  it("keeps deletion all-or-nothing when a legacy path cannot be verified", () => {
+    const legitimatePath = `${userId}/1710000000000-payslip.pdf`;
+
+    expect(() => requireSecureOwnedPayslipPathsForAccountDeletion([
+      legitimatePath,
+      `${userId}/../foreign-user/payslip.pdf`,
+      "",
+    ], userId)).toThrow(AccountDeletionStoragePathVerificationError);
+
+    expect(requireSecureOwnedPayslipPathsForAccountDeletion([
+      legitimatePath,
+      `${userId}/archive/2026-07-payslip.pdf`,
+      legitimatePath,
+      null,
+    ], userId)).toEqual([
+      legitimatePath,
+      `${userId}/archive/2026-07-payslip.pdf`,
+    ]);
   });
 });

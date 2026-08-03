@@ -13,7 +13,7 @@ const MarketingFooter = () => (
         </div>
         <div className="flex flex-wrap justify-center gap-x-6 gap-y-2 text-sm text-muted-foreground">
           <Link to="/calculator" className="hover:text-foreground transition-colors">Take-home calculator</Link>
-          <Link to="/how-it-works" className="hover:text-foreground transition-colors">How it works</Link>
+          <Link to="/#how-it-works" className="hover:text-foreground transition-colors">How it works</Link>
           <Link to="/guides" className="hover:text-foreground transition-colors">Guides</Link>
           <Link to="/pricing" className="hover:text-foreground transition-colors">Pricing</Link>
           <Link to="/privacy" className="hover:text-foreground transition-colors">Privacy</Link>

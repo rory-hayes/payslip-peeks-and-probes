@@ -29,7 +29,10 @@ export function partitionSecureOwnedPayslipPaths(
 
   for (const filePath of filePaths) {
     if (!isSecureOwnedPayslipPath(filePath, userId)) {
-      if (filePath) rejectedPathCount += 1;
+      // `null` means this payslip has no stored original. An empty string is
+      // malformed data, not an absent path: count it so account deletion
+      // cannot silently cascade away the only reference to a legacy object.
+      if (filePath !== null && filePath !== undefined) rejectedPathCount += 1;
       continue;
     }
     uniquePaths.add(filePath);
@@ -39,4 +42,30 @@ export function partitionSecureOwnedPayslipPaths(
     paths: [...uniquePaths],
     rejectedPathCount,
   };
+}
+
+/**
+ * Account deletion must not hard-delete the database record after dropping an
+ * unverified file reference. Doing so would leave the original payslip object
+ * in private storage with no customer record left to remediate it. Callers
+ * therefore need an all-or-nothing preflight: every non-null path is proven
+ * safe, or the deletion is handed to a human review process before any object
+ * is removed.
+ */
+export class AccountDeletionStoragePathVerificationError extends Error {
+  constructor(readonly rejectedPathCount: number) {
+    super("Account deletion could not verify every referenced payslip storage path");
+    this.name = "AccountDeletionStoragePathVerificationError";
+  }
+}
+
+export function requireSecureOwnedPayslipPathsForAccountDeletion(
+  filePaths: Array<string | null | undefined>,
+  userId: string,
+): string[] {
+  const partition = partitionSecureOwnedPayslipPaths(filePaths, userId);
+  if (partition.rejectedPathCount > 0) {
+    throw new AccountDeletionStoragePathVerificationError(partition.rejectedPathCount);
+  }
+  return partition.paths;
 }

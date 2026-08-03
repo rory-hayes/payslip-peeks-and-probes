@@ -13,6 +13,7 @@ import {
   CreditCard,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useDemo } from '@/contexts/DemoContext';
 import VerifyEmailBanner from '@/components/VerifyEmailBanner';
 
 const navItems = [
@@ -26,16 +27,24 @@ const AppLayout = ({ children }: { children: ReactNode }) => {
   const location = useLocation();
   const navigate = useNavigate();
   const { signOut } = useAuth();
+  const { isDemo } = useDemo();
   const [open, setOpen] = useState(false);
 
   const handleSignOut = async () => {
+    if (isDemo) {
+      navigate('/', { state: { exitDemo: true } });
+      return;
+    }
+
     await signOut();
     navigate('/');
   };
 
+  const visibleNavItems = isDemo ? navItems.filter((item) => item.path === '/dashboard') : navItems;
+
   const NavLinks = ({ onSelect }: { onSelect?: () => void }) => (
     <div className="flex flex-col gap-1">
-      {navItems.map((item) => {
+      {visibleNavItems.map((item) => {
         const active = location.pathname === item.path;
         return (
           <Link
@@ -74,6 +83,7 @@ const AppLayout = ({ children }: { children: ReactNode }) => {
         <div className="border-t border-border p-4 space-y-1">
           <Link
             to="/pricing"
+            state={isDemo ? { exitDemo: true } : undefined}
             className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
           >
             <CreditCard className="h-4 w-4" />
@@ -84,7 +94,7 @@ const AppLayout = ({ children }: { children: ReactNode }) => {
             className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
           >
             <LogOut className="h-4 w-4" />
-            Sign out
+            {isDemo ? 'Exit demo' : 'Sign out'}
           </button>
         </div>
       </aside>
@@ -111,6 +121,7 @@ const AppLayout = ({ children }: { children: ReactNode }) => {
               <div className="mt-auto border-t border-border pt-4 space-y-1">
                 <Link
                   to="/pricing"
+                  state={isDemo ? { exitDemo: true } : undefined}
                   onClick={() => setOpen(false)}
                   className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-muted-foreground hover:bg-muted"
                 >
@@ -120,7 +131,7 @@ const AppLayout = ({ children }: { children: ReactNode }) => {
                   onClick={() => { setOpen(false); handleSignOut(); }}
                   className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-muted-foreground hover:bg-muted"
                 >
-                  <LogOut className="h-4 w-4" /> Sign out
+                  <LogOut className="h-4 w-4" /> {isDemo ? 'Exit demo' : 'Sign out'}
                 </button>
               </div>
             </SheetContent>
