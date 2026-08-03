@@ -68,7 +68,14 @@ function countryOrDefault(value: string | null | undefined): Payslip['country'] 
   return countries.includes(value as Payslip['country']) ? value as Payslip['country'] : 'UK';
 }
 
-function statusOrDefault(value: string | null | undefined): Payslip['status'] {
+// The database lifecycle names differ from the consumer UI vocabulary: a
+// completed review is a confirmed payslip, while a payslip awaiting review is
+// an extracted one. Keep this translation at the data boundary so a server
+// status can never be mistaken for a confirmed figure in the UI.
+export function normalizePayslipStatus(value: string | null | undefined): Payslip['status'] {
+  if (value === 'completed') return 'confirmed';
+  if (value === 'needs_review') return 'extracted';
+
   const statuses: Payslip['status'][] = ['uploading', 'processing', 'extracted', 'confirmed', 'failed'];
   return statuses.includes(value as Payslip['status']) ? value as Payslip['status'] : 'processing';
 }
@@ -118,7 +125,7 @@ export function usePayslips() {
           pay_period_start: p.pay_period_start || '',
           pay_period_end: p.pay_period_end || '',
           country: countryOrDefault(p.country),
-          status: statusOrDefault(p.status),
+          status: normalizePayslipStatus(p.status),
           gross_pay: numberOrZero(ext.gross_pay),
           net_pay: numberOrZero(ext.net_pay),
           tax_amount: numberOrZero(ext.tax_amount),
@@ -189,7 +196,7 @@ export function useAnomalies() {
 
 export function usePayTrends(): { data: PayTrend[] | undefined; isLoading: boolean } {
   const { data: payslips, isLoading } = usePayslips();
-  const trends = payslips?.map((s) => ({
+  const trends = payslips?.filter((payslip) => payslip.status === 'confirmed').map((s) => ({
     month: formatMonth(s.pay_date),
     gross: s.gross_pay,
     net: s.net_pay,

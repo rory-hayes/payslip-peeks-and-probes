@@ -3,25 +3,32 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import {
-  LayoutDashboard,
-  FolderOpen,
   AlertTriangle,
-  Settings,
+  CalendarDays,
+  CreditCard,
+  FileSearch,
+  Home,
   LogOut,
   Menu,
-  CheckCircle,
-  CreditCard,
+  UserRound,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useDemo } from '@/contexts/DemoContext';
 import VerifyEmailBanner from '@/components/VerifyEmailBanner';
+import brandMark from '@/assets/payslip-insights-mark.webp';
 
-const navItems = [
-  { label: 'Dashboard', icon: LayoutDashboard, path: '/dashboard' },
-  { label: 'Payslip Vault', icon: FolderOpen, path: '/vault' },
-  { label: 'Anomalies', icon: AlertTriangle, path: '/anomalies' },
-  { label: 'Settings', icon: Settings, path: '/settings' },
+const primaryNavItems = [
+  { label: 'Home', icon: Home, path: '/dashboard' },
+  { label: 'Pay check', icon: FileSearch, path: '/vault' },
+  { label: 'Plan', icon: CalendarDays, path: '/plan' },
+  { label: 'Me', icon: UserRound, path: '/settings' },
 ];
+
+const secondaryNavItems = [
+  { label: 'Things to check', icon: AlertTriangle, path: '/anomalies' },
+];
+
+type NavigationItem = (typeof primaryNavItems)[number] | (typeof secondaryNavItems)[number];
 
 const AppLayout = ({ children }: { children: ReactNode }) => {
   const location = useLocation();
@@ -40,25 +47,39 @@ const AppLayout = ({ children }: { children: ReactNode }) => {
     navigate('/');
   };
 
-  const visibleNavItems = isDemo ? navItems.filter((item) => item.path === '/dashboard') : navItems;
+  const visiblePrimaryItems = isDemo
+    ? primaryNavItems.filter((item) => item.path === '/dashboard')
+    : primaryNavItems;
+  const visibleSecondaryItems = isDemo ? [] : secondaryNavItems;
 
-  const NavLinks = ({ onSelect }: { onSelect?: () => void }) => (
-    <div className="flex flex-col gap-1">
-      {visibleNavItems.map((item) => {
-        const active = location.pathname === item.path;
+  const isActive = (item: NavigationItem) => {
+    if (item.path === '/dashboard') return location.pathname === '/dashboard';
+    return location.pathname === item.path;
+  };
+
+  const NavLinks = ({
+    items,
+    onSelect,
+    compact = false,
+  }: {
+    items: NavigationItem[];
+    onSelect?: () => void;
+    compact?: boolean;
+  }) => (
+    <div className={compact ? 'pi-tab-list' : 'pi-nav-list'}>
+      {items.map((item) => {
+        const active = isActive(item);
+        const Icon = item.icon;
         return (
           <Link
+            aria-current={active ? 'page' : undefined}
+            className={compact ? `pi-tab-link ${active ? 'is-active' : ''}` : `pi-nav-link ${active ? 'is-active' : ''}`}
             key={item.path}
-            to={item.path}
             onClick={onSelect}
-            className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${
-              active
-                ? 'bg-primary/10 text-primary'
-                : 'text-muted-foreground hover:bg-muted hover:text-foreground'
-            }`}
+            to={item.path}
           >
-            <item.icon className="h-4 w-4" />
-            {item.label}
+            <Icon aria-hidden="true" className={compact ? 'pi-tab-icon' : 'pi-nav-icon'} />
+            <span>{item.label}</span>
           </Link>
         );
       })}
@@ -66,79 +87,85 @@ const AppLayout = ({ children }: { children: ReactNode }) => {
   );
 
   return (
-    <div className="flex min-h-screen bg-background">
-      {/* Desktop sidebar */}
-      <aside className="hidden w-64 shrink-0 border-r border-border bg-card md:flex md:flex-col" role="navigation" aria-label="Main navigation">
-        <div className="flex h-16 items-center gap-2 border-b border-border px-6">
-          <Link to="/dashboard" className="flex items-center gap-2">
-            <div className="flex h-7 w-7 items-center justify-center rounded-md bg-primary">
-              <CheckCircle className="h-4 w-4 text-primary-foreground" />
+    <div className="pi-app-shell">
+      <aside className="pi-sidebar" role="navigation" aria-label="Main navigation">
+        <Link className="pi-brand pi-brand--sidebar" to="/dashboard">
+          <img alt="" aria-hidden="true" className="pi-brand-mark" src={brandMark} />
+          <span className="pi-brand-copy"><strong>Payslip</strong><small>Insights</small></span>
+        </Link>
+
+        <nav className="pi-sidebar-nav" aria-label="Your payslip tools">
+          <NavLinks items={visiblePrimaryItems} />
+          {visibleSecondaryItems.length > 0 ? (
+            <div className="pi-nav-secondary">
+              <p>Keep an eye on</p>
+              <NavLinks items={visibleSecondaryItems} />
             </div>
-            <span className="font-bold text-foreground">Payslip Insights</span>
-          </Link>
-        </div>
-        <nav className="flex-1 p-4">
-          <NavLinks />
+          ) : null}
         </nav>
-        <div className="border-t border-border p-4 space-y-1">
+
+        <div className="pi-sidebar-footer">
           <Link
-            to="/pricing"
+            className="pi-upgrade-link"
             state={isDemo ? { exitDemo: true } : undefined}
-            className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+            to="/pricing"
           >
-            <CreditCard className="h-4 w-4" />
-            Upgrade
+            <CreditCard aria-hidden="true" />
+            <span>See Plus</span>
           </Link>
-          <button
-            onClick={handleSignOut}
-            className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
-          >
-            <LogOut className="h-4 w-4" />
-            {isDemo ? 'Exit demo' : 'Sign out'}
+          <button className="pi-sign-out" onClick={() => void handleSignOut()} type="button">
+            <LogOut aria-hidden="true" />
+            <span>{isDemo ? 'Exit demo' : 'Sign out'}</span>
           </button>
         </div>
       </aside>
 
-      {/* Main content */}
-      <div className="flex flex-1 flex-col">
+      <div className="pi-app-content">
         <VerifyEmailBanner />
-        {/* Mobile header */}
-        <header className="flex h-14 items-center justify-between border-b border-border bg-card px-4 md:hidden">
-          <Link to="/dashboard" className="flex items-center gap-2">
-            <div className="flex h-7 w-7 items-center justify-center rounded-md bg-primary">
-              <CheckCircle className="h-4 w-4 text-primary-foreground" />
-            </div>
-            <span className="font-bold text-foreground">Payslip Insights</span>
+        <header className="pi-mobile-header">
+          <Link className="pi-brand" to="/dashboard">
+            <img alt="" aria-hidden="true" className="pi-brand-mark" src={brandMark} />
+            <span className="pi-brand-copy"><strong>Payslip</strong><small>Insights</small></span>
           </Link>
           <Sheet open={open} onOpenChange={setOpen}>
             <SheetTrigger asChild>
-              <Button variant="ghost" size="icon" aria-label="Open menu"><Menu className="h-5 w-5" aria-hidden="true" /></Button>
+              <Button className="pi-profile-button" variant="ghost" size="icon" aria-label="Open menu">
+                <Menu aria-hidden="true" className="h-5 w-5" />
+              </Button>
             </SheetTrigger>
-            <SheetContent side="right" className="w-64 p-4">
-              <div className="mt-4">
-                <NavLinks onSelect={() => setOpen(false)} />
+            <SheetContent className="pi-mobile-menu w-[20rem] p-5" side="right">
+              <div className="pi-mobile-menu-brand">
+                <img alt="" aria-hidden="true" className="pi-brand-mark" src={brandMark} />
+                <span className="pi-brand-copy"><strong>Payslip</strong><small>Insights</small></span>
               </div>
-              <div className="mt-auto border-t border-border pt-4 space-y-1">
+              <nav className="mt-8" aria-label="Menu navigation">
+                <NavLinks items={visiblePrimaryItems} onSelect={() => setOpen(false)} />
+                {visibleSecondaryItems.length > 0 ? <NavLinks items={visibleSecondaryItems} onSelect={() => setOpen(false)} /> : null}
+              </nav>
+              <div className="pi-mobile-menu-actions">
                 <Link
-                  to="/pricing"
-                  state={isDemo ? { exitDemo: true } : undefined}
+                  className="pi-upgrade-link"
                   onClick={() => setOpen(false)}
-                  className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-muted-foreground hover:bg-muted"
+                  state={isDemo ? { exitDemo: true } : undefined}
+                  to="/pricing"
                 >
-                  <CreditCard className="h-4 w-4" /> Upgrade
+                  <CreditCard aria-hidden="true" />
+                  <span>See Plus</span>
                 </Link>
-                <button
-                  onClick={() => { setOpen(false); handleSignOut(); }}
-                  className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-muted-foreground hover:bg-muted"
-                >
-                  <LogOut className="h-4 w-4" /> {isDemo ? 'Exit demo' : 'Sign out'}
+                <button onClick={() => { setOpen(false); void handleSignOut(); }} type="button">
+                  <LogOut aria-hidden="true" />
+                  <span>{isDemo ? 'Exit demo' : 'Sign out'}</span>
                 </button>
               </div>
             </SheetContent>
           </Sheet>
         </header>
 
-        <main className="flex-1 overflow-y-auto p-4 md:p-8" role="main">{children}</main>
+        <main className="pi-main" role="main">{children}</main>
+
+        <nav className="pi-bottom-tabs" aria-label="Quick navigation">
+          <NavLinks compact items={visiblePrimaryItems} />
+        </nav>
       </div>
     </div>
   );

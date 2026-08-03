@@ -1,5 +1,5 @@
+import { lazy, Suspense } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -7,25 +7,28 @@ import AppLayout from '@/components/layout/AppLayout';
 import { usePayslips, useAnomalies, usePayTrends } from '@/hooks/use-payslip-data';
 import { useUsage } from '@/hooks/use-usage';
 import ExpectedVsActual from '@/components/ExpectedVsActual';
-import ExpectedVsActualChart from '@/components/ExpectedVsActualChart';
 import YearToDateSummary from '@/components/YearToDateSummary';
-import YearToDateChart from '@/components/YearToDateChart';
 import UpgradePrompt from '@/components/UpgradePrompt';
 import { useCurrency, useProfile } from '@/hooks/use-profile';
 import { formatDate } from '@/lib/date-utils';
-import { generatePaySummaryPdf } from '@/lib/generate-pay-summary-pdf';
 import type { DeductionOptions } from '@/lib/tax-calculator';
 import { useDemo } from '@/contexts/DemoContext';
 import DemoReadOnlyLink from '@/components/DemoReadOnlyLink';
 import { DEMO_PAYSLIPS, DEMO_ANOMALIES, DEMO_TRENDS } from '@/lib/demo-data';
 import type { Payslip, AnomalyResult, PayTrend } from '@/lib/types';
+import payslipCheckHero from '@/assets/option-one-payslip-check-hero-v1.webp';
+import aquaCorner from '@/assets/option-one-aqua-corner-v2.webp';
 import {
-  Upload, TrendingUp, TrendingDown, AlertTriangle, FileText, ArrowRight, BarChart3, Download,
+  Upload, TrendingUp, TrendingDown, AlertTriangle, FileText, ArrowRight, Download,
   Shield, Sparkles, X,
 } from 'lucide-react';
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from 'recharts';
+import './Dashboard.css';
+
+const ExpectedVsActualChart = lazy(() => import('@/components/ExpectedVsActualChart'));
+const YearToDateChart = lazy(() => import('@/components/YearToDateChart'));
 
 const Dashboard = () => {
   const { isDemo, disableDemo } = useDemo();
@@ -38,20 +41,23 @@ const Dashboard = () => {
   const { uploadsRemaining, draftsRemaining, isPremium, limits } = useUsage();
 
   const isLoading = isDemo ? false : loadingSlips || loadingAnomalies;
-  const isEmpty = !isLoading && !isDemo && (!payslips || payslips.length === 0);
-
   const allPayslips: Payslip[] = isDemo ? DEMO_PAYSLIPS : (payslips || []);
+  const confirmedPayslips = allPayslips.filter((payslip) => payslip.status === 'confirmed');
+  const pendingReview = isDemo ? null : allPayslips.find((payslip) => payslip.status === 'extracted') ?? null;
+  const isEmpty = !isLoading && !isDemo && allPayslips.length === 0;
+  const isAwaitingReview = !isLoading && !isDemo && confirmedPayslips.length === 0 && Boolean(pendingReview);
+  const isCheckingPayslip = !isLoading && !isDemo && confirmedPayslips.length === 0 && allPayslips.length > 0 && !pendingReview;
   const allAnomalies: AnomalyResult[] = isDemo ? DEMO_ANOMALIES : (anomalies || []);
   const allTrends: PayTrend[] | undefined = isDemo ? DEMO_TRENDS : trends;
 
-  const latest = allPayslips.length > 0 ? allPayslips[allPayslips.length - 1] : null;
-  const previous = allPayslips.length > 1 ? allPayslips[allPayslips.length - 2] : null;
+  const latest = confirmedPayslips.length > 0 ? confirmedPayslips[confirmedPayslips.length - 1] : null;
+  const previous = confirmedPayslips.length > 1 ? confirmedPayslips[confirmedPayslips.length - 2] : null;
   const netChange = latest && previous ? latest.net_pay - previous.net_pay : 0;
-  const unresolvedCount = allAnomalies.filter((a) => a.status === 'new').length;
+  const newAnomalies = allAnomalies.filter((anomaly) => anomaly.status === 'new');
+  const unresolvedCount = newAnomalies.length;
+  const featuredAnomaly = newAnomalies[0];
 
-  const greeting = isDemo ? 'Demo Mode' : (profile?.first_name ? `Hi, ${profile.first_name}` : 'Welcome');
-
-  const demoCurrencyFormat = (v: number) => `£${v.toLocaleString('en-GB', { minimumFractionDigits: 2 })}`;
+  const demoCurrencyFormat = (value: number) => `£${value.toLocaleString('en-GB', { minimumFractionDigits: 2 })}`;
   const fmtCurrency = isDemo ? demoCurrencyFormat : formatCurrency;
   const sym = isDemo ? '£' : currSym;
 
@@ -59,8 +65,9 @@ const Dashboard = () => {
     navigate('/sign-up', { state: { exitDemo: true } });
   };
 
-  const handleExportPdf = () => {
-    if (!allPayslips || allPayslips.length === 0) return;
+  const handleExportPdf = async () => {
+    if (confirmedPayslips.length === 0) return;
+    const { generatePaySummaryPdf } = await import('@/lib/generate-pay-summary-pdf');
     const studentLoanPlan = profile?.student_loan_plan;
     const deductionOpts: DeductionOptions = {
       pensionPercent: profile?.has_pension ? (profile.pension_percent ?? 5) : 0,
@@ -70,7 +77,7 @@ const Dashboard = () => {
       filingStatus: profile?.filing_status,
     };
     generatePaySummaryPdf({
-      payslips: allPayslips,
+      payslips: confirmedPayslips,
       currency,
       country: profile?.country ?? null,
       annualSalary: profile?.annual_salary,
@@ -81,197 +88,266 @@ const Dashboard = () => {
 
   return (
     <AppLayout>
-      <div className="space-y-8 max-w-6xl">
-        {/* Demo banner */}
+      <div className="pi-dashboard">
+        <img className="pi-dashboard__aqua-corner" src={aquaCorner} alt="" aria-hidden="true" />
         {isDemo && (
-          <div className="flex items-center justify-between rounded-lg border border-primary/30 bg-primary/5 px-4 py-3">
-            <p className="text-sm text-foreground">
-              <span className="font-medium">You're viewing sample data.</span>{' '}
-              <span className="text-muted-foreground">This read-only demo keeps sample payslips on this dashboard.</span>
-            </p>
-            <div className="flex gap-2">
-              <Button size="sm" className="gap-1.5" onClick={leaveDemoForSignUp}><Sparkles className="h-3 w-3" /> Sign up free</Button>
-              <Button variant="ghost" size="sm" onClick={() => { disableDemo(); navigate('/'); }}>
-                <X className="h-4 w-4" />
+          <section className="pi-dashboard__demo" aria-label="Demo information">
+            <div className="pi-dashboard__demo-copy">
+              <Sparkles className="pi-dashboard__demo-icon" aria-hidden="true" />
+              <p>
+                <strong>You&apos;re viewing sample data.</strong>{' '}
+                <span>This read-only demo keeps sample payslips on this dashboard.</span>
+              </p>
+            </div>
+            <div className="pi-dashboard__demo-actions">
+              <Button className="pi-dashboard__small-primary" size="sm" onClick={leaveDemoForSignUp}>
+                Sign up free
+              </Button>
+              <Button
+                className="pi-dashboard__icon-button"
+                variant="ghost"
+                size="icon"
+                aria-label="Exit demo"
+                onClick={() => { disableDemo(); navigate('/'); }}
+              >
+                <X className="h-4 w-4" aria-hidden="true" />
               </Button>
             </div>
-          </div>
+          </section>
         )}
 
-        {/* Header */}
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <header className="pi-dashboard__topline">
           <div>
-            <h1 className="text-2xl font-bold text-foreground md:text-3xl">{greeting} {isDemo ? '🔍' : '👋'}</h1>
-            <p className="mt-1 text-muted-foreground">
-              {isDemo ? 'Explore how Payslip Insights works with sample data.' : isEmpty ? 'Let\'s get started with your first payslip.' : 'Here\'s your pay overview.'}
+            <h1>Your payday, clear.</h1>
+            <p>
+              {isDemo
+                ? 'Explore a sample payslip check and the next steps it can unlock.'
+                : isEmpty
+                  ? 'Start with a payslip. We will help you understand the important bits before you make a plan.'
+                  : isAwaitingReview
+                    ? 'Your latest payslip is ready for a quick confirmation before it appears in your dashboard.'
+                    : isCheckingPayslip
+                      ? 'Your payslip is still being checked. It will appear here once there are figures ready for review.'
+                    : 'Your latest pay, what is worth checking, and a calmer next step.'}
             </p>
           </div>
-          <div className="flex gap-2 flex-wrap">
-            {allPayslips.length > 0 && (
-              <Button variant="outline" className="gap-2" onClick={handleExportPdf}>
-                <Download className="h-4 w-4" /> Export PDF
+          <div className="pi-dashboard__topline-actions">
+            {confirmedPayslips.length > 0 && (
+              <Button className="pi-dashboard__quiet-action" variant="outline" onClick={handleExportPdf}>
+                <Download className="h-4 w-4" aria-hidden="true" />
+                Export PDF
               </Button>
             )}
             {isDemo ? (
-              <Button className="gap-2" onClick={leaveDemoForSignUp}><Upload className="h-4 w-4" /> Sign up to upload</Button>
+              <Button className="pi-dashboard__primary-action" onClick={leaveDemoForSignUp}>
+                <Upload className="h-4 w-4" aria-hidden="true" />
+                Sign up to upload
+              </Button>
+            ) : pendingReview ? (
+              <Link to={`/vault?review=${encodeURIComponent(pendingReview.id)}`}>
+                <Button className="pi-dashboard__primary-action">
+                  <FileText className="h-4 w-4" aria-hidden="true" />
+                  Review payslip
+                </Button>
+              </Link>
+            ) : isCheckingPayslip ? (
+              <Link to="/vault">
+                <Button className="pi-dashboard__primary-action">
+                  <FileText className="h-4 w-4" aria-hidden="true" />
+                  View upload status
+                </Button>
+              </Link>
             ) : (
               <Link to="/vault">
-                <Button className="gap-2"><Upload className="h-4 w-4" /> Upload payslip</Button>
+                <Button className="pi-dashboard__primary-action">
+                  <Upload className="h-4 w-4" aria-hidden="true" />
+                  Upload payslip
+                </Button>
               </Link>
             )}
           </div>
-        </div>
+        </header>
 
-        {/* Loading state */}
         {isLoading && (
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {Array.from({ length: 4 }).map((_, i) => (
-              <Card key={i} className="border-0 shadow-sm">
-                <CardContent className="p-5 space-y-3">
-                  <Skeleton className="h-4 w-24" />
-                  <Skeleton className="h-8 w-32" />
-                  <Skeleton className="h-3 w-20" />
-                </CardContent>
-              </Card>
-            ))}
-          </div>
+          <section className="pi-dashboard__loading" aria-label="Loading your payslip dashboard">
+            <div className="pi-dashboard__loading-card pi-dashboard__loading-card--pay"><Skeleton className="h-4 w-20" /><Skeleton className="h-12 w-44" /><Skeleton className="h-4 w-32" /></div>
+            <div className="pi-dashboard__loading-card"><Skeleton className="h-5 w-40" /><Skeleton className="h-4 w-full" /><Skeleton className="h-9 w-28" /></div>
+            <div className="pi-dashboard__loading-card"><Skeleton className="h-5 w-28" /><Skeleton className="h-4 w-full" /><Skeleton className="h-4 w-3/4" /></div>
+          </section>
         )}
 
-        {/* Empty state */}
         {isEmpty && (
-          <Card className="border-0 shadow-sm">
-            <CardContent className="flex flex-col items-center justify-center py-16 text-center px-6">
-              <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10 mb-6">
-                <Sparkles className="h-8 w-8 text-primary" />
-              </div>
-              <h3 className="text-xl font-bold text-foreground">Your pay dashboard</h3>
-              <p className="mt-3 max-w-md text-muted-foreground leading-relaxed">
-                Upload a payslip and Payslip Insights will extract the key figures, compare them against your profile, and flag changes worth checking. We use the document to provide these features; read the <Link to="/privacy" className="text-primary hover:underline">Privacy Policy</Link> for current handling details.
+          <section className="pi-dashboard__empty" aria-labelledby="empty-dashboard-heading">
+            <div className="pi-dashboard__empty-copy">
+              <div className="pi-dashboard__empty-icon" aria-hidden="true"><Sparkles className="h-7 w-7" /></div>
+              <h2 id="empty-dashboard-heading">Just got paid?</h2>
+              <p>
+                Add a payslip and Payslip Insights will extract the key figures, compare them against your profile, and flag changes worth checking. We use the document to provide these features; read the <Link to="/privacy">Privacy Policy</Link> for current handling details.
               </p>
-              <div className="mt-6">
-                <Link to="/vault">
-                  <Button className="gap-2"><Upload className="h-4 w-4" /> Upload your first payslip</Button>
-                </Link>
-              </div>
-              <div className="mt-8 grid grid-cols-3 gap-6 text-center">
-                <div>
-                  <Shield className="h-5 w-5 mx-auto text-muted-foreground/60" />
-                  <p className="mt-2 text-xs text-muted-foreground">Review before confirming</p>
-                </div>
-                <div>
-                  <AlertTriangle className="h-5 w-5 mx-auto text-muted-foreground/60" />
-                  <p className="mt-2 text-xs text-muted-foreground">Changes worth checking</p>
-                </div>
-                <div>
-                  <TrendingUp className="h-5 w-5 mx-auto text-muted-foreground/60" />
-                  <p className="mt-2 text-xs text-muted-foreground">Track pay trends</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+              <Link to="/vault">
+                <Button className="pi-dashboard__primary-action pi-dashboard__primary-action--roomy">
+                  <Upload className="h-4 w-4" aria-hidden="true" />
+                  Upload your first payslip
+                </Button>
+              </Link>
+              <span className="pi-dashboard__file-note">Add a PDF, photo or screenshot</span>
+            </div>
+            <img className="pi-dashboard__empty-art" src={payslipCheckHero} alt="" aria-hidden="true" />
+            <div className="pi-dashboard__empty-promises">
+              <div><Shield className="h-5 w-5" aria-hidden="true" /><span>Review before confirming</span></div>
+              <div><AlertTriangle className="h-5 w-5" aria-hidden="true" /><span>Changes worth checking</span></div>
+              <div><TrendingUp className="h-5 w-5" aria-hidden="true" /><span>Track pay trends</span></div>
+            </div>
+          </section>
         )}
 
-        {/* Summary cards */}
+        {isAwaitingReview && pendingReview ? (
+          <section className="pi-dashboard__empty" aria-labelledby="review-pending-heading">
+            <div className="pi-dashboard__empty-copy">
+              <div className="pi-dashboard__empty-icon" aria-hidden="true"><FileText className="h-7 w-7" /></div>
+              <h2 id="review-pending-heading">Confirm your payslip before you plan.</h2>
+              <p>
+                The extracted figures are waiting for your review. Check them against your original payslip before they appear in your pay history or payday plan.
+              </p>
+              <Link to={`/vault?review=${encodeURIComponent(pendingReview.id)}`}>
+                <Button className="pi-dashboard__primary-action pi-dashboard__primary-action--roomy">
+                  Check the details
+                  <ArrowRight className="h-4 w-4" aria-hidden="true" />
+                </Button>
+              </Link>
+            </div>
+            <img className="pi-dashboard__empty-art" src={payslipCheckHero} alt="" aria-hidden="true" />
+            <div className="pi-dashboard__empty-promises">
+              <div><Shield className="h-5 w-5" aria-hidden="true" /><span>Review before confirming</span></div>
+              <div><AlertTriangle className="h-5 w-5" aria-hidden="true" /><span>Changes worth checking</span></div>
+              <div><TrendingUp className="h-5 w-5" aria-hidden="true" /><span>Track confirmed pay only</span></div>
+            </div>
+          </section>
+        ) : null}
+
+        {isCheckingPayslip ? (
+          <section className="pi-dashboard__empty" aria-labelledby="processing-payslip-heading">
+            <div className="pi-dashboard__empty-copy">
+              <div className="pi-dashboard__empty-icon" aria-hidden="true"><FileText className="h-7 w-7" /></div>
+              <h2 id="processing-payslip-heading">We’re checking your payslip.</h2>
+              <p>
+                We’ll only show figures here after they are ready for your review. You can return to your vault to check its current status.
+              </p>
+              <Link to="/vault">
+                <Button className="pi-dashboard__primary-action pi-dashboard__primary-action--roomy">
+                  Open payslip vault
+                  <ArrowRight className="h-4 w-4" aria-hidden="true" />
+                </Button>
+              </Link>
+            </div>
+            <img className="pi-dashboard__empty-art" src={payslipCheckHero} alt="" aria-hidden="true" />
+            <div className="pi-dashboard__empty-promises">
+              <div><Shield className="h-5 w-5" aria-hidden="true" /><span>Figures stay unconfirmed</span></div>
+              <div><AlertTriangle className="h-5 w-5" aria-hidden="true" /><span>Review comes next</span></div>
+              <div><TrendingUp className="h-5 w-5" aria-hidden="true" /><span>Plan after confirmation</span></div>
+            </div>
+          </section>
+        ) : null}
+
         {!isLoading && latest && (
           <>
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-              <Card className="border-0 shadow-sm">
-                <CardContent className="p-5">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-muted-foreground">Latest net pay</span>
-                    <FileText className="h-4 w-4 text-muted-foreground" />
-                  </div>
-                  <div className="mt-2 text-2xl font-bold text-foreground">{fmtCurrency(latest.net_pay)}</div>
-                  {previous && (
-                    <div className="mt-1 flex items-center gap-1 text-xs">
-                      {netChange >= 0 ? <TrendingUp className="h-3 w-3 text-success" /> : <TrendingDown className="h-3 w-3 text-destructive" />}
-                      <span className={netChange >= 0 ? 'text-success' : 'text-destructive'}>
-                        {fmtCurrency(Math.abs(netChange))} vs last month
-                      </span>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-              <Card className="border-0 shadow-sm">
-                <CardContent className="p-5">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-muted-foreground">Latest gross pay</span>
-                    <BarChart3 className="h-4 w-4 text-muted-foreground" />
-                  </div>
-                  <div className="mt-2 text-2xl font-bold text-foreground">{fmtCurrency(latest.gross_pay)}</div>
-                  <div className="mt-1 text-xs text-muted-foreground">{formatDate(latest.pay_date)}</div>
-                </CardContent>
-              </Card>
-              <Card className="border-0 shadow-sm">
-                <CardContent className="p-5">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-muted-foreground">Open anomalies</span>
-                    <AlertTriangle className="h-4 w-4 text-anomaly" />
-                  </div>
-                  <div className="mt-2 text-2xl font-bold text-foreground">{unresolvedCount}</div>
-                  {unresolvedCount > 0 && !isDemo ? (
-                    <Link to="/anomalies" className="mt-1 inline-flex items-center gap-1 text-xs text-primary hover:underline">
-                      Review now <ArrowRight className="h-3 w-3" />
-                    </Link>
-                  ) : unresolvedCount > 0 ? (
-                    <p className="mt-1 text-xs text-muted-foreground">Sample issues are listed below</p>
-                  ) : (
-                    <p className="mt-1 text-xs text-success">No changes currently flagged</p>
-                  )}
-                </CardContent>
-              </Card>
-              <Card className="border-0 shadow-sm">
-                <CardContent className="p-5">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-muted-foreground">Total payslips</span>
-                    <FileText className="h-4 w-4 text-muted-foreground" />
-                  </div>
-                  <div className="mt-2 text-2xl font-bold text-foreground">{allPayslips.length}</div>
-                  <div className="mt-1 text-xs text-muted-foreground">Saved to your account</div>
-                </CardContent>
-              </Card>
-            </div>
+            <section className="pi-dashboard__payday-grid" aria-label="Your latest payday">
+              <div className="pi-dashboard__pay-card">
+                <p className="pi-dashboard__kicker">Net pay</p>
+                <p className="pi-dashboard__pay-amount">{fmtCurrency(latest.net_pay)}</p>
+                <p className="pi-dashboard__pay-date"><FileText className="h-4 w-4" aria-hidden="true" /> Paid {formatDate(latest.pay_date)}</p>
+                <div className="pi-dashboard__pay-card-footer">
+                  {previous ? (
+                    <p className={netChange >= 0 ? 'pi-dashboard__change pi-dashboard__change--up' : 'pi-dashboard__change pi-dashboard__change--down'}>
+                      {netChange >= 0 ? <TrendingUp className="h-4 w-4" aria-hidden="true" /> : <TrendingDown className="h-4 w-4" aria-hidden="true" />}
+                      <span><strong>{fmtCurrency(Math.abs(netChange))}</strong> {netChange >= 0 ? 'more' : 'less'} than last time</span>
+                    </p>
+                  ) : <p className="pi-dashboard__first-pay">Your first payslip in the timeline.</p>}
+                  <DemoReadOnlyLink
+                    className="pi-dashboard__payslip-link"
+                    isDemo={isDemo}
+                    to={`/payslip/${latest.id}`}
+                  >
+                    {isDemo ? 'Sample payslip' : 'Open payslip'} <ArrowRight className="h-4 w-4" aria-hidden="true" />
+                  </DemoReadOnlyLink>
+                </div>
+              </div>
 
-            {/* Free tier usage indicator */}
+              <div className="pi-dashboard__snapshot-card">
+                <div className="pi-dashboard__snapshot-item">
+                  <span>Gross pay</span>
+                  <strong>{fmtCurrency(latest.gross_pay)}</strong>
+                </div>
+                <div className="pi-dashboard__snapshot-divider" aria-hidden="true" />
+                <div className="pi-dashboard__snapshot-item">
+                  <span>Changes to check</span>
+                  <strong>{unresolvedCount}</strong>
+                  {unresolvedCount > 0 && !isDemo ? <Link to="/anomalies">Review now <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" /></Link> : null}
+                  {unresolvedCount > 0 && isDemo ? <small>Sample issues are below</small> : null}
+                  {unresolvedCount === 0 ? <small>No new changes flagged</small> : null}
+                </div>
+                <div className="pi-dashboard__snapshot-divider" aria-hidden="true" />
+                <div className="pi-dashboard__snapshot-item">
+                  <span>Pay history</span>
+                  <strong>{confirmedPayslips.length}</strong>
+                  <small>{confirmedPayslips.length === 1 ? 'payslip saved' : 'payslips saved'}</small>
+                </div>
+              </div>
+            </section>
+
+            <section className="pi-dashboard__check-banner" aria-labelledby="check-banner-heading">
+              <div className="pi-dashboard__check-copy">
+                <div className="pi-dashboard__check-mark" aria-hidden="true"><AlertTriangle className="h-5 w-5" /></div>
+                <div>
+                  <h2 id="check-banner-heading">{featuredAnomaly ? (unresolvedCount === 1 ? 'One thing worth checking' : `${unresolvedCount} things worth checking`) : 'Your latest check is ready'}</h2>
+                  <p>{featuredAnomaly ? featuredAnomaly.title : 'No new changes are currently flagged. You can still review the figures before relying on them.'}</p>
+                  {featuredAnomaly && !isDemo ? <Link to="/anomalies" className="pi-dashboard__inline-link">Review the details <ArrowRight className="h-4 w-4" aria-hidden="true" /></Link> : null}
+                  {featuredAnomaly && isDemo ? <span className="pi-dashboard__demo-note">Sample data only</span> : null}
+                </div>
+              </div>
+              <img className="pi-dashboard__check-art" src={payslipCheckHero} alt="" aria-hidden="true" />
+            </section>
+
+            <section id="payday-plan" className="pi-dashboard__plan" aria-labelledby="payday-plan-heading">
+              <div>
+                <h2 id="payday-plan-heading">Plan until payday</h2>
+                <p>Use the pay you have checked as a starting point for bills, everyday spending and a little buffer.</p>
+              </div>
+              <div className="pi-dashboard__plan-action">
+                <Link to={isDemo ? '/calculator' : '/plan'} state={isDemo ? { exitDemo: true } : undefined}>
+                  <Button className="pi-dashboard__primary-action pi-dashboard__primary-action--roomy">
+                    {isDemo ? 'Open pay calculator' : 'Start my plan'}
+                    <ArrowRight className="h-4 w-4" aria-hidden="true" />
+                  </Button>
+                </Link>
+                <p>It is a planning guide, not your bank balance.</p>
+              </div>
+            </section>
+
             {!isPremium && (
-              <Card className="border-0 shadow-sm">
-                <CardContent className="p-5">
-                  <div className="flex items-center justify-between mb-3">
-                    <span className="text-sm font-medium text-foreground">Free plan usage this month</span>
-                    <Link to="/pricing">
-                      <Button variant="outline" size="sm" className="gap-1.5 text-xs h-7">
-                        <Sparkles className="h-3 w-3" /> Upgrade
-                      </Button>
-                    </Link>
+              <section className="pi-dashboard__usage" aria-label="Free plan usage this month">
+                <div className="pi-dashboard__usage-heading">
+                  <div>
+                    <h2>Free plan usage</h2>
+                    <p>Keep an eye on the checks and drafts included this month.</p>
                   </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <div className="flex justify-between text-xs text-muted-foreground mb-1">
-                        <span>Automatic checks</span>
-                        <span>{limits.uploads_per_month - uploadsRemaining}/{limits.uploads_per_month}</span>
-                      </div>
-                      <div className="h-2 rounded-full bg-muted overflow-hidden">
-                        <div
-                          className={`h-full rounded-full transition-all ${uploadsRemaining === 0 ? 'bg-destructive' : 'bg-primary'}`}
-                          style={{ width: `${((limits.uploads_per_month - uploadsRemaining) / limits.uploads_per_month) * 100}%` }}
-                        />
-                      </div>
-                    </div>
-                    <div>
-                      <div className="flex justify-between text-xs text-muted-foreground mb-1">
-                        <span>Drafts</span>
-                        <span>{limits.drafts_per_month - draftsRemaining}/{limits.drafts_per_month}</span>
-                      </div>
-                      <div className="h-2 rounded-full bg-muted overflow-hidden">
-                        <div
-                          className={`h-full rounded-full transition-all ${draftsRemaining === 0 ? 'bg-destructive' : 'bg-primary'}`}
-                          style={{ width: `${((limits.drafts_per_month - draftsRemaining) / limits.drafts_per_month) * 100}%` }}
-                        />
-                      </div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
+                  <Link to="/pricing"><Button className="pi-dashboard__quiet-action" variant="outline">Upgrade</Button></Link>
+                </div>
+                <div className="pi-dashboard__usage-bars">
+                  <UsageBar
+                    label="Automatic checks"
+                    used={limits.uploads_per_month - uploadsRemaining}
+                    limit={limits.uploads_per_month}
+                    depleted={uploadsRemaining === 0}
+                  />
+                  <UsageBar
+                    label="Drafts"
+                    used={limits.drafts_per_month - draftsRemaining}
+                    limit={limits.drafts_per_month}
+                    depleted={draftsRemaining === 0}
+                  />
+                </div>
+              </section>
             )}
 
             {!isPremium && (uploadsRemaining === 0 || draftsRemaining === 0) && (
@@ -281,116 +357,121 @@ const Dashboard = () => {
               />
             )}
 
-            {/* Expected vs Actual comparison */}
-            <ExpectedVsActual latestPayslip={latest} />
-            <ExpectedVsActualChart payslips={allPayslips} />
-            <YearToDateSummary payslips={allPayslips} />
-            <YearToDateChart payslips={allPayslips} />
+            <section className="pi-dashboard__details" aria-labelledby="pay-details-heading">
+              <div className="pi-dashboard__section-heading">
+                <div>
+                  <h2 id="pay-details-heading">Your pay detail</h2>
+                  <p>Look back at the figures behind your latest payslip.</p>
+                </div>
+              </div>
+              <div className="pi-dashboard__detail-stack">
+                <ExpectedVsActual latestPayslip={latest} />
+                <Suspense fallback={<div className="pi-dashboard__chart-loading"><Skeleton className="h-full w-full" /></div>}>
+                  <ExpectedVsActualChart payslips={confirmedPayslips} />
+                </Suspense>
+                <YearToDateSummary payslips={confirmedPayslips} />
+                <Suspense fallback={<div className="pi-dashboard__chart-loading"><Skeleton className="h-full w-full" /></div>}>
+                  <YearToDateChart payslips={confirmedPayslips} />
+                </Suspense>
+              </div>
+            </section>
 
-            {/* Chart + anomalies */}
-            <div className="grid gap-6 lg:grid-cols-5">
+            <section className="pi-dashboard__lower-grid" aria-label="Pay history and changes">
               {allTrends && allTrends.length > 1 && (
-                <Card className="border-0 shadow-sm lg:col-span-3">
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-base">Net pay trend</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="h-64">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <LineChart data={allTrends} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
-                          <CartesianGrid strokeDasharray="3 3" stroke="hsl(220, 13%, 88%)" />
-                          <XAxis dataKey="month" tick={{ fontSize: 12 }} stroke="hsl(220, 10%, 46%)" />
-                          <YAxis tick={{ fontSize: 12 }} stroke="hsl(220, 10%, 46%)" tickFormatter={(v) => `${sym}${v}`} />
-                          <Tooltip formatter={(val: number) => [fmtCurrency(val), '']} />
-                          <Line type="monotone" dataKey="net" stroke="hsl(217, 72%, 30%)" strokeWidth={2} dot={{ r: 4 }} name="Net pay" />
-                          <Line type="monotone" dataKey="gross" stroke="hsl(172, 50%, 36%)" strokeWidth={2} dot={{ r: 4 }} name="Gross pay" />
-                        </LineChart>
-                      </ResponsiveContainer>
+                <article className="pi-dashboard__panel pi-dashboard__panel--trend">
+                  <div className="pi-dashboard__panel-heading">
+                    <div>
+                      <h2>Net pay trend</h2>
+                      <p>Your saved payslips over time.</p>
                     </div>
-                  </CardContent>
-                </Card>
+                  </div>
+                  <div className="pi-dashboard__chart">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <LineChart data={allTrends} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#E5E0FA" />
+                        <XAxis dataKey="month" tick={{ fontSize: 12, fill: '#64658D' }} stroke="#E5E0FA" />
+                        <YAxis tick={{ fontSize: 12, fill: '#64658D' }} stroke="#E5E0FA" tickFormatter={(value) => `${sym}${value}`} />
+                        <Tooltip formatter={(value: number) => [fmtCurrency(value), '']} />
+                        <Line type="monotone" dataKey="net" stroke="#704BFF" strokeWidth={3} dot={{ r: 4, fill: '#704BFF', strokeWidth: 0 }} name="Net pay" />
+                        <Line type="monotone" dataKey="gross" stroke="#0989A5" strokeWidth={2} dot={{ r: 3, fill: '#0989A5', strokeWidth: 0 }} name="Gross pay" />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </div>
+                </article>
               )}
 
-              {allAnomalies.filter((a) => a.status === 'new').length > 0 && (
-                <Card className={`border-0 shadow-sm ${allTrends && allTrends.length > 1 ? 'lg:col-span-2' : 'lg:col-span-5'}`}>
-                  <CardHeader className="pb-2">
-                    <div className="flex items-center justify-between">
-                      <CardTitle className="text-base">Recent anomalies</CardTitle>
-                      {isDemo ? (
-                        <span className="text-xs text-muted-foreground">Sample data</span>
-                      ) : (
-                        <Link to="/anomalies" className="text-xs text-primary hover:underline">View all</Link>
-                      )}
+              {newAnomalies.length > 0 && (
+                <article className={`pi-dashboard__panel pi-dashboard__panel--anomalies ${allTrends && allTrends.length > 1 ? '' : 'pi-dashboard__panel--wide'}`}>
+                  <div className="pi-dashboard__panel-heading">
+                    <div>
+                      <h2>Worth another look</h2>
+                      <p>{isDemo ? 'Sample data only.' : 'Changes from your saved payslips.'}</p>
                     </div>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-3">
-                      {allAnomalies.filter((a) => a.status === 'new').slice(0, 4).map((anomaly) => (
-                        <DemoReadOnlyLink key={anomaly.id} isDemo={isDemo} to={`/payslip/${anomaly.payslip_id}`} className={`flex items-start gap-3 rounded-lg p-2 -mx-2 transition-colors ${isDemo ? 'cursor-default' : 'hover:bg-muted/50'}`}>
-                          <div className={`mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full ${
-                            anomaly.severity === 'high' ? 'bg-destructive/10 text-destructive' :
-                            anomaly.severity === 'medium' ? 'bg-anomaly/10 text-anomaly' :
-                            'bg-warning/10 text-warning'
-                          }`}>
-                            <AlertTriangle className="h-3 w-3" />
-                          </div>
-                          <div className="min-w-0">
-                            <p className="text-sm font-medium text-foreground truncate">{anomaly.title}</p>
-                            <p className="text-xs text-muted-foreground">{formatDate(anomaly.payslip_date)}</p>
-                          </div>
-                          <Badge variant="outline" className="ml-auto shrink-0 text-xs capitalize">{anomaly.severity}</Badge>
-                        </DemoReadOnlyLink>
-                      ))}
-                    </div>
-                  </CardContent>
-                </Card>
+                    {!isDemo && <Link to="/anomalies" className="pi-dashboard__inline-link">View all <ArrowRight className="h-4 w-4" aria-hidden="true" /></Link>}
+                  </div>
+                  <div className="pi-dashboard__anomaly-list">
+                    {newAnomalies.slice(0, 4).map((anomaly) => (
+                      <DemoReadOnlyLink key={anomaly.id} isDemo={isDemo} to={`/payslip/${anomaly.payslip_id}`} className="pi-dashboard__anomaly-row">
+                        <div className={`pi-dashboard__anomaly-icon pi-dashboard__anomaly-icon--${anomaly.severity}`}><AlertTriangle className="h-4 w-4" aria-hidden="true" /></div>
+                        <div className="pi-dashboard__anomaly-copy">
+                          <p>{anomaly.title}</p>
+                          <span>{formatDate(anomaly.payslip_date)}</span>
+                        </div>
+                        <Badge variant="outline" className="pi-dashboard__severity">{anomaly.severity}</Badge>
+                      </DemoReadOnlyLink>
+                    ))}
+                  </div>
+                </article>
               )}
-            </div>
+            </section>
 
-            {/* Recent payslips */}
-            <Card className="border-0 shadow-sm">
-              <CardHeader className="pb-2">
-                <div className="flex items-center justify-between">
-                  <CardTitle className="text-base">Recent payslips</CardTitle>
-                  {isDemo ? (
-                    <span className="text-xs text-muted-foreground">Sample data</span>
-                  ) : (
-                    <Link to="/vault" className="text-xs text-primary hover:underline">View all</Link>
-                  )}
+            <section className="pi-dashboard__history" aria-labelledby="pay-history-heading">
+              <div className="pi-dashboard__section-heading">
+                <div>
+                  <h2 id="pay-history-heading">Your pay history</h2>
+                  <p>Confirmed and saved payslips in one clear place.</p>
                 </div>
-              </CardHeader>
-              <CardContent>
-                <div className="divide-y divide-border">
-                  {allPayslips.slice().reverse().slice(0, 4).map((slip) => (
-                    <DemoReadOnlyLink key={slip.id} isDemo={isDemo} to={`/payslip/${slip.id}`} className={`flex items-center gap-4 py-3 -mx-2 px-2 rounded-lg transition-colors ${isDemo ? 'cursor-default' : 'hover:bg-muted/30'}`}>
-                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10">
-                        <FileText className="h-5 w-5 text-primary" />
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <p className="text-sm font-medium text-foreground">{formatDate(slip.pay_date)}</p>
-                        <p className="text-xs text-muted-foreground">{slip.employer_name}</p>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-sm font-semibold text-foreground">{fmtCurrency(slip.net_pay)}</p>
-                        <p className="text-xs text-muted-foreground">net</p>
-                      </div>
-                      {slip.anomaly_count > 0 && (
-                        <Badge variant="destructive" className="text-xs">{slip.anomaly_count}</Badge>
-                      )}
-                    </DemoReadOnlyLink>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
+                {!isDemo && <Link to="/vault" className="pi-dashboard__inline-link">View all <ArrowRight className="h-4 w-4" aria-hidden="true" /></Link>}
+              </div>
+              <div className="pi-dashboard__history-list">
+                {confirmedPayslips.slice().reverse().slice(0, 4).map((slip) => (
+                  <DemoReadOnlyLink key={slip.id} isDemo={isDemo} to={`/payslip/${slip.id}`} className="pi-dashboard__history-row">
+                    <div className="pi-dashboard__history-icon"><FileText className="h-5 w-5" aria-hidden="true" /></div>
+                    <div className="pi-dashboard__history-copy">
+                      <p>{formatDate(slip.pay_date)}</p>
+                      <span>{slip.employer_name}</span>
+                    </div>
+                    <div className="pi-dashboard__history-amount">
+                      <strong>{fmtCurrency(slip.net_pay)}</strong>
+                      <span>net pay</span>
+                    </div>
+                    {slip.anomaly_count > 0 && <Badge variant="destructive" className="pi-dashboard__history-badge">{slip.anomaly_count}</Badge>}
+                  </DemoReadOnlyLink>
+                ))}
+              </div>
+            </section>
           </>
         )}
 
-        <p className="text-xs text-muted-foreground text-center pb-4">
+        <p className="pi-dashboard__disclaimer">
           Payslip Insights provides guidance and issue spotting — not formal tax, legal, or payroll advice. Always confirm findings with your employer or a professional.
         </p>
       </div>
     </AppLayout>
   );
 };
+
+function UsageBar({ label, used, limit, depleted }: { label: string; used: number; limit: number; depleted: boolean }) {
+  const percent = limit > 0 ? Math.min(100, Math.max(0, (used / limit) * 100)) : 0;
+
+  return (
+    <div className="pi-dashboard__usage-item">
+      <div className="pi-dashboard__usage-label"><span>{label}</span><strong>{used}/{limit}</strong></div>
+      <div className="pi-dashboard__usage-track" aria-label={`${label}: ${used} of ${limit} used`} role="progressbar" aria-valuemin={0} aria-valuemax={limit} aria-valuenow={Math.max(0, used)}>
+        <div className={depleted ? 'pi-dashboard__usage-fill pi-dashboard__usage-fill--depleted' : 'pi-dashboard__usage-fill'} style={{ width: `${percent}%` }} />
+      </div>
+    </div>
+  );
+}
 
 export default Dashboard;

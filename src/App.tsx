@@ -20,6 +20,7 @@ const ForgotPassword = lazy(() => import("./pages/ForgotPassword"));
 const ResetPassword = lazy(() => import("./pages/ResetPassword"));
 const Onboarding = lazy(() => import("./pages/Onboarding"));
 const Dashboard = lazy(() => import("./pages/Dashboard"));
+const Plan = lazy(() => import("./pages/Plan"));
 const PayslipVault = lazy(() => import("./pages/PayslipVault"));
 const PayslipDetail = lazy(() => import("./pages/PayslipDetail"));
 const ComparePayslips = lazy(() => import("./pages/ComparePayslips"));
@@ -75,6 +76,7 @@ const App = () => (
               <Route path="/reset-password" element={<ResetPassword />} />
               <Route path="/onboarding" element={<ProtectedRoute><Onboarding /></ProtectedRoute>} />
               <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+              <Route path="/plan" element={<ProtectedRoute><Plan /></ProtectedRoute>} />
               <Route path="/vault" element={<ProtectedRoute><PayslipVault /></ProtectedRoute>} />
               <Route path="/payslip/:id" element={<ProtectedRoute><PayslipDetail /></ProtectedRoute>} />
               <Route path="/compare" element={<ProtectedRoute><ComparePayslips /></ProtectedRoute>} />

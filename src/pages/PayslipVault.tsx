@@ -1,7 +1,5 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
-import { Card, CardContent } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
+import { Link, useSearchParams } from 'react-router-dom';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import AppLayout from '@/components/layout/AppLayout';
@@ -9,93 +7,103 @@ import PayslipUpload from '@/components/PayslipUpload';
 import { usePayslips } from '@/hooks/use-payslip-data';
 import { useCurrency } from '@/hooks/use-profile';
 import { formatDate } from '@/lib/date-utils';
-import { FileText, Search, AlertTriangle } from 'lucide-react';
+import { AlertTriangle, ChevronRight, FileText, Search } from 'lucide-react';
+import aquaCorner from '@/assets/option-one-aqua-corner-v2.webp';
+import payslipCheckHero from '@/assets/option-one-payslip-check-hero-v1.webp';
 
 const PayslipVault = () => {
   const [search, setSearch] = useState('');
+  const [searchParams] = useSearchParams();
   const { data: payslips, isLoading } = usePayslips();
   const { format: formatCurrency } = useCurrency();
+  const reviewId = searchParams.get('review');
 
   const allPayslips = payslips || [];
-
   const filtered = allPayslips.filter(
-    (s) =>
-      s.employer_name.toLowerCase().includes(search.toLowerCase()) ||
-      s.pay_date.includes(search)
+    (slip) =>
+      slip.employer_name.toLowerCase().includes(search.toLowerCase()) ||
+      slip.pay_date.includes(search),
   );
 
   return (
     <AppLayout>
-      <div className="space-y-6 max-w-4xl">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-foreground">Payslip Vault</h1>
-            <p className="text-sm text-muted-foreground">
-              {allPayslips.length} payslip{allPayslips.length !== 1 ? 's' : ''} saved to your account
+      <div className="pi-vault-page">
+        <img alt="" aria-hidden="true" className="pi-page-aqua-corner" src={aquaCorner} />
+
+        <section className="pi-vault-intro" aria-labelledby="pay-check-heading">
+          <div className="pi-vault-copy">
+            <p className="pi-eyebrow">Pay check</p>
+            <h1 id="pay-check-heading">Check the details.</h1>
+            <p>
+              Upload a payslip, then review the figures before you save it. We’ll point out changes worth a closer look—never make a payroll decision for you.
             </p>
           </div>
-        </div>
+          <img alt="" aria-hidden="true" className="pi-vault-hero-art" src={payslipCheckHero} />
+        </section>
 
-        <PayslipUpload onUploadComplete={() => {}} />
+        <section className="pi-vault-upload" aria-label="Upload a payslip">
+          <PayslipUpload onUploadComplete={() => {}} resumeReviewId={reviewId} />
+        </section>
 
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input placeholder="Search by employer or date…" className="pl-10" value={search} onChange={(e) => setSearch(e.target.value)} />
-        </div>
+        <section className="pi-vault-library" aria-labelledby="saved-payslips-heading">
+          <div className="pi-vault-library-heading">
+            <div>
+              <p className="pi-eyebrow">Your history</p>
+              <h2 id="saved-payslips-heading">Saved payslips</h2>
+              <p>{allPayslips.length} payslip{allPayslips.length !== 1 ? 's' : ''} in your account</p>
+            </div>
+          </div>
 
-        {isLoading ? (
-          <div className="space-y-3">
-            {Array.from({ length: 3 }).map((_, i) => (
-              <Card key={i} className="border-0 shadow-sm">
-                <CardContent className="flex items-center gap-4 p-4">
-                  <Skeleton className="h-12 w-12 rounded-xl" />
-                  <div className="flex-1 space-y-2">
-                    <Skeleton className="h-4 w-32" />
-                    <Skeleton className="h-3 w-48" />
-                  </div>
+          <label className="pi-vault-search">
+            <Search aria-hidden="true" />
+            <span className="sr-only">Search your saved payslips</span>
+            <Input
+              onChange={(event) => setSearch(event.target.value)}
+              placeholder="Search by employer or date"
+              value={search}
+            />
+          </label>
+
+          {isLoading ? (
+            <div className="pi-vault-list" aria-label="Loading payslips">
+              {Array.from({ length: 3 }).map((_, index) => (
+                <div className="pi-vault-row pi-vault-row--loading" key={index}>
+                  <Skeleton className="h-12 w-12 rounded-[16px]" />
+                  <div className="flex-1 space-y-2"><Skeleton className="h-4 w-32" /><Skeleton className="h-3 w-48" /></div>
                   <Skeleton className="h-4 w-20" />
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        ) : filtered.length === 0 ? (
-          <Card className="border-0 shadow-sm">
-            <CardContent className="flex flex-col items-center justify-center py-16 text-center">
-              <FileText className="h-12 w-12 text-muted-foreground/40" />
-              <h3 className="mt-4 text-lg font-semibold text-foreground">No payslips found</h3>
-              <p className="mt-2 text-sm text-muted-foreground">Try a different search or upload your first payslip.</p>
-            </CardContent>
-          </Card>
-        ) : (
-          <div className="space-y-3">
-            {filtered.slice().reverse().map((slip) => (
-              <Link key={slip.id} to={`/payslip/${slip.id}`}>
-                <Card className="border-0 shadow-sm hover:shadow-md transition-shadow cursor-pointer">
-                  <CardContent className="flex items-center gap-4 p-4">
-                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-primary/10">
-                      <FileText className="h-6 w-6 text-primary" />
+                </div>
+              ))}
+            </div>
+          ) : filtered.length === 0 ? (
+            <div className="pi-vault-empty">
+              <div className="pi-vault-empty-icon"><FileText aria-hidden="true" /></div>
+              <h3>{allPayslips.length === 0 ? 'Your first pay check starts here.' : 'No payslips match that search.'}</h3>
+              <p>{allPayslips.length === 0 ? 'Upload a PDF or image above. You’ll see the extracted figures before anything is confirmed.' : 'Try a different employer name or pay date.'}</p>
+            </div>
+          ) : (
+            <div className="pi-vault-list">
+              {filtered.slice().reverse().map((slip) => (
+                <Link className="pi-vault-row" key={slip.id} to={slip.status === 'extracted' ? `/vault?review=${encodeURIComponent(slip.id)}` : `/payslip/${slip.id}`}>
+                  <div className="pi-vault-file-icon"><FileText aria-hidden="true" /></div>
+                  <div className="pi-vault-row-copy">
+                    <div className="pi-vault-row-title">
+                      <strong>{slip.pay_date ? formatDate(slip.pay_date) : 'Payslip ready to review'}</strong>
+                      {slip.status === 'extracted' ? <span className="pi-vault-review-ready">Ready to review</span> : null}
+                      {slip.anomaly_count > 0 ? (
+                        <span className="pi-vault-alert"><AlertTriangle aria-hidden="true" /> {slip.anomaly_count} to check</span>
+                      ) : null}
                     </div>
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2">
-                        <p className="text-sm font-semibold text-foreground">{formatDate(slip.pay_date)}</p>
-                        {slip.anomaly_count > 0 && (
-                          <Badge variant="destructive" className="gap-1 text-xs">
-                            <AlertTriangle className="h-3 w-3" /> {slip.anomaly_count}
-                          </Badge>
-                        )}
-                      </div>
-                      <p className="text-xs text-muted-foreground">{slip.employer_name} · {slip.file_name}</p>
-                    </div>
-                    <div className="text-right shrink-0">
-                      <p className="text-sm font-bold text-foreground">{formatCurrency(slip.net_pay)}</p>
-                      <p className="text-xs text-muted-foreground">Gross {formatCurrency(slip.gross_pay)}</p>
-                    </div>
-                  </CardContent>
-                </Card>
-              </Link>
-            ))}
-          </div>
-        )}
+                    <p>{slip.status === 'extracted' ? 'Check the extracted figures before you confirm this payslip.' : slip.employer_name}</p>
+                  </div>
+                  <div className="pi-vault-row-amount">
+                    {slip.status === 'extracted' ? <><strong>Review</strong><span>Before you plan</span></> : <><strong>{formatCurrency(slip.net_pay)}</strong><span>Net pay</span></>}
+                  </div>
+                  <ChevronRight aria-hidden="true" className="pi-vault-chevron" />
+                </Link>
+              ))}
+            </div>
+          )}
+        </section>
       </div>
     </AppLayout>
   );
