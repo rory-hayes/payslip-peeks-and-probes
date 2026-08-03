@@ -14,3 +14,9 @@ verify_jwt = false
 
 [functions.cancel-subscription-on-delete]
 verify_jwt = false
+
+[functions.delete-account]
+verify_jwt = false
+
+[functions.create-issue-draft]
+verify_jwt = false

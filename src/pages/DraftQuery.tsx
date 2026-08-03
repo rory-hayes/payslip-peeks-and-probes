@@ -17,6 +17,28 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 
+type CreatedDraft = { id: string; subject: string | null; body: string | null };
+type CreateDraftResponse = { code?: string; draft?: CreatedDraft };
+
+function createDraftResponse(value: unknown): CreateDraftResponse | null {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+  const response = value as Record<string, unknown>;
+  const draft = response.draft;
+  const hasDraft = draft
+    && typeof draft === 'object'
+    && !Array.isArray(draft)
+    && typeof (draft as Record<string, unknown>).id === 'string'
+    && (typeof (draft as Record<string, unknown>).subject === 'string'
+      || (draft as Record<string, unknown>).subject === null)
+    && (typeof (draft as Record<string, unknown>).body === 'string'
+      || (draft as Record<string, unknown>).body === null);
+
+  return {
+    code: typeof response.code === 'string' ? response.code : undefined,
+    draft: hasDraft ? draft as CreatedDraft : undefined,
+  };
+}
+
 function safeDateLabel(raw: string | null | undefined): string {
   if (!raw) return 'a recent pay period';
   const formatted = formatDate(raw);
@@ -75,7 +97,14 @@ const DraftQuery = () => {
   const { data: slip, isLoading } = usePayslip(id);
   const { data: allAnomalies } = useAnomalies();
   const { data: profile } = useProfile();
-  const { canDraft, draftsRemaining, isPremium } = useUsage();
+  const {
+    accessError,
+    accessReady,
+    canDraft,
+    draftsRemaining,
+    isPremium,
+    refetchAccess,
+  } = useUsage();
   const anomalies = useMemo(
     () => allAnomalies?.filter((a) => a.payslip_id === id) || [],
     [allAnomalies, id],
@@ -87,10 +116,12 @@ const DraftQuery = () => {
   const [copied, setCopied] = useState(false);
   const [initialized, setInitialized] = useState(false);
   const [draftId, setDraftId] = useState<string | null>(null);
+  const [draftLimitReached, setDraftLimitReached] = useState(false);
   const saveTimeoutRef = useRef<number | null>(null);
+  const canUseDraft = accessReady && canDraft && !draftLimitReached;
 
   useEffect(() => {
-    if (!slip || !user || initialized) return;
+    if (!slip || !user || initialized || !accessReady) return;
 
     const dateLabel = safeDateLabel(slip.pay_date);
     const initialSubject = buildSubject(dateLabel, anomalies.length > 0);
@@ -103,45 +134,43 @@ const DraftQuery = () => {
       setToEmail(initialEmail);
       setInitialized(true);
 
-      if (!canDraft) return;
+      if (!canUseDraft) return;
 
-      const { data: existingDrafts, error: selectError } = await supabase
-        .from('issue_drafts')
-        .select('id, subject, body')
-        .eq('user_id', user.id)
-        .eq('payslip_id', slip.id)
-        .order('updated_at', { ascending: false })
-        .limit(1);
+      const { data, error: createError } = await supabase.functions.invoke('create-issue-draft', {
+        body: {
+          payslipId: slip.id,
+          subject: initialSubject,
+          body: initialBody,
+        },
+      });
+      const response = createDraftResponse(data);
 
-      if (selectError) return;
-
-      const existingDraft = existingDrafts?.[0];
-      if (existingDraft) {
-        setDraftId(existingDraft.id);
-        setSubject(existingDraft.subject || initialSubject);
-        setBody(existingDraft.body || initialBody);
+      if (response?.code === 'draft_limit_reached') {
+          setDraftLimitReached(true);
+          toast({
+            title: 'Draft limit reached',
+            description: 'You have used your two free drafts this Dublin calendar month. See Plus options for more drafts.',
+            variant: 'destructive',
+          });
         return;
       }
 
-      const { data: insertedDraft, error: insertError } = await supabase
-        .from('issue_drafts')
-        .insert({
-          user_id: user.id,
-          payslip_id: slip.id,
-          subject: initialSubject,
-          body: initialBody,
-          status: 'draft',
-        })
-        .select('id')
-        .single();
-
-      if (!insertError && insertedDraft) {
-        setDraftId(insertedDraft.id);
+      if (createError || !response?.draft) {
+        toast({
+          title: 'Could not save draft',
+          description: 'Please try again.',
+          variant: 'destructive',
+        });
+        return;
       }
+
+      setDraftId(response.draft.id);
+      setSubject(response.draft.subject || initialSubject);
+      setBody(response.draft.body || initialBody);
     };
 
     void initialiseDraft();
-  }, [anomalies, canDraft, initialized, profile?.first_name, profile?.payroll_email, slip, user]);
+  }, [accessReady, anomalies, canUseDraft, initialized, profile?.first_name, profile?.payroll_email, slip, toast, user]);
 
   useEffect(() => {
     if (!draftId || !initialized) return;
@@ -207,10 +236,24 @@ const DraftQuery = () => {
           </div>
         </div>
 
-        {!canDraft ? (
+        {!accessReady ? (
+          <Card className="border-0 shadow-sm">
+            <CardContent className="py-8 text-center">
+              <h2 className="text-base font-semibold text-foreground">
+                {accessError ? 'We couldn’t verify draft access' : 'Checking draft access'}
+              </h2>
+              <p className="mt-2 text-sm text-muted-foreground">
+                {accessError
+                  ? 'Check your connection, then try again before creating a payroll message.'
+                  : 'We’re confirming your account and monthly allowance before we create a draft.'}
+              </p>
+              {accessError ? <Button className="mt-4" onClick={() => void refetchAccess()}>Try again</Button> : null}
+            </CardContent>
+          </Card>
+        ) : !canUseDraft ? (
           <UpgradePrompt
             title="Draft limit reached"
-            description={`You've used your ${2} free drafts this month. Upgrade to Plus for unlimited drafts.`}
+            description={`You've used your ${2} free drafts this Dublin calendar month. See Plus options for more drafts.`}
           />
         ) : (
           <>
@@ -254,7 +297,7 @@ const DraftQuery = () => {
           </>
         )}
 
-        {canDraft && (
+        {canUseDraft && (
           <>
             <div className="flex flex-wrap gap-3">
               <Button onClick={handleCopy} className="gap-2">
@@ -267,7 +310,7 @@ const DraftQuery = () => {
             </div>
 
             <p className="text-xs text-muted-foreground">
-              This draft is a starting point. Review and personalise it before sending. PayCheck does not send emails on your behalf.
+              This draft is a starting point. Review and personalise it before sending. Payslip Insights does not send emails on your behalf.
             </p>
           </>
         )}

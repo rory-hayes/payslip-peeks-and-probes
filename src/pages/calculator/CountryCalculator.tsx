@@ -7,28 +7,24 @@ import StickySignupBar from '@/components/calculator/StickySignupBar';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
-import { COUNTRY_LIST, getCountryConfig, type CountryCode } from '@/lib/countries';
+import {
+  LAUNCH_COUNTRY_LIST,
+  getCountryConfig,
+  type LaunchCountryCode,
+} from '@/lib/countries';
 import { applySeo } from '@/lib/seo';
 import { calculateExpectedMonthly } from '@/lib/tax-calculator';
 import { ArrowRight, ChevronRight, Upload, Eye, AlertTriangle } from 'lucide-react';
 
-const SLUG_MAP: Record<string, CountryCode> = {
+const SLUG_MAP: Record<string, LaunchCountryCode> = {
   uk: 'UK',
   ireland: 'Ireland',
-  germany: 'Germany',
-  france: 'France',
-  netherlands: 'Netherlands',
-  spain: 'Spain',
-  italy: 'Italy',
-  belgium: 'Belgium',
-  portugal: 'Portugal',
-  us: 'US',
 };
 
 const CountryCalculator = () => {
   const { country: slug } = useParams<{ country: string }>();
   const [searchParams] = useSearchParams();
-  const code: CountryCode | null = slug ? SLUG_MAP[slug.toLowerCase()] ?? null : null;
+  const code: LaunchCountryCode | null = slug ? SLUG_MAP[slug.toLowerCase()] ?? null : null;
   // Always call hooks; render <Navigate /> below if invalid.
   const config = getCountryConfig(code);
   const grossParam = Number(searchParams.get('gross'));
@@ -49,7 +45,7 @@ const CountryCalculator = () => {
       ? `${config.currencySymbol}${grossForSeo.toLocaleString(config.locale)} after tax in ${config.name} — 2024/25`
       : `${config.name} take-home pay calculator — 2024/25`;
     applySeo({
-      title: `${titleBase} | PayCheck`,
+      title: `${titleBase} | Payslip Insights`,
       description: `Calculate your ${config.name} net (after-tax) pay for 2024/25. Includes ${config.deductionLines
         .map((l) => l.label)
         .join(', ')}. Free, instant, shareable.`,
@@ -190,7 +186,7 @@ const CountryCalculator = () => {
           <CardContent className="p-8">
             <h2 className="text-2xl font-bold">From estimate to your real payslip</h2>
             <p className="mt-2 text-primary-foreground/85">
-              The calculator shows what you <em>should</em> be paid. PayCheck reads your real payslip and tells you whether you actually were — and flags anything unusual.
+              The calculator shows an estimate. Payslip Insights helps you review your real payslip and compare the figures, then flags changes worth checking.
             </p>
             <div className="mt-6 grid gap-4 sm:grid-cols-3">
               {[
@@ -239,11 +235,11 @@ const CountryCalculator = () => {
           </Accordion>
         </section>
 
-        {/* Other countries */}
+        {/* Other available calculator */}
         <section>
-          <h2 className="text-2xl font-bold text-foreground">Other country calculators</h2>
+          <h2 className="text-2xl font-bold text-foreground">Other available calculator</h2>
           <div className="mt-4 grid gap-2 grid-cols-2 sm:grid-cols-3">
-            {COUNTRY_LIST.filter((c) => c.code !== code).map((c) => (
+            {LAUNCH_COUNTRY_LIST.filter((c) => c.code !== code).map((c) => (
               <Link
                 key={c.code}
                 to={`/calculator/${c.code.toLowerCase()}`}

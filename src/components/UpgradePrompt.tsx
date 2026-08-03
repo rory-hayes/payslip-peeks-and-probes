@@ -11,7 +11,7 @@ interface UpgradePromptProps {
 
 const UpgradePrompt = ({
   title = 'Upgrade to Plus',
-  description = 'Unlock unlimited uploads, full anomaly detection, and more.',
+  description = 'See Plus options for automatic payslip checks and payroll-message drafts beyond the Free plan allowance.',
   className = '',
 }: UpgradePromptProps) => (
   <Card className={`border-primary/30 bg-primary/5 ${className}`}>

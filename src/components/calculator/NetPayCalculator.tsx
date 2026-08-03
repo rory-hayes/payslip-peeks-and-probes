@@ -11,7 +11,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ArrowRight, Info, Share2 } from 'lucide-react';
 import { calculateExpectedMonthly } from '@/lib/tax-calculator';
-import { getCountryConfig, COUNTRY_LIST, type CountryCode } from '@/lib/countries';
+import { getCountryConfig, LAUNCH_COUNTRY_LIST, type CountryCode } from '@/lib/countries';
 import { toast } from 'sonner';
 
 interface NetPayCalculatorProps {
@@ -131,7 +131,7 @@ const NetPayCalculator = ({ country, lockCountry = false, compact = false }: Net
           onValueChange={(v) => navigate(`/calculator/${v.toLowerCase()}${window.location.search}`)}
         >
           <TabsList className="flex flex-wrap h-auto">
-            {COUNTRY_LIST.map((cfg) => (
+            {LAUNCH_COUNTRY_LIST.map((cfg) => (
               <TabsTrigger key={cfg.code} value={cfg.code} className="gap-1.5">
                 <span aria-hidden="true">{cfg.flag}</span> {cfg.name}
               </TabsTrigger>
@@ -349,7 +349,7 @@ const NetPayCalculator = ({ country, lockCountry = false, compact = false }: Net
 
       {!compact && (
         <p className="text-xs text-muted-foreground text-center max-w-2xl mx-auto">
-          {config.taxAssumptionsBlurb} PayCheck provides guidance and issue spotting, not formal tax advice.
+          {config.taxAssumptionsBlurb} Payslip Insights provides guidance and issue spotting, not formal tax advice.
         </p>
       )}
     </div>

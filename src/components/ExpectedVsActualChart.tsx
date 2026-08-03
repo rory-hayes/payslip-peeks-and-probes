@@ -1,6 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useProfile, useCurrency } from '@/hooks/use-profile';
 import { calculateExpectedMonthly } from '@/lib/tax-calculator';
+import type { DeductionOptions } from '@/lib/tax-calculator';
 import type { Payslip } from '@/lib/types';
 import { Info } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -19,10 +20,11 @@ const ExpectedVsActualChart = ({ payslips }: Props) => {
 
   if (!profile?.annual_salary || payslips.length < 2) return null;
 
-  const opts = {
+  const studentLoanPlan = profile.student_loan_plan;
+  const opts: DeductionOptions = {
     pensionPercent: profile.has_pension ? (profile.pension_percent ?? 5) : 0,
     hasStudentLoan: profile.has_student_loan,
-    studentLoanPlan: (profile.student_loan_plan as any) ?? 'plan2',
+    studentLoanPlan: studentLoanPlan === 'plan1' || studentLoanPlan === 'plan2' || studentLoanPlan === 'plan4' || studentLoanPlan === 'plan5' || studentLoanPlan === 'postgrad' ? studentLoanPlan : 'plan2',
     subRegion: profile.sub_region,
     filingStatus: profile.filing_status,
   };

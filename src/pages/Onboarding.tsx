@@ -11,7 +11,11 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { useQueryClient } from '@tanstack/react-query';
-import { COUNTRY_LIST, getCountryConfig, type CountryCode } from '@/lib/countries';
+import {
+  LAUNCH_COUNTRY_LIST,
+  getCountryConfig,
+  type LaunchCountryCode,
+} from '@/lib/countries';
 
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { HelpCircle } from 'lucide-react';
@@ -24,7 +28,7 @@ const Onboarding = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [step, setStep] = useState(0);
-  const [country, setCountry] = useState<CountryCode | ''>('');
+  const [country, setCountry] = useState<LaunchCountryCode | ''>('');
   const [subRegion, setSubRegion] = useState<string>('');
   const [filingStatus, setFilingStatus] = useState<string>('');
   const [frequency, setFrequency] = useState<string>('');
@@ -58,7 +62,7 @@ const Onboarding = () => {
   const next = () => { if (canNext && step < STEPS.length - 1) setStep(step + 1); };
   const back = () => { if (step > 0) setStep(step - 1); };
 
-  const handleCountrySelect = (code: CountryCode) => {
+  const handleCountrySelect = (code: LaunchCountryCode) => {
     setCountry(code);
     const cfg = getCountryConfig(code);
     setSubRegion(cfg.subRegions?.[0]?.code ?? '');
@@ -132,7 +136,7 @@ const Onboarding = () => {
             <div className="flex h-7 w-7 items-center justify-center rounded-md bg-primary">
               <CheckCircle className="h-4 w-4 text-primary-foreground" />
             </div>
-            <span className="font-semibold text-foreground">PayCheck</span>
+            <span className="font-semibold text-foreground">Payslip Insights</span>
           </div>
           <span className="text-xs text-muted-foreground">Step {step + 1} of {STEPS.length}</span>
         </div>
@@ -149,7 +153,7 @@ const Onboarding = () => {
                 <div className="flex h-16 w-16 mx-auto items-center justify-center rounded-2xl bg-primary/10">
                   <Sparkles className="h-8 w-8 text-primary" />
                 </div>
-                <h2 className="text-2xl font-bold text-foreground">Welcome to PayCheck</h2>
+                <h2 className="text-2xl font-bold text-foreground">Welcome to Payslip Insights</h2>
                 <p className="text-muted-foreground leading-relaxed">
                   Upload your payslips, track changes month to month, and get a heads-up when something looks off. Let's get your profile set up — it takes less than a minute.
                 </p>
@@ -163,8 +167,8 @@ const Onboarding = () => {
                   <h2 className="text-2xl font-bold text-foreground">Where are you employed?</h2>
                   <p className="mt-2 text-sm text-muted-foreground">This sets your currency and tax rules.</p>
                 </div>
-                <div className="grid grid-cols-3 gap-3">
-                  {COUNTRY_LIST.map((c) => (
+                <div className="grid grid-cols-2 gap-3">
+                  {LAUNCH_COUNTRY_LIST.map((c) => (
                     <button
                       key={c.code}
                       onClick={() => handleCountrySelect(c.code)}
@@ -234,7 +238,7 @@ const Onboarding = () => {
                 )}
 
                 <p className="text-xs text-center text-muted-foreground pt-1">
-                  More EMEA countries coming soon. Pick the closest match for now.
+                  Payslip Insights is currently available for UK and Ireland employees.
                 </p>
               </div>
             )}
@@ -457,7 +461,7 @@ const Onboarding = () => {
                 </div>
 
                 <p className="text-xs text-center text-muted-foreground">
-                  PayCheck provides guidance and issue spotting — not formal tax or payroll advice.
+                  Payslip Insights provides guidance and issue spotting — not formal tax or payroll advice.
                 </p>
               </div>
             )}

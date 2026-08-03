@@ -13,7 +13,7 @@ export default function CheckoutReturn() {
   const [searchParams] = useSearchParams();
   const sessionId = searchParams.get("session_id");
   const queryClient = useQueryClient();
-  const [status, setStatus] = useState<'loading' | 'success' | 'failed'>('loading');
+  const [status, setStatus] = useState<'loading' | 'success' | 'pending' | 'failed'>('loading');
   const { refetch } = useSubscription();
 
   useEffect(() => {
@@ -40,7 +40,9 @@ export default function CheckoutReturn() {
 
       polls += 1;
       if (polls >= MAX_POLLS) {
-        setStatus('failed');
+        // Delayed payment methods can legitimately settle after the brief UI
+        // poll window. Keep the user from attempting a second charge.
+        setStatus('pending');
         return;
       }
 
@@ -83,6 +85,22 @@ export default function CheckoutReturn() {
               </p>
               <Link to="/dashboard">
                 <Button className="w-full mt-4">Go to Dashboard</Button>
+              </Link>
+            </>
+          )}
+          {status === 'pending' && (
+            <>
+              <div className="flex justify-center">
+                <div className="h-16 w-16 rounded-full bg-primary/10 flex items-center justify-center">
+                  <Loader2 className="h-8 w-8 text-primary animate-spin" />
+                </div>
+              </div>
+              <h1 className="text-2xl font-bold text-foreground">Your payment is being confirmed</h1>
+              <p className="text-muted-foreground">
+                Don&apos;t submit another payment. Your access will unlock as soon as Stripe confirms it.
+              </p>
+              <Link to="/dashboard">
+                <Button variant="outline" className="w-full mt-4">Go to Dashboard</Button>
               </Link>
             </>
           )}

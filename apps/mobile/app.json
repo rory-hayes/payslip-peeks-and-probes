@@ -1,0 +1,37 @@
+{
+  "expo": {
+    "name": "Payslip Insights",
+    "slug": "payslip-insights",
+    "version": "0.1.0",
+    "description": "Understand a payslip, track confirmed pay, and plan until the next payday.",
+    "scheme": "payslipinsights",
+    "orientation": "portrait",
+    "icon": "./assets/payslip-insights-app-icon-v1.png",
+    "userInterfaceStyle": "light",
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#FFFFFF",
+        "foregroundImage": "./assets/payslip-insights-app-icon-v1.png"
+      },
+      "predictiveBackGestureEnabled": false
+    },
+    "web": {
+      "favicon": "./assets/payslip-insights-app-icon-v1.png"
+    },
+    "plugins": [
+      "expo-document-picker",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Payslip Insights uses your photo library only when you choose an image payslip to upload.",
+          "cameraPermission": false,
+          "microphonePermission": false
+        }
+      ],
+      "@react-native-community/datetimepicker"
+    ]
+  }
+}

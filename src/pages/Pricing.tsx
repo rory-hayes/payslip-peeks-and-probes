@@ -2,9 +2,8 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
-import { CheckCircle, ArrowLeft, Crown, Sparkles } from 'lucide-react';
+import { CheckCircle, ArrowLeft, Sparkles } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSubscription } from '@/hooks/use-subscription';
 import { PaymentTestModeBanner } from '@/components/PaymentTestModeBanner';
@@ -23,21 +22,17 @@ const prices: Record<Currency, { symbol: string; yearly: string; yearlyPerMonth:
 };
 
 const freeFeatures = [
-  '3 payslip uploads per month',
-  'Basic anomaly checks',
-  '1 month comparison',
-  '2 issue drafts per month',
-  'Email support',
+  '3 automatic payslip checks per Dublin calendar month',
+  'Review, track, and compare confirmed payslips',
+  '2 payroll-message drafts per Dublin calendar month',
+  'Contact us by email',
 ];
 
 const plusFeatures = [
-  'Unlimited payslip uploads',
-  'Full anomaly detection suite',
-  'Compare any two payslips',
-  'Unlimited issue drafts',
-  'Historical trends & deep insights',
-  'PDF export',
-  'Priority support',
+  'Automatic payslip checks beyond the Free plan allowance',
+  'Payroll-message drafts beyond the Free plan allowance',
+  'All Free plan features',
+  'PDF export of your payslip history',
 ];
 
 const Pricing = () => {
@@ -57,6 +52,10 @@ const Pricing = () => {
       navigate('/sign-up');
       return;
     }
+    if (subscription.needsBillingReview) {
+      navigate('/settings');
+      return;
+    }
     // Prevent duplicate purchase
     if (subscription.isPremium) return;
     navigate(`/checkout?price=${priceId}`);
@@ -74,7 +73,7 @@ const Pricing = () => {
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
               <CheckCircle className="h-5 w-5 text-primary-foreground" />
             </div>
-            <span className="text-xl font-bold text-foreground">PayCheck</span>
+            <span className="text-xl font-bold text-foreground">Payslip Insights</span>
           </Link>
           <div className="flex items-center gap-3">
             {isLoggedIn ? (
@@ -97,7 +96,7 @@ const Pricing = () => {
           <div className="text-center space-y-4">
             <h1 className="text-3xl font-bold text-foreground md:text-4xl">Simple, transparent pricing</h1>
             <p className="text-muted-foreground max-w-md mx-auto">
-              Start free. Upgrade when you need more. No hidden fees, cancel anytime.
+              Start with the Free plan. Choose a paid plan when you need checks or drafts beyond its monthly allowance.
             </p>
 
             {/* Currency toggle */}
@@ -154,10 +153,7 @@ const Pricing = () => {
             </Card>
 
             {/* Plus */}
-            <Card className="border-2 border-primary shadow-lg relative">
-              <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                <Badge className="bg-primary text-primary-foreground">Most popular</Badge>
-              </div>
+            <Card className="border-2 border-primary shadow-lg">
               <CardContent className="p-8 flex flex-col h-full">
                 <h3 className="text-lg font-semibold text-foreground">Plus</h3>
 
@@ -189,7 +185,7 @@ const Pricing = () => {
                 </div>
 
                 <p className="mt-3 text-sm text-muted-foreground">
-                  Full access to all features. Peace of mind, every pay day.
+                  More automatic checks and payroll-message drafts when you need them.
                 </p>
                 <ul className="mt-6 space-y-3 text-sm text-muted-foreground flex-1">
                   {plusFeatures.map((f, i) => (
@@ -210,19 +206,14 @@ const Pricing = () => {
                   )
                 ) : (
                   <Button className="w-full mt-8" onClick={() => handleCheckout(billing === 'yearly' ? ids.yearly : ids.monthly)}>
-                    Start free trial
+                    Choose Plus
                   </Button>
                 )}
               </CardContent>
             </Card>
 
             {/* Founder Lifetime */}
-            <Card className="border shadow-sm relative">
-              <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                <Badge variant="secondary" className="bg-amber-100 text-amber-800 border-amber-200">
-                  <Crown className="h-3 w-3 mr-1" /> Founder
-                </Badge>
-              </div>
+            <Card className="border shadow-sm">
               <CardContent className="p-8 flex flex-col h-full">
                 <h3 className="text-lg font-semibold text-foreground">Lifetime</h3>
                 <div className="mt-4">
@@ -230,7 +221,7 @@ const Pricing = () => {
                   <span className="text-muted-foreground"> once</span>
                 </div>
                 <p className="mt-2 text-sm text-muted-foreground">
-                  One payment, forever access. Limited availability for early supporters.
+                  One payment for the Lifetime plan. It does not renew.
                 </p>
                 <ul className="mt-6 space-y-3 text-sm text-muted-foreground flex-1">
                   {plusFeatures.map((f, i) => (
@@ -246,12 +237,12 @@ const Pricing = () => {
                     </Button>
                   ) : (
                     <Button variant="outline" className="w-full mt-8 border-amber-300 text-amber-700 hover:bg-amber-50" onClick={() => handleCheckout(ids.lifetime)}>
-                      Get lifetime access
+                      Choose Lifetime
                     </Button>
                   )
                 ) : (
                   <Button variant="outline" className="w-full mt-8 border-amber-300 text-amber-700 hover:bg-amber-50" onClick={() => handleCheckout(ids.lifetime)}>
-                    Claim founder deal
+                    Choose Lifetime
                   </Button>
                 )}
               </CardContent>
@@ -267,14 +258,13 @@ const Pricing = () => {
                 <div className="border-b border-border bg-muted/50 p-4 text-center font-medium text-primary">Plus</div>
                 <div className="border-b border-border bg-muted/50 p-4 text-center font-medium text-amber-600">Lifetime</div>
                 {[
-                  { feature: 'Payslip uploads', free: '3/month', plus: 'Unlimited', lifetime: 'Unlimited' },
-                  { feature: 'Anomaly detection', free: 'Basic', plus: 'Full suite', lifetime: 'Full suite' },
-                  { feature: 'Payslip comparison', free: '1 month', plus: 'Any two', lifetime: 'Any two' },
-                  { feature: 'Issue drafts', free: '2/month', plus: 'Unlimited', lifetime: 'Unlimited' },
-                  { feature: 'Historical trends', free: '—', plus: '✓', lifetime: '✓' },
-                  { feature: 'PDF export', free: '—', plus: '✓', lifetime: '✓' },
-                  { feature: 'Support', free: 'Email', plus: 'Priority', lifetime: 'Priority' },
-                  { feature: 'Duration', free: 'Forever', plus: 'Subscription', lifetime: 'Forever' },
+                  { feature: 'Automatic payslip checks', free: '3 / Dublin month', plus: 'Beyond Free allowance', lifetime: 'Beyond Free allowance' },
+                  { feature: 'Payslip review', free: 'Included', plus: 'Included', lifetime: 'Included' },
+                  { feature: 'Payslip comparison & trends', free: 'Included', plus: 'Included', lifetime: 'Included' },
+                  { feature: 'Payroll-message drafts', free: '2 / Dublin month', plus: 'Beyond Free allowance', lifetime: 'Beyond Free allowance' },
+                  { feature: 'PDF export', free: 'Included', plus: 'Included', lifetime: 'Included' },
+                  { feature: 'Contact', free: 'Email', plus: 'Email', lifetime: 'Email' },
+                  { feature: 'Billing', free: 'No charge', plus: 'Monthly or yearly', lifetime: 'One payment' },
                 ].map((row, i) => (
                   <div key={i} className="contents">
                     <div className="border-b border-border p-4 text-muted-foreground">{row.feature}</div>
@@ -288,7 +278,7 @@ const Pricing = () => {
           </Card>
 
           <p className="text-xs text-muted-foreground text-center">
-            Cancel anytime. No lock-in. All prices include VAT where applicable.
+            The total for your selected plan is shown before you pay. Recurring plans can be managed from your account.
           </p>
         </div>
       </div>

@@ -1,38 +1,50 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
-import { type StripeEnv, createStripeClient } from "../_shared/stripe.ts";
+import {
+  createStripeClient,
+  getPriceCatalogEntry,
+  getStripeEnvironment,
+} from "../_shared/stripe.ts";
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
+  if (req.method !== "POST") {
+    return new Response(JSON.stringify({ error: "Method not allowed" }), {
+      status: 405,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
 
   try {
-    const { priceId, environment } = await req.json();
-    if (!priceId || typeof priceId !== 'string' || !/^[a-zA-Z0-9_-]+$/.test(priceId)) {
-      return new Response(JSON.stringify({ error: "Invalid priceId" }), {
+    const { priceId } = await req.json();
+    const catalogEntry = getPriceCatalogEntry(priceId);
+    if (!catalogEntry || typeof priceId !== "string") {
+      return new Response(JSON.stringify({ error: "That plan is not available." }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    const env = (environment || 'sandbox') as StripeEnv;
-    const stripe = createStripeClient(env);
-
-    const prices = await stripe.prices.list({ lookup_keys: [priceId] });
-    if (!prices.data.length) {
-      return new Response(JSON.stringify({ error: "Price not found" }), {
-        status: 404,
+    const stripe = createStripeClient(getStripeEnvironment());
+    const prices = await stripe.prices.list({ lookup_keys: [priceId], active: true, limit: 1 });
+    const price = prices.data[0];
+    if (!price || price.lookup_key !== priceId || price.type !== catalogEntry.mode) {
+      return new Response(JSON.stringify({ error: "That plan is not currently available." }), {
+        status: 503,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    return new Response(JSON.stringify({ stripeId: prices.data[0].id }), {
+    return new Response(JSON.stringify({ stripeId: price.id }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (error) {
-    console.error("[get-stripe-price] error:", error);
-    return new Response(JSON.stringify({ error: "An internal error occurred. Please try again." }), {
+    console.error("[get-stripe-price] failed", {
+      message: error instanceof Error ? error.message : "Unknown error",
+    });
+    return new Response(JSON.stringify({ error: "Unable to resolve that plan." }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });

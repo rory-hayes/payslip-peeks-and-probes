@@ -11,11 +11,7 @@ const mockUseUsage = vi.fn();
 const mockUseToast = vi.fn();
 const mockUseAuth = vi.fn();
 
-const draftSelectEq = vi.fn();
-const draftSelectOrder = vi.fn();
-const draftSelectLimit = vi.fn();
-const draftInsert = vi.fn();
-const draftInsertSelect = vi.fn();
+const { draftFunctionInvoke } = vi.hoisted(() => ({ draftFunctionInvoke: vi.fn() }));
 
 vi.mock("react-router-dom", async () => {
   const actual = await vi.importActual<typeof import("react-router-dom")>("react-router-dom");
@@ -53,16 +49,13 @@ vi.mock("@/components/layout/AppLayout", () => ({
 
 vi.mock("@/integrations/supabase/client", () => ({
   supabase: {
+    functions: { invoke: draftFunctionInvoke },
     from: (table: string) => {
       if (table !== "issue_drafts") {
         throw new Error(`Unexpected table ${table}`);
       }
 
       return {
-        select: vi.fn(() => ({
-          eq: draftSelectEq,
-        })),
-        insert: draftInsert,
         update: vi.fn(() => ({
           eq: vi.fn(async () => ({ error: null })),
         })),
@@ -99,43 +92,36 @@ describe("DraftQuery", () => {
       },
     });
     mockUseUsage.mockReturnValue({
+      accessReady: true,
+      accessError: false,
       canDraft: true,
       draftsRemaining: 2,
       isPremium: false,
+      refetchAccess: vi.fn(),
     });
     mockUseToast.mockReturnValue({ toast: vi.fn() });
     mockUseAuth.mockReturnValue({
       user: { id: "user-123" },
     });
 
-    draftSelectEq.mockReset();
-    draftSelectOrder.mockReset();
-    draftSelectLimit.mockReset();
-    draftInsert.mockReset();
-    draftInsertSelect.mockReset();
-
-    draftSelectEq.mockReturnValue({
-      eq: vi.fn(() => ({
-        order: draftSelectOrder,
-      })),
-    });
-    draftSelectOrder.mockReturnValue({
-      limit: draftSelectLimit,
-    });
-    draftSelectLimit.mockResolvedValue({ data: [], error: null });
-    draftInsert.mockReturnValue({
-      select: draftInsertSelect,
-    });
-    draftInsertSelect.mockReturnValue({
-      single: vi.fn(async () => ({ data: { id: "draft-1" }, error: null })),
+    draftFunctionInvoke.mockReset();
+    draftFunctionInvoke.mockResolvedValue({
+      data: { draft: { id: "draft-1", subject: null, body: null } },
+      error: null,
     });
   });
 
-  it("creates a draft record the first time a draft page is opened", async () => {
+  it("creates a draft through the server-owned quota check", async () => {
     renderPage();
 
     await waitFor(() => {
-      expect(draftInsert).toHaveBeenCalled();
+      expect(draftFunctionInvoke).toHaveBeenCalledWith("create-issue-draft", {
+        body: {
+          payslipId: "payslip-1",
+          subject: "Clarification on my 1 Apr 2026 payslip",
+          body: expect.any(String),
+        },
+      });
     });
   });
 });

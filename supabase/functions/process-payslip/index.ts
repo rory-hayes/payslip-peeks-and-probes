@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
-import { checkRateLimit, getClientIp } from "../_shared/rate-limit.ts";
+import { createClient, type SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
+import { checkRateLimit } from "../_shared/rate-limit.ts";
 
 // ---------- Date normalisation ----------
 
@@ -25,9 +25,9 @@ function normaliseDate(input: string | null | undefined): string | null {
   }
 
   // DD/MM/YYYY or DD-MM-YYYY or DD.MM.YYYY
-  const dmy = s.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})$/);
+  const dmy = s.match(/^(\d{1,2})[/\-.](\d{1,2})[/\-.](\d{2,4})$/);
   if (dmy) {
-    let [, dd, mm, yy] = dmy;
+    const [, dd, mm, yy] = dmy;
     let year = parseInt(yy);
     if (year < 100) year += 2000;
     const month = parseInt(mm);
@@ -83,7 +83,7 @@ Return a JSON object using this exact schema (use null for fields you cannot fin
   "pay_period_start": "YYYY-MM-DD or null",
   "pay_period_end": "YYYY-MM-DD or null",
   "employer_name": "string or null",
-  "country": "UK or Ireland or Germany or France or Netherlands or Spain or Italy or Belgium or Portugal or null",
+  "country": "UK or Ireland or null",
   "gross_pay": number or null,
   "net_pay": number or null,
   "taxable_pay": number or null,
@@ -105,77 +105,28 @@ Return a JSON object using this exact schema (use null for fields you cannot fin
     "ni": number or null,
     "pension": number or null
   },
-  "confidence": "high" | "medium" | "low",
-  "notes": "any extraction notes"
+  "confidence": "high" | "medium" | "low"
 }
 
 Country detection:
-- If PRSI or USC are present, country is Ireland
-- If "National Insurance" / "NI" / "PAYE" with £ is present, country is UK
-- If German terms appear (Brutto, Netto, Lohnsteuer, Solidaritätszuschlag, Sozialversicherung, Steuerklasse, Krankenversicherung, Rentenversicherung, Pflegeversicherung, Arbeitslosenversicherung), country is Germany
-- If French terms appear (Bulletin de paie, Salaire brut, Net à payer, Prélèvement à la source, CSG, CRDS, Sécurité sociale, AGIRC-ARRCO), country is France
-- If Dutch terms appear (Loonstrook, Salarisstrook, Brutoloon, Nettoloon, Loonheffing, Loonbelasting, Heffingskorting, Vakantiegeld, AOW, WLZ), country is Netherlands
-- If Spanish terms appear (Nómina, Recibo de salarios, Salario bruto, IRPF, Seguridad Social, Contingencias comunes, Líquido a percibir), country is Spain
-- If Italian terms appear (Busta paga, Cedolino, Retribuzione lorda, IRPEF, INPS, TFR, Addizionale regionale), country is Italy
-- If Belgian terms appear (Fiche de paie, Loonfiche, Précompte professionnel, Bedrijfsvoorheffing, ONSS, RSZ, Pécule de vacances), country is Belgium
-- If Portuguese terms appear (Recibo de vencimento, Vencimento bruto, IRS, Retenção na fonte, Segurança Social, Subsídio de férias), country is Portugal
+- If PRSI or USC are present, country is Ireland.
+- If "National Insurance" / "NI" / "PAYE" with £ is present, country is UK.
+- If the payslip is not clearly from the UK or Ireland, use null rather than guessing.
 
-Field mapping for Germany:
-- "Brutto" / "Bruttobezüge" → gross_pay
-- "Netto" / "Auszahlungsbetrag" → net_pay
-- "Lohnsteuer" → tax_amount
-- "Solidaritätszuschlag" / "Soli" → solidarity_amount
-- "Kirchensteuer" / "KiSt" → church_tax_amount
-- Sum of "Krankenversicherung (KV) + Rentenversicherung (RV) + Arbeitslosenversicherung (AV) + Pflegeversicherung (PV)" employee shares → social_security_amount
-- "Betriebsrente" / "Gehaltsumwandlung" / pension contributions → pension_amount
-
-Field mapping for France:
-- "Salaire brut" / "Total brut" → gross_pay
-- "Net à payer" / "Salaire net" → net_pay
-- "Prélèvement à la source" / "PAS" / "Impôt sur le revenu" → tax_amount
-- Sum of "CSG + CRDS + Sécurité sociale + AGIRC-ARRCO + Chômage + Assurance maladie" employee shares (cotisations salariales) → social_security_amount
-- "Retraite complémentaire" or supplementary pension → pension_amount
-
-Field mapping for Netherlands:
-- "Brutoloon" / "Bruto salaris" → gross_pay
-- "Nettoloon" / "Netto salaris" / "Uit te betalen" → net_pay
-- "Loonheffing" / "Loonbelasting" → tax_amount (this already includes premies volksverzekeringen)
-- "Pensioenpremie" / pension contributions → pension_amount
-- Dutch payslips typically do NOT show separate social security (it's bundled into Loonheffing) — leave social_security_amount as null
-
-Field mapping for Spain:
-- "Salario bruto" / "Total devengado" → gross_pay
-- "Líquido a percibir" / "Salario neto" → net_pay
-- "Retención IRPF" / "IRPF" → tax_amount
-- Sum of "Contingencias comunes + Desempleo + Formación profesional + MEI" employee shares → social_security_amount
-- "Plan de pensiones" → pension_amount
-
-Field mapping for Italy:
-- "Retribuzione lorda" / "Imponibile" → gross_pay
-- "Netto a pagare" / "Retribuzione netta" → net_pay
-- "IRPEF" + "Addizionale regionale" + "Addizionale comunale" combined → tax_amount
-- "Contributi INPS" / "Contributo IVS" employee share → social_security_amount
-- "Previdenza complementare" → pension_amount
-
-Field mapping for Belgium:
-- "Salaire brut" / "Brutto loon" → gross_pay
-- "Salaire net" / "Netto loon" → net_pay
-- "Précompte professionnel" / "Bedrijfsvoorheffing" → tax_amount
-- "ONSS" / "RSZ" employee share → social_security_amount
-- "Pension complémentaire" / "Aanvullend pensioen" → pension_amount
-
-Field mapping for Portugal:
-- "Vencimento bruto" / "Total ilíquido" → gross_pay
-- "Líquido a receber" / "Vencimento líquido" → net_pay
-- "Retenção na fonte" / "IRS" → tax_amount
-- "Segurança Social" / "TSU" employee share → social_security_amount
-- "PPR" / pension contributions → pension_amount
+UK and Ireland field mapping:
+- Gross pay / gross earnings → gross_pay.
+- Net pay / take-home pay → net_pay.
+- Income tax / PAYE tax → tax_amount.
+- National Insurance → national_insurance_amount.
+- PRSI → prsi_amount; USC → usc_amount.
+- Employee pension contribution → pension_amount.
+- Student loan, bonus, overtime and total deductions should be recorded only where clearly shown.
 
 Rules:
 - All monetary values should be plain numbers (no currency symbols, no thousand separators)
 - Use the EMPLOYEE share, NOT the employer share
-- For European payslips (DE/FR/NL/ES/IT/BE/PT), the decimal separator on the document is often a comma — convert to a dot in the output
 - Be precise with decimal values
+- Do not calculate, infer, or give tax advice. Only transcribe fields visible on the document.
 - Only return the JSON object, no other text`;
 
 // ---------- Anomaly detection ----------
@@ -196,6 +147,243 @@ interface Extraction {
   bonus_amount: number | null;
   overtime_amount: number | null;
   total_deductions: number | null;
+}
+
+interface ParsedExtraction extends Extraction {
+  pay_date: string | null;
+  pay_period_start: string | null;
+  pay_period_end: string | null;
+  employer_name: string | null;
+  country: "UK" | "Ireland" | null;
+  year_to_date: {
+    gross_pay: number | null;
+    tax: number | null;
+    ni: number | null;
+    pension: number | null;
+  } | null;
+  confidence: "high" | "medium" | "low";
+}
+
+const MAX_MONEY_VALUE = 10_000_000;
+const MAX_FILE_BYTES = 10 * 1024 * 1024;
+const MAX_PROCESSING_ATTEMPTS = 3;
+
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+/**
+ * Missing money fields are expected; non-numeric fields are not. Rejecting a
+ * malformed response avoids persisting invented or string-coerced figures.
+ */
+function nullableMoney(value: unknown): number | null | undefined {
+  if (value == null) return null;
+  if (typeof value !== "number" || !Number.isFinite(value) || Math.abs(value) > MAX_MONEY_VALUE) {
+    return undefined;
+  }
+  return value;
+}
+
+function nullableText(value: unknown, maxLength: number): string | null | undefined {
+  if (value == null) return null;
+  if (typeof value !== "string") return undefined;
+  const trimmed = value.trim();
+  if (trimmed.length === 0) return null;
+  return trimmed.length <= maxLength ? trimmed : undefined;
+}
+
+function nullableCountry(value: unknown): "UK" | "Ireland" | null | undefined {
+  if (value == null || value === "") return null;
+  if (value === "UK" || value === "Ireland") return value;
+  if (typeof value !== "string") return undefined;
+  return null;
+}
+
+function nullableConfidence(value: unknown): "high" | "medium" | "low" {
+  return value === "high" || value === "medium" || value === "low" ? value : "low";
+}
+
+function parseYearToDate(value: unknown): ParsedExtraction["year_to_date"] | undefined {
+  if (value == null) return null;
+  if (!isPlainObject(value)) return undefined;
+
+  const grossPay = nullableMoney(value.gross_pay);
+  const tax = nullableMoney(value.tax);
+  const ni = nullableMoney(value.ni);
+  const pension = nullableMoney(value.pension);
+  if ([grossPay, tax, ni, pension].some((amount) => amount === undefined)) {
+    return undefined;
+  }
+
+  return {
+    gross_pay: grossPay,
+    tax,
+    ni,
+    pension,
+  };
+}
+
+function parseExtraction(value: unknown): ParsedExtraction | null {
+  if (!isPlainObject(value)) return null;
+
+  const grossPay = nullableMoney(value.gross_pay);
+  const netPay = nullableMoney(value.net_pay);
+  const taxablePay = nullableMoney(value.taxable_pay);
+  const taxAmount = nullableMoney(value.tax_amount);
+  const nationalInsuranceAmount = nullableMoney(value.national_insurance_amount);
+  const prsiAmount = nullableMoney(value.prsi_amount);
+  const uscAmount = nullableMoney(value.usc_amount);
+  const socialSecurityAmount = nullableMoney(value.social_security_amount);
+  const solidarityAmount = nullableMoney(value.solidarity_amount);
+  const churchTaxAmount = nullableMoney(value.church_tax_amount);
+  const pensionAmount = nullableMoney(value.pension_amount);
+  const studentLoanAmount = nullableMoney(value.student_loan_amount);
+  const bonusAmount = nullableMoney(value.bonus_amount);
+  const overtimeAmount = nullableMoney(value.overtime_amount);
+  const totalDeductions = nullableMoney(value.total_deductions);
+  const payDate = nullableText(value.pay_date, 40);
+  const payPeriodStart = nullableText(value.pay_period_start, 40);
+  const payPeriodEnd = nullableText(value.pay_period_end, 40);
+  const employerName = nullableText(value.employer_name, 200);
+  const country = nullableCountry(value.country);
+  const yearToDate = parseYearToDate(value.year_to_date);
+
+  if ([
+    grossPay,
+    netPay,
+    taxablePay,
+    taxAmount,
+    nationalInsuranceAmount,
+    prsiAmount,
+    uscAmount,
+    socialSecurityAmount,
+    solidarityAmount,
+    churchTaxAmount,
+    pensionAmount,
+    studentLoanAmount,
+    bonusAmount,
+    overtimeAmount,
+    totalDeductions,
+    payDate,
+    payPeriodStart,
+    payPeriodEnd,
+    employerName,
+    country,
+    yearToDate,
+  ].some((field) => field === undefined)) {
+    return null;
+  }
+
+  return {
+    gross_pay: grossPay,
+    net_pay: netPay,
+    taxable_pay: taxablePay,
+    tax_amount: taxAmount,
+    national_insurance_amount: nationalInsuranceAmount,
+    prsi_amount: prsiAmount,
+    usc_amount: uscAmount,
+    social_security_amount: socialSecurityAmount,
+    solidarity_amount: solidarityAmount,
+    church_tax_amount: churchTaxAmount,
+    pension_amount: pensionAmount,
+    student_loan_amount: studentLoanAmount,
+    bonus_amount: bonusAmount,
+    overtime_amount: overtimeAmount,
+    total_deductions: totalDeductions,
+    pay_date: payDate,
+    pay_period_start: payPeriodStart,
+    pay_period_end: payPeriodEnd,
+    employer_name: employerName,
+    country,
+    year_to_date: yearToDate,
+    confidence: nullableConfidence(value.confidence),
+  };
+}
+
+function isOwnedPayslipStoragePath(path: unknown, userId: string): path is string {
+  if (typeof path !== "string" || path.length === 0 || path.length > 512) return false;
+  const prefix = `${userId}/`;
+  const filename = path.slice(prefix.length);
+  return path.startsWith(prefix)
+    && filename.length > 0
+    && !filename.includes("/")
+    && !filename.includes("\\")
+    && !filename.includes("\0");
+}
+
+function mimeTypeForFilename(filename: unknown): string | null {
+  if (typeof filename !== "string") return null;
+  if (/\.pdf$/i.test(filename)) return "application/pdf";
+  if (/\.png$/i.test(filename)) return "image/png";
+  if (/\.jpe?g$/i.test(filename)) return "image/jpeg";
+  if (/\.webp$/i.test(filename)) return "image/webp";
+  return null;
+}
+
+function arrayBufferToBase64(arrayBuffer: ArrayBuffer): string {
+  const bytes = new Uint8Array(arrayBuffer);
+  const chunkSize = 0x8000;
+  let binary = "";
+  for (let offset = 0; offset < bytes.length; offset += chunkSize) {
+    binary += String.fromCharCode(...bytes.subarray(offset, offset + chunkSize));
+  }
+  return btoa(binary);
+}
+
+function assistantContent(value: unknown): string | null {
+  if (!isPlainObject(value) || !Array.isArray(value.choices)) return null;
+  const firstChoice = value.choices[0];
+  if (!isPlainObject(firstChoice) || !isPlainObject(firstChoice.message)) return null;
+  return typeof firstChoice.message.content === "string" ? firstChoice.message.content : null;
+}
+
+function isUuid(value: unknown): value is string {
+  return typeof value === "string"
+    && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
+}
+
+async function markProcessingFailed(
+  supabase: SupabaseClient,
+  userId: string,
+  payslipId: string,
+  processingToken: string,
+  failureCode: string,
+  releaseUnstartedReservation = false,
+): Promise<boolean> {
+  const { data, error } = await supabase.rpc("fail_payslip_processing", {
+    p_payslip_id: payslipId,
+    p_user_id: userId,
+    p_processing_token: processingToken,
+    p_failure_code: failureCode,
+    p_release_unstarted_reservation: releaseUnstartedReservation,
+  });
+
+  if (error || data !== true) {
+    console.error("[process-payslip] failed to record processing failure", {
+      code: error?.code ?? null,
+      failureCode,
+    });
+    return false;
+  }
+  return true;
+}
+
+async function markProviderStarted(
+  supabase: SupabaseClient,
+  userId: string,
+  payslipId: string,
+  processingToken: string,
+): Promise<boolean> {
+  const { data, error } = await supabase.rpc("mark_payslip_provider_started", {
+    p_payslip_id: payslipId,
+    p_user_id: userId,
+    p_processing_token: processingToken,
+  });
+  if (error || data !== true) {
+    console.error("[process-payslip] could not mark provider dispatch", { code: error?.code ?? null });
+    return false;
+  }
+  return true;
 }
 
 interface Anomaly {
@@ -595,15 +783,13 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  let claimedProcessing: { supabase: SupabaseClient; userId: string; payslipId: string; processingToken: string } | null = null;
+
   try {
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
     const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
     const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-
-    if (!LOVABLE_API_KEY) {
-      throw new Error("LOVABLE_API_KEY is not configured");
-    }
 
     // Authenticate the caller
     const authHeader = req.headers.get("authorization")?.replace("Bearer ", "");
@@ -622,77 +808,65 @@ serve(async (req) => {
       );
     }
 
-    const { payslip_id } = await req.json();
-    if (!payslip_id) {
+    const requestBody: unknown = await req.json().catch(() => null);
+    const payslipId = isPlainObject(requestBody) ? requestBody.payslip_id : null;
+    if (!isUuid(payslipId)) {
       return new Response(
-        JSON.stringify({ error: "payslip_id is required" }),
+        JSON.stringify({ error: "A valid payslip_id is required" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
-    // Verify the caller owns this payslip
-    const { data: payslipOwner } = await supabase
+    // Fetch the row once and bind the privileged storage operation to the
+    // caller's UUID-prefixed object key, rather than relying on key secrecy.
+    const { data: initialPayslip, error: payslipErr } = await supabase
       .from("payslips")
-      .select("user_id")
-      .eq("id", payslip_id)
+      .select("id, user_id, file_path, file_name, country, status, processing_attempts, processing_started_at")
+      .eq("id", payslipId)
       .single();
 
-    if (!payslipOwner || payslipOwner.user_id !== user.id) {
+    if (payslipErr || !initialPayslip) {
+      return new Response(
+        JSON.stringify({ error: "Payslip not found" }),
+        { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    if (initialPayslip.user_id !== user.id) {
       return new Response(
         JSON.stringify({ error: "Forbidden" }),
         { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    // Server-side free-tier upload quota enforcement
-    const FREE_UPLOAD_LIMIT = 3;
-    const startOfMonth = new Date();
-    startOfMonth.setUTCDate(1);
-    startOfMonth.setUTCHours(0, 0, 0, 0);
+    let payslip = initialPayslip;
 
-    const { data: activeSub } = await supabase
-      .from("subscriptions")
-      .select("status, current_period_end")
-      .eq("user_id", user.id)
-      .in("status", ["active", "trialing", "canceled"])
-      .order("created_at", { ascending: false });
-
-    const now = new Date().toISOString();
-    const hasActiveSub = (activeSub ?? []).some((s) =>
-      (s.status === "active" || s.status === "trialing") ||
-      (s.status === "canceled" && s.current_period_end && s.current_period_end > now)
-    );
-
-    if (!hasActiveSub) {
-      const { count: monthlyUploads } = await supabase
-        .from("payslips")
-        .select("*", { count: "exact", head: true })
-        .eq("user_id", user.id)
-        .gte("created_at", startOfMonth.toISOString());
-
-      if ((monthlyUploads ?? 0) > FREE_UPLOAD_LIMIT) {
-        return new Response(
-          JSON.stringify({ error: "Monthly upload limit reached. Upgrade to continue." }),
-          { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
+    if (payslip.status === "failed" && (payslip.processing_attempts ?? 0) >= MAX_PROCESSING_ATTEMPTS) {
+      return new Response(
+        JSON.stringify({ error: "This payslip could not be processed after several attempts. Please upload a clearer file or enter the details manually." }),
+        { status: 422, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+    if (payslip.status !== "processing" && payslip.status !== "failed") {
+      return new Response(
+        JSON.stringify({ error: "This payslip has already been processed." }),
+        { status: 409, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
     }
 
-    const userKey = user.id;
-    const ipKey = getClientIp(req);
-
-    // Two-tier rate limit: 10 uploads/user/hour, 30 uploads/IP/hour.
+    // Processing a private financial document is rate-limited per authenticated
+    // account. We intentionally do not trust a caller-controlled forwarded IP.
     const userLimit = await checkRateLimit({
-      bucketKey: `process-payslip:user:${userKey}`,
+      bucketKey: `process-payslip:user:${user.id}`,
       maxPerWindow: 10,
       windowSeconds: 3600,
       client: supabase,
     });
     if (!userLimit.allowed) {
       return new Response(
-        JSON.stringify({ error: "Too many uploads. Please try again later." }),
+        JSON.stringify({ error: "Too many automatic checks. Please try again later." }),
         {
           status: 429,
           headers: {
@@ -703,37 +877,101 @@ serve(async (req) => {
         }
       );
     }
-    const ipLimit = await checkRateLimit({
-      bucketKey: `process-payslip:ip:${ipKey}`,
-      maxPerWindow: 30,
-      windowSeconds: 3600,
-      client: supabase,
-    });
-    if (!ipLimit.allowed) {
+    if (!LOVABLE_API_KEY) {
       return new Response(
-        JSON.stringify({ error: "Too many requests from this network. Please try again later." }),
-        {
-          status: 429,
-          headers: {
-            ...corsHeaders,
-            "Content-Type": "application/json",
-            "Retry-After": String(ipLimit.retryAfterSeconds),
-          },
-        }
+        JSON.stringify({ error: "Payslip checking is not configured yet. Please try again later." }),
+        { status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+    const configuredStripeEnvironment = Deno.env.get("PAYCHECK_STRIPE_ENV");
+    if (configuredStripeEnvironment !== "sandbox" && configuredStripeEnvironment !== "live") {
+      return new Response(
+        JSON.stringify({ error: "Payslip checks are not configured yet. Please try again later." }),
+        { status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
 
-    // 1. Get payslip record
-    const { data: payslip, error: payslipErr } = await supabase
-      .from("payslips")
-      .select("*")
-      .eq("id", payslip_id)
-      .single();
+    // Only change a retryable failure back to processing after the rate limit
+    // and provider configuration have been checked. An outage must leave the
+    // record visibly retryable rather than strand it in an unclaimed state.
+    if (payslip.status === "failed") {
+      const { data: retryPayslip, error: retryError } = await supabase
+        .from("payslips")
+        .update({
+          status: "processing",
+          processing_started_at: null,
+          processing_finished_at: null,
+          processing_failure_code: null,
+          processing_token: null,
+          provider_started_at: null,
+        })
+        .eq("id", payslipId)
+        .eq("user_id", user.id)
+        .eq("status", "failed")
+        .lt("processing_attempts", MAX_PROCESSING_ATTEMPTS)
+        .select("id, user_id, file_path, file_name, country, status, processing_attempts, processing_started_at")
+        .maybeSingle();
 
-    if (payslipErr || !payslip) {
+      if (retryError || !retryPayslip) {
+        return new Response(
+          JSON.stringify({ error: "This payslip is already being processed or cannot be retried." }),
+          { status: 409, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        );
+      }
+      payslip = retryPayslip;
+    }
+
+    // This RPC is the only paid/free claim path. It locks the account's
+    // calendar-month allowance, reserves a free automatic check when needed,
+    // creates a fencing token, and prepares extraction state before any
+    // private document reaches the provider.
+    const { data: claimResult, error: claimError } = await supabase.rpc("reserve_and_claim_payslip_processing", {
+      p_payslip_id: payslipId,
+      p_user_id: user.id,
+      p_environment: configuredStripeEnvironment,
+    });
+    if (claimError) {
       return new Response(
-        JSON.stringify({ error: "Payslip not found" }),
-        { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        JSON.stringify({ error: "We could not start the secure payslip check. Please try again." }),
+        { status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+    const claim = isPlainObject(claimResult) ? claimResult : null;
+    const claimStatus = typeof claim?.status === "string" ? claim.status : null;
+    const processingToken = typeof claim?.processing_token === "string" && isUuid(claim.processing_token)
+      ? claim.processing_token
+      : null;
+    if (claimStatus === "quota_exceeded") {
+      return new Response(
+        JSON.stringify({ error: "Monthly automatic-check limit reached. Upgrade to continue." }),
+        { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+    if (claimStatus === "attempt_limit") {
+      return new Response(
+        JSON.stringify({ error: "This payslip could not be processed after several attempts. Please upload a clearer file or enter the details manually." }),
+        { status: 422, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+    if (claimStatus === "stalled_after_dispatch") {
+      return new Response(
+        JSON.stringify({ error: "That automatic check took longer than expected. Open the saved payslip to add the figures yourself or choose an explicit retry." }),
+        { status: 409, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+    if (claimStatus !== "claimed" || !processingToken) {
+      return new Response(
+        JSON.stringify({ error: "This payslip is already being processed or has already been completed." }),
+        { status: 409, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+    claimedProcessing = { supabase, userId: user.id, payslipId, processingToken };
+
+    if (!isOwnedPayslipStoragePath(payslip.file_path, user.id)) {
+      await markProcessingFailed(supabase, user.id, payslipId, processingToken, "invalid_storage_path", true);
+      return new Response(
+        JSON.stringify({ error: "This payslip file cannot be processed securely. Please upload it again." }),
+        { status: 422, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
 
@@ -743,30 +981,50 @@ serve(async (req) => {
       .download(payslip.file_path);
 
     if (downloadErr || !fileData) {
-      await supabase
-        .from("payslip_extractions")
-        .update({ extraction_status: "failed" })
-        .eq("payslip_id", payslip_id);
+      await markProcessingFailed(supabase, user.id, payslipId, processingToken, "storage_download_failed", true);
 
       return new Response(
-        JSON.stringify({ error: "Failed to download file" }),
+        JSON.stringify({ error: "We could not read that file. Please upload it again." }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    // 3. Convert file to base64
-    const arrayBuf = await fileData.arrayBuffer();
-    const base64 = btoa(
-      String.fromCharCode(...new Uint8Array(arrayBuf))
-    );
+    if (fileData.size > MAX_FILE_BYTES) {
+      await markProcessingFailed(supabase, user.id, payslipId, processingToken, "file_too_large", true);
+      return new Response(
+        JSON.stringify({ error: "That file is over the 10 MB limit. Please upload a smaller file." }),
+        { status: 422, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
 
-    const mimeType = payslip.file_name?.endsWith(".pdf")
-      ? "application/pdf"
-      : payslip.file_name?.match(/\.(png)$/i)
-        ? "image/png"
-        : payslip.file_name?.match(/\.(jpe?g)$/i)
-          ? "image/jpeg"
-          : "image/webp";
+    const mimeType = mimeTypeForFilename(payslip.file_name);
+    if (!mimeType) {
+      await markProcessingFailed(supabase, user.id, payslipId, processingToken, "unsupported_file_type", true);
+      return new Response(
+        JSON.stringify({ error: "Please upload a PDF, PNG, JPG, or WebP payslip." }),
+        { status: 422, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+
+    // 3. Convert file to base64
+    let base64: string;
+    try {
+      base64 = arrayBufferToBase64(await fileData.arrayBuffer());
+    } catch {
+      await markProcessingFailed(supabase, user.id, payslipId, processingToken, "file_encode_failed", true);
+      return new Response(
+        JSON.stringify({ error: "We could not prepare that file for checking. Please upload it again." }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+
+    if (!await markProviderStarted(supabase, user.id, payslipId, processingToken)) {
+      await markProcessingFailed(supabase, user.id, payslipId, processingToken, "provider_dispatch_not_started", true);
+      return new Response(
+        JSON.stringify({ error: "This payslip check changed before it could start. Refresh and try again." }),
+        { status: 409, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
 
     // 4. Call Gemini via Lovable AI gateway
     const aiResponse = await fetch(
@@ -802,57 +1060,75 @@ serve(async (req) => {
     );
 
     if (!aiResponse.ok) {
-      const errText = await aiResponse.text();
-      console.error("AI gateway error:", aiResponse.status, errText);
+      console.error("[process-payslip] extraction provider request failed", { status: aiResponse.status });
 
       if (aiResponse.status === 429) {
+        await markProcessingFailed(supabase, user.id, payslipId, processingToken, "provider_rate_limited");
         return new Response(
           JSON.stringify({ error: "Rate limited — please try again shortly." }),
           { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
       if (aiResponse.status === 402) {
+        await markProcessingFailed(supabase, user.id, payslipId, processingToken, "provider_credits_unavailable");
         return new Response(
-          JSON.stringify({ error: "AI credits exhausted." }),
-          { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          JSON.stringify({ error: "Payslip checks are temporarily unavailable. Please try again later." }),
+          { status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
 
-      await supabase
-        .from("payslip_extractions")
-        .update({ extraction_status: "failed" })
-        .eq("payslip_id", payslip_id);
+      await markProcessingFailed(supabase, user.id, payslipId, processingToken, "provider_request_failed");
 
       return new Response(
-        JSON.stringify({ error: "AI extraction failed" }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        JSON.stringify({ error: "We could not check that payslip right now. Please try again." }),
+        { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    const aiData = await aiResponse.json();
-    const rawContent = aiData.choices?.[0]?.message?.content || "";
+    let aiData: unknown;
+    try {
+      aiData = await aiResponse.json();
+    } catch {
+      await markProcessingFailed(supabase, user.id, payslipId, processingToken, "provider_invalid_response");
+      return new Response(
+        JSON.stringify({ error: "We could not read the payslip check result. Please try again." }),
+        { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
 
-    // Parse JSON from the AI response (strip markdown fences if present)
-    let extracted: Record<string, unknown>;
+    const rawContent = assistantContent(aiData);
+    if (!rawContent) {
+      await markProcessingFailed(supabase, user.id, payslipId, processingToken, "provider_missing_content");
+      return new Response(
+        JSON.stringify({ error: "We could not read the payslip check result. Please try again." }),
+        { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+
+    // Parse a strictly bounded data object. Never log or persist unvalidated
+    // provider content: it can contain a full transcription of a payslip.
+    let extractionCandidate: unknown;
     try {
       const jsonStr = rawContent
         .replace(/```json\s*/g, "")
         .replace(/```\s*/g, "")
         .trim();
-      extracted = JSON.parse(jsonStr);
+      extractionCandidate = JSON.parse(jsonStr);
     } catch {
-      console.error("Failed to parse AI JSON:", rawContent);
-      await supabase
-        .from("payslip_extractions")
-        .update({
-          extraction_status: "failed",
-          raw_extraction_json: { raw: rawContent },
-        })
-        .eq("payslip_id", payslip_id);
+      await markProcessingFailed(supabase, user.id, payslipId, processingToken, "provider_invalid_json");
 
       return new Response(
-        JSON.stringify({ error: "Failed to parse extraction" }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        JSON.stringify({ error: "We could not read the payslip check result. Please try again." }),
+        { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const extracted = parseExtraction(extractionCandidate);
+    if (!extracted) {
+      await markProcessingFailed(supabase, user.id, payslipId, processingToken, "provider_invalid_schema");
+      return new Response(
+        JSON.stringify({ error: "We could not safely read the payslip result. Please upload a clearer file or enter the details manually." }),
+        { status: 422, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
 
@@ -863,62 +1139,84 @@ serve(async (req) => {
       low: 0.4,
     };
 
-    const { error: updateExtErr } = await supabase
+    const { data: updatedExtractions, error: updateExtErr } = await supabase
       .from("payslip_extractions")
       .update({
         extraction_status: "completed",
-        confidence_score:
-          confidenceMap[(extracted.confidence as string) || "medium"] || 0.7,
-        gross_pay: extracted.gross_pay as number | null,
-        net_pay: extracted.net_pay as number | null,
-        taxable_pay: extracted.taxable_pay as number | null,
-        tax_amount: extracted.tax_amount as number | null,
-        national_insurance_amount:
-          extracted.national_insurance_amount as number | null,
-        prsi_amount: extracted.prsi_amount as number | null,
-        usc_amount: extracted.usc_amount as number | null,
-        social_security_amount: extracted.social_security_amount as number | null,
-        solidarity_amount: extracted.solidarity_amount as number | null,
-        church_tax_amount: extracted.church_tax_amount as number | null,
-        pension_amount: extracted.pension_amount as number | null,
-        student_loan_amount: extracted.student_loan_amount as number | null,
-        bonus_amount: extracted.bonus_amount as number | null,
-        overtime_amount: extracted.overtime_amount as number | null,
-        total_deductions: extracted.total_deductions as number | null,
-        year_to_date_json: extracted.year_to_date || null,
-        raw_extraction_json: extracted,
+        confidence_score: confidenceMap[extracted.confidence],
+        gross_pay: extracted.gross_pay,
+        net_pay: extracted.net_pay,
+        taxable_pay: extracted.taxable_pay,
+        tax_amount: extracted.tax_amount,
+        national_insurance_amount: extracted.national_insurance_amount,
+        prsi_amount: extracted.prsi_amount,
+        usc_amount: extracted.usc_amount,
+        social_security_amount: extracted.social_security_amount,
+        solidarity_amount: extracted.solidarity_amount,
+        church_tax_amount: extracted.church_tax_amount,
+        pension_amount: extracted.pension_amount,
+        student_loan_amount: extracted.student_loan_amount,
+        bonus_amount: extracted.bonus_amount,
+        overtime_amount: extracted.overtime_amount,
+        total_deductions: extracted.total_deductions,
+        year_to_date_json: extracted.year_to_date,
+        raw_extraction_json: null,
         normalized_json: extracted,
       })
-      .eq("payslip_id", payslip_id);
+      .eq("payslip_id", payslipId)
+      .eq("processing_token", processingToken)
+      .select("id");
 
-    if (updateExtErr) {
-      console.error("DB update error:", updateExtErr);
+    if (updateExtErr || !updatedExtractions?.length) {
+      console.error("[process-payslip] extraction record update failed", { code: updateExtErr?.code ?? null });
+      await markProcessingFailed(supabase, user.id, payslipId, processingToken, "extraction_record_update_failed");
+      return new Response(
+        JSON.stringify({ error: "This payslip check changed before the result could be saved. Refresh and try again." }),
+        { status: updateExtErr ? 500 : 409, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
     }
 
-    // Determine if review is needed
-    const normPayDate = normaliseDate(extracted.pay_date as string);
-    const normPeriodStart = normaliseDate(extracted.pay_period_start as string);
-    const normPeriodEnd = normaliseDate(extracted.pay_period_end as string);
-    const grossPay = extracted.gross_pay as number | null;
-    const netPay = extracted.net_pay as number | null;
+    // Every extraction stays in review until its owner confirms the key figures.
+    // A high-confidence provider result is useful input, not a verified payslip.
+    const normPayDate = normaliseDate(extracted.pay_date);
+    const normPeriodStart = normaliseDate(extracted.pay_period_start);
+    const normPeriodEnd = normaliseDate(extracted.pay_period_end);
 
-    const needsReview =
-      !normPayDate ||
-      grossPay == null ||
-      netPay == null ||
-      (netPay != null && grossPay != null && netPay > grossPay) ||
-      (extracted.confidence as string) === "low";
+    // The extraction parser accepts only UK/Ireland. Re-validate the existing
+    // row value too, so a legacy or malformed value cannot be written back.
+    const country = extracted.country ?? nullableCountry(payslip.country) ?? null;
 
-    await supabase
+    const { data: updatedPayslip, error: updatePayslipError } = await supabase
       .from("payslips")
       .update({
-        status: needsReview ? "needs_review" : "completed",
+        status: "needs_review",
         pay_date: normPayDate,
         pay_period_start: normPeriodStart,
         pay_period_end: normPeriodEnd,
-        country: extracted.country || payslip.country,
+        country,
+        processing_finished_at: new Date().toISOString(),
+        processing_failure_code: null,
+        processing_token: null,
       })
-      .eq("id", payslip_id);
+      .eq("id", payslipId)
+      .eq("user_id", user.id)
+      .eq("status", "processing")
+      .eq("processing_token", processingToken)
+      .select("id")
+      .maybeSingle();
+
+    if (updatePayslipError || !updatedPayslip) {
+      console.error("[process-payslip] payslip state update failed", { code: updatePayslipError?.code ?? null });
+      await markProcessingFailed(supabase, user.id, payslipId, processingToken, "payslip_state_update_failed");
+      return new Response(
+        JSON.stringify({ error: "This payslip check changed before the result could be saved. Refresh and try again." }),
+        { status: updatePayslipError ? 500 : 409, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+
+    // The durable extraction and user-visible status are saved. Later
+    // best-effort anomaly work must not convert a completed payslip to failed.
+    claimedProcessing = null;
 
     // 6. Get previous payslip extraction for anomaly comparison
     // Include any payslip that has been processed (completed or needs_review)
@@ -926,7 +1224,7 @@ serve(async (req) => {
       .from("payslips")
       .select("id")
       .eq("user_id", payslip.user_id)
-      .neq("id", payslip_id)
+      .neq("id", payslipId)
       .in("status", ["completed", "needs_review"])
       .order("pay_date", { ascending: false, nullsFirst: false })
       .limit(1);
@@ -938,7 +1236,7 @@ serve(async (req) => {
         .from("payslips")
         .select("id")
         .eq("user_id", payslip.user_id)
-        .neq("id", payslip_id)
+        .neq("id", payslipId)
         .neq("status", "processing")
         .order("created_at", { ascending: false })
         .limit(1);
@@ -961,26 +1259,22 @@ serve(async (req) => {
 
     // 7. Run anomaly detection
     const currentExtraction: Extraction = {
-      gross_pay: extracted.gross_pay as number | null,
-      net_pay: extracted.net_pay as number | null,
-      taxable_pay: extracted.taxable_pay as number | null,
-      tax_amount: extracted.tax_amount as number | null,
-      national_insurance_amount:
-        extracted.national_insurance_amount as number | null,
-      prsi_amount: extracted.prsi_amount as number | null,
-      usc_amount: extracted.usc_amount as number | null,
-      social_security_amount: extracted.social_security_amount as number | null,
-      solidarity_amount: extracted.solidarity_amount as number | null,
-      church_tax_amount: extracted.church_tax_amount as number | null,
-      pension_amount: extracted.pension_amount as number | null,
-      student_loan_amount: extracted.student_loan_amount as number | null,
-      bonus_amount: extracted.bonus_amount as number | null,
-      overtime_amount: extracted.overtime_amount as number | null,
-      total_deductions: extracted.total_deductions as number | null,
+      gross_pay: extracted.gross_pay,
+      net_pay: extracted.net_pay,
+      taxable_pay: extracted.taxable_pay,
+      tax_amount: extracted.tax_amount,
+      national_insurance_amount: extracted.national_insurance_amount,
+      prsi_amount: extracted.prsi_amount,
+      usc_amount: extracted.usc_amount,
+      social_security_amount: extracted.social_security_amount,
+      solidarity_amount: extracted.solidarity_amount,
+      church_tax_amount: extracted.church_tax_amount,
+      pension_amount: extracted.pension_amount,
+      student_loan_amount: extracted.student_loan_amount,
+      bonus_amount: extracted.bonus_amount,
+      overtime_amount: extracted.overtime_amount,
+      total_deductions: extracted.total_deductions,
     };
-
-    const country =
-      (extracted.country as string) || payslip.country || null;
 
     // Load user's anomaly threshold from their profile (defaults to 5%)
     const { data: profile } = await supabase
@@ -1002,7 +1296,7 @@ serve(async (req) => {
     // 8. Save anomalies
     if (anomalies.length > 0) {
       const anomalyRows = anomalies.map((a) => ({
-        payslip_id,
+        payslip_id: payslipId,
         anomaly_type: a.anomaly_type,
         severity: a.severity,
         confidence: a.confidence,
@@ -1026,8 +1320,19 @@ serve(async (req) => {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       }
     );
-  } catch (e) {
-    console.error("[process-payslip] error:", e);
+  } catch (error) {
+    if (claimedProcessing) {
+      await markProcessingFailed(
+        claimedProcessing.supabase,
+        claimedProcessing.userId,
+        claimedProcessing.payslipId,
+        claimedProcessing.processingToken,
+        "unexpected_processing_error",
+      );
+    }
+    console.error("[process-payslip] unexpected failure", {
+      type: error instanceof Error ? error.name : "unknown",
+    });
     return new Response(
       JSON.stringify({ error: "An internal error occurred. Please try again." }),
       {

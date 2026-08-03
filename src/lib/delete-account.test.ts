@@ -1,74 +1,52 @@
 import { describe, expect, it, vi } from "vitest";
-import { deleteUserAccountData } from "@/lib/delete-account";
+import { deleteCurrentUserAccount } from "@/lib/delete-account";
+import {
+  isSecureOwnedPayslipPath,
+  partitionSecureOwnedPayslipPaths,
+} from "../../supabase/functions/_shared/account-deletion.ts";
 
-function createDeleteChain(table: string, calls: string[]) {
-  return {
-    eq: vi.fn(async (_column: string, _value: string) => {
-      calls.push(`delete:${table}`);
-      return { error: null };
-    }),
-  };
-}
+describe("deleteCurrentUserAccount", () => {
+  it("uses the server-side deletion function without sending a user, plan, or storage path", async () => {
+    const invoke = vi.fn(async () => ({ data: { success: true }, error: null }));
 
-function createSelectChain(calls: string[]) {
-  return {
-    eq: vi.fn(async (_column: string, _value: string) => {
-      calls.push("select:payslips");
-      return { data: [{ file_path: "user/file.pdf" }], error: null };
-    }),
-  };
-}
+    await deleteCurrentUserAccount({ functions: { invoke } });
 
-describe("deleteUserAccountData", () => {
-  it("deletes payslips before employers to avoid foreign-key failures", async () => {
-    const calls: string[] = [];
-    const supabase = {
-      functions: {
-        invoke: vi.fn(async () => {
-          calls.push("function:cancel-subscription-on-delete");
-          return { error: null };
-        }),
-      },
-      storage: {
-        from: vi.fn(() => ({
-          remove: vi.fn(async (_paths: string[]) => {
-            calls.push("storage:remove");
-            return { error: null };
-          }),
-        })),
-      },
-      from: vi.fn((table: string) => {
-        if (table === "payslips") {
-          return {
-            select: vi.fn(() => createSelectChain(calls)),
-            delete: vi.fn(() => createDeleteChain(table, calls)),
-          };
-        }
+    expect(invoke).toHaveBeenCalledTimes(1);
+    expect(invoke).toHaveBeenCalledWith("delete-account", { body: {} });
+  });
 
-        return {
-          delete: vi.fn(() => createDeleteChain(table, calls)),
-        };
-      }),
-    };
+  it("does not treat an unconfirmed function response as a successful deletion", async () => {
+    await expect(deleteCurrentUserAccount({
+      functions: { invoke: vi.fn(async () => ({ data: { success: false }, error: null })) },
+    })).rejects.toThrow("server did not confirm deletion");
+  });
+});
 
-    await deleteUserAccountData(supabase as never, {
-      userId: "user-123",
-      isPremium: true,
-      plan: "plus",
-      environment: "sandbox",
+describe("payslip storage ownership guard", () => {
+  const userId = "2c9f2157-1d96-4243-946e-64ec8164524e";
+
+  it("keeps only safe paths under the authenticated user's namespace", () => {
+    const result = partitionSecureOwnedPayslipPaths([
+      `${userId}/2026-08-payslip.pdf`,
+      `${userId}/archive/2026-07-payslip.pdf`,
+      `${userId}/2026-08-payslip.pdf`,
+      "7d0c4cca-70d2-48aa-8f4d-af5f1c08ca9d/victim-payslip.pdf",
+      `${userId}/../7d0c4cca-70d2-48aa-8f4d-af5f1c08ca9d/victim-payslip.pdf`,
+      null,
+    ], userId);
+
+    expect(result).toEqual({
+      paths: [
+        `${userId}/2026-08-payslip.pdf`,
+        `${userId}/archive/2026-07-payslip.pdf`,
+      ],
+      rejectedPathCount: 2,
     });
+  });
 
-    expect(calls).toEqual([
-      "function:cancel-subscription-on-delete",
-      "select:payslips",
-      "storage:remove",
-      "delete:user_notes",
-      "delete:issue_drafts",
-      "delete:audit_events",
-      "delete:billing_subscriptions",
-      "delete:payslips",
-      "delete:employers",
-      "delete:profiles",
-    ]);
+  it("rejects empty, traversal, and foreign-user paths", () => {
+    expect(isSecureOwnedPayslipPath(`${userId}/`, userId)).toBe(false);
+    expect(isSecureOwnedPayslipPath(`${userId}/./payslip.pdf`, userId)).toBe(false);
+    expect(isSecureOwnedPayslipPath("foreign-user/payslip.pdf", userId)).toBe(false);
   });
 });

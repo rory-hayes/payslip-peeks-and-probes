@@ -45,6 +45,25 @@ export const COUNTRY_LIST: CountryConfig[] = [
   usConfig,
 ];
 
+/**
+ * Countries available in the current public launch. Keep COUNTRY_LIST intact
+ * so the country implementations can be completed and enabled deliberately.
+ */
+export const LAUNCH_COUNTRY_CODES = ['UK', 'Ireland'] as const;
+export type LaunchCountryCode = (typeof LAUNCH_COUNTRY_CODES)[number];
+export type LaunchCountryConfig = CountryConfig & { code: LaunchCountryCode };
+
+export const LAUNCH_COUNTRY_LIST: readonly LaunchCountryConfig[] = LAUNCH_COUNTRY_CODES.map((code) => ({
+  ...COUNTRIES[code],
+  code,
+}));
+
+export function isLaunchCountry(
+  code: CountryCode | null | undefined,
+): code is LaunchCountryCode {
+  return code === 'UK' || code === 'Ireland';
+}
+
 export function getCountryConfig(code: CountryCode | null | undefined): CountryConfig {
   if (code && COUNTRIES[code]) return COUNTRIES[code];
   return ukConfig;

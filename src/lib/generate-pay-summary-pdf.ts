@@ -200,7 +200,7 @@ export function generatePaySummaryPdf(options: PdfOptions) {
     doc.setFontSize(7);
     doc.setTextColor(148, 163, 184);
     doc.text(
-      'PayCheck — This report is for informational purposes only. Not formal tax or payroll advice.',
+      'Payslip Insights — This report is for informational purposes only. Not formal tax or payroll advice.',
       pageWidth / 2,
       doc.internal.pageSize.getHeight() - 8,
       { align: 'center' },

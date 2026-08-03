@@ -29,7 +29,7 @@ interface SeoOptions {
   description: string;
   /** Defaults to current pathname */
   canonicalPath?: string;
-  /** Optional JSON-LD object (rendered as a single application/ld+json script tag, replacing prior PayCheck-managed one) */
+  /** Optional JSON-LD object (rendered as a single application/ld+json script tag, replacing the prior Payslip Insights-managed one) */
   jsonLd?: Record<string, unknown> | Record<string, unknown>[];
 }
 
