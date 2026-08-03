@@ -1,19 +1,21 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter, useLocation } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import Dashboard from "./Dashboard";
 
 const state = vi.hoisted(() => ({
   disableDemo: vi.fn(),
+  isDemo: true,
+  payslips: [] as Array<Record<string, unknown>>,
 }));
 
 vi.mock("@/contexts/DemoContext", () => ({
-  useDemo: () => ({ disableDemo: state.disableDemo, isDemo: true }),
+  useDemo: () => ({ disableDemo: state.disableDemo, isDemo: state.isDemo }),
 }));
 
 vi.mock("@/hooks/use-payslip-data", () => ({
   useAnomalies: () => ({ data: [], isLoading: false }),
-  usePayslips: () => ({ data: [], isLoading: false }),
+  usePayslips: () => ({ data: state.payslips, isLoading: false }),
   usePayTrends: () => ({ data: [] }),
 }));
 
@@ -50,9 +52,13 @@ vi.mock("recharts", () => ({
 const Location = () => <output data-testid="location">{useLocation().pathname}</output>;
 
 describe("Dashboard demo mode", () => {
-  beforeEach(() => state.disableDemo.mockReset());
+  beforeEach(() => {
+    state.disableDemo.mockReset();
+    state.isDemo = true;
+    state.payslips = [];
+  });
 
-  it("shows sample data without linking a demo visitor into protected detail routes", () => {
+  it("shows sample data without linking a demo visitor into protected detail routes", async () => {
     const { container } = render(
       <MemoryRouter initialEntries={["/dashboard"]}>
         <Dashboard />
@@ -71,5 +77,35 @@ describe("Dashboard demo mode", () => {
     // it on this protected dashboard would race into a /sign-in redirect.
     expect(state.disableDemo).not.toHaveBeenCalled();
     expect(screen.getByTestId("location")).toHaveTextContent("/sign-up");
+    await waitFor(() => expect(container.querySelector(".pi-dashboard__chart-loading")).not.toBeInTheDocument());
+  });
+
+  it("keeps extracted figures out of the dashboard until the user confirms them", () => {
+    state.isDemo = false;
+    state.payslips = [{
+      anomaly_count: 0,
+      country: "UK",
+      employer_name: "Example Ltd",
+      file_name: "payslip.pdf",
+      gross_pay: 2200,
+      id: "review-1",
+      net_pay: 1500,
+      pay_date: "2026-08-01",
+      pay_period_end: "2026-08-01",
+      pay_period_start: "2026-07-01",
+      status: "extracted",
+      tax_amount: 400,
+      total_deductions: 700,
+    }];
+
+    render(
+      <MemoryRouter initialEntries={["/dashboard"]}>
+        <Dashboard />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByRole("heading", { name: "Confirm your payslip before you plan." })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /check the details/i })).toHaveAttribute("href", "/vault?review=review-1");
+    expect(screen.queryByText("£1500")).not.toBeInTheDocument();
   });
 });

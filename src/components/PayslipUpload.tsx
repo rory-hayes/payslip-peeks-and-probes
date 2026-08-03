@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { logError } from '@/lib/logger';
@@ -15,7 +15,7 @@ import { useToast } from '@/hooks/use-toast';
 import { formatDate } from '@/lib/date-utils';
 import { useUsage } from '@/hooks/use-usage';
 
-type UploadState = 'idle' | 'uploading' | 'processing' | 'review' | 'success' | 'error';
+type UploadState = 'idle' | 'uploading' | 'processing' | 'opening_review' | 'review' | 'success' | 'error';
 
 interface ReviewFields {
   pay_date: string;
@@ -37,6 +37,7 @@ interface FieldMeta {
 
 interface PayslipUploadProps {
   onUploadComplete?: (payslipId: string) => void;
+  resumeReviewId?: string | null;
 }
 
 const STORAGE_FILENAME_MAX_LENGTH = 96;
@@ -79,7 +80,7 @@ export const createPayslipStoragePath = (userId: string, fileName: string): stri
   return `${userId}/${crypto.randomUUID()}-${sanitizeStorageFilename(fileName)}`;
 };
 
-const PayslipUpload = ({ onUploadComplete }: PayslipUploadProps) => {
+const PayslipUpload = ({ onUploadComplete, resumeReviewId = null }: PayslipUploadProps) => {
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -109,6 +110,75 @@ const PayslipUpload = ({ onUploadComplete }: PayslipUploadProps) => {
   });
   const [fieldMeta, setFieldMeta] = useState<Record<string, FieldMeta>>({});
   const [reviewSaving, setReviewSaving] = useState(false);
+
+  useEffect(() => {
+    if (!resumeReviewId) return;
+
+    let cancelled = false;
+
+    const resumeReview = async () => {
+      setState('opening_review');
+      setErrorMsg('');
+      setFailedPayslipId(null);
+
+      const [
+        { data: payslip, error: payslipError },
+        { data: extraction, error: extractionError },
+      ] = await Promise.all([
+        supabase
+          .from('payslips')
+          .select('status, pay_date, country')
+          .eq('id', resumeReviewId)
+          .single(),
+        supabase
+          .from('payslip_extractions')
+          .select('*')
+          .eq('payslip_id', resumeReviewId)
+          .single(),
+      ]);
+
+      if (cancelled) return;
+
+      if (payslipError || extractionError || !payslip || !extraction || payslip.status !== 'needs_review') {
+        setState('idle');
+        toast({
+          title: 'This review is not available',
+          description: 'It may already be confirmed, or it could not be opened. Refresh your vault and try again.',
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      const fields: ReviewFields = {
+        pay_date: payslip.pay_date || '',
+        employer_name: '',
+        gross_pay: extraction.gross_pay != null ? String(extraction.gross_pay) : '',
+        net_pay: extraction.net_pay != null ? String(extraction.net_pay) : '',
+        tax_amount: extraction.tax_amount != null ? String(extraction.tax_amount) : '',
+        ni_amount: extraction.national_insurance_amount != null ? String(extraction.national_insurance_amount) : '',
+        prsi_amount: extraction.prsi_amount != null ? String(extraction.prsi_amount) : '',
+        usc_amount: extraction.usc_amount != null ? String(extraction.usc_amount) : '',
+        pension_amount: extraction.pension_amount != null ? String(extraction.pension_amount) : '',
+        total_deductions: extraction.total_deductions != null ? String(extraction.total_deductions) : '',
+      };
+      const meta: Record<string, FieldMeta> = {};
+      for (const [key, value] of Object.entries(fields)) {
+        meta[key] = { extracted: value !== '', edited: false };
+      }
+
+      setReviewCountry(payslip.country || 'UK');
+      setReviewFields(fields);
+      setFieldMeta(meta);
+      setReviewPayslipId(resumeReviewId);
+      setState('review');
+    };
+
+    void resumeReview();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [resumeReviewId, toast]);
 
   const resetState = () => {
     setState('idle');
@@ -428,21 +498,21 @@ const PayslipUpload = ({ onUploadComplete }: PayslipUploadProps) => {
   const renderFieldStatus = (key: string) => {
     const meta = fieldMeta[key];
     if (!meta) return null;
-    if (meta.edited) return <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-primary/40 text-primary">Edited</Badge>;
-    if (meta.extracted) return <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-muted-foreground/30 text-muted-foreground">Auto-extracted</Badge>;
-    return <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-destructive/40 text-destructive">Missing</Badge>;
+    if (meta.edited) return <Badge variant="outline" className="pi-review-status pi-review-status--edited">Edited</Badge>;
+    if (meta.extracted) return <Badge variant="outline" className="pi-review-status">Auto-filled</Badge>;
+    return <Badge variant="outline" className="pi-review-status pi-review-status--missing">Add from original</Badge>;
   };
 
   return (
-    <Card className={`border-2 border-dashed transition-all ${
+    <Card className={`pi-upload-card transition-all ${
       dragOver ? 'border-primary bg-primary/5' :
       state === 'error' ? 'border-destructive/50' :
       state === 'success' ? 'border-success/50' :
-      state === 'review' ? 'border-primary/50 border-solid' :
+      state === 'review' ? 'pi-upload-card--review' :
       'border-border hover:border-muted-foreground/30'
     }`}>
       <CardContent
-        className={`flex flex-col items-center justify-center text-center ${state === 'review' ? 'p-4 sm:p-6' : 'p-8'}`}
+        className={`pi-upload-content ${state === 'review' ? 'pi-upload-content--review' : ''}`}
         onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
         onDragLeave={() => setDragOver(false)}
         onDrop={handleDrop}
@@ -457,236 +527,242 @@ const PayslipUpload = ({ onUploadComplete }: PayslipUploadProps) => {
 
         {state === 'idle' && !accessReady && (
           <>
-            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10 mb-4">
-              <FileText className="h-7 w-7 text-primary" />
+            <div className="pi-upload-icon">
+              <FileText aria-hidden="true" />
             </div>
-            <h3 className="text-lg font-semibold text-foreground">
+            <h3 className="pi-upload-title">
               {accessError ? 'We couldn’t verify upload access' : 'Checking upload access'}
             </h3>
-            <p className="mt-1 text-sm text-muted-foreground">
+            <p className="pi-upload-body">
               {accessError
                 ? 'Check your connection, then try again before uploading a payslip.'
                 : 'We’re confirming your account and monthly allowance before you upload.'}
             </p>
-            {accessError ? <Button className="mt-4" onClick={() => void refetchAccess()}>Try again</Button> : null}
+            {accessError ? <Button className="pi-upload-action" onClick={() => void refetchAccess()}>Try again</Button> : null}
           </>
         )}
 
         {state === 'idle' && accessReady && !canUpload && (
           <>
-            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10 mb-4">
-              <Sparkles className="h-7 w-7 text-primary" />
+            <div className="pi-upload-icon">
+              <Sparkles aria-hidden="true" />
             </div>
-            <h3 className="text-lg font-semibold text-foreground">Automatic-check limit reached</h3>
-            <p className="mt-1 text-sm text-muted-foreground">
+            <h3 className="pi-upload-title">Automatic-check limit reached</h3>
+            <p className="pi-upload-body">
               You've used all 3 free automatic checks this Dublin calendar month. See Plus options for more checks.
             </p>
             <Link to="/pricing">
-              <Button className="mt-4">Upgrade to Plus</Button>
+              <Button className="pi-upload-action">See Plus</Button>
             </Link>
-            <p className="mt-2 text-xs text-muted-foreground">Limits reset at the start of each Dublin calendar month</p>
+            <p className="pi-upload-note">Limits reset at the start of each Dublin calendar month</p>
           </>
         )}
 
         {state === 'idle' && accessReady && canUpload && (
           <>
-            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10 mb-4">
-              <Upload className="h-7 w-7 text-primary" />
+            <div className="pi-upload-icon">
+              <Upload aria-hidden="true" />
             </div>
-            <h3 className="text-lg font-semibold text-foreground">Upload a payslip</h3>
-            <p className="mt-1 text-sm text-muted-foreground">Drag and drop a PDF or image, or click to browse</p>
-            <Button className="mt-4" onClick={() => fileInputRef.current?.click()}>Choose file</Button>
-            <p className="mt-2 text-xs text-muted-foreground">PDF, PNG, JPG up to 10 MB</p>
+            <h3 className="pi-upload-title">Upload a payslip</h3>
+            <p className="pi-upload-body">Choose a PDF or image. You’ll check every extracted figure before it is confirmed.</p>
+            <Button className="pi-upload-action" onClick={() => fileInputRef.current?.click()}>Choose a file</Button>
+            <p className="pi-upload-note">PDF, PNG, JPG up to 10 MB</p>
             {!isPremium && (
-              <p className="mt-1 text-xs text-muted-foreground">
+              <p className="pi-upload-note pi-upload-note--allowance">
                 {uploadsRemaining} automatic check{uploadsRemaining !== 1 ? 's' : ''} remaining this Dublin calendar month
               </p>
             )}
           </>
         )}
 
-        {(state === 'uploading' || state === 'processing') && (
+        {(state === 'uploading' || state === 'processing' || state === 'opening_review') && (
           <>
-            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10 mb-4 animate-pulse">
-              <FileText className="h-7 w-7 text-primary" />
+            <div className="pi-upload-icon animate-pulse">
+              <FileText aria-hidden="true" />
             </div>
-            <h3 className="text-lg font-semibold text-foreground">
-              {state === 'uploading' ? 'Uploading…' : 'Extracting data…'}
+            <h3 className="pi-upload-title">
+              {state === 'uploading' ? 'Uploading…' : state === 'processing' ? 'Extracting data…' : 'Opening your review…'}
             </h3>
-            <p className="mt-1 text-sm text-muted-foreground">{fileName}</p>
-            <Progress value={progress} className="mt-4 h-2 w-48" />
+            <p className="pi-upload-body">{state === 'opening_review' ? 'Loading the figures that are waiting for your confirmation.' : fileName}</p>
+            {state !== 'opening_review' ? <Progress value={progress} className="pi-upload-progress" /> : null}
           </>
         )}
 
         {state === 'review' && (
-          <div className="w-full max-w-md space-y-5 text-left">
-            {/* Header */}
-            <div className="flex flex-col items-center text-center">
-              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 mb-3">
-                <ClipboardCheck className="h-6 w-6 text-primary" />
+          <div className="pi-review-flow">
+            <div className="pi-review-header">
+              <div className="pi-review-header-icon">
+                <ClipboardCheck aria-hidden="true" />
               </div>
-              <h3 className="text-lg font-semibold text-foreground">Review extracted data</h3>
-              <p className="mt-1 text-sm text-muted-foreground max-w-xs">
-                Some fields need your attention. Please check and correct anything that looks wrong.
-              </p>
+              <div>
+                <p className="pi-eyebrow">Before you save</p>
+                <h3>Check the details.</h3>
+                <p>
+                  We filled in what we could. Compare it with your original payslip and correct anything that looks off.
+                </p>
+              </div>
             </div>
 
-            {/* Date & employer */}
-            <div className="space-y-3">
-              <div className="space-y-1.5">
+            <div className="pi-review-section">
+              <div className="pi-review-section-heading">
+                <p>Pay period</p>
+                <span>Required fields have a star</span>
+              </div>
+
+              <div className="pi-review-row">
                 <div className="flex items-center justify-between">
                   <Label htmlFor="r-date">Pay date <span className="text-destructive">*</span></Label>
                   {renderFieldStatus('pay_date')}
                 </div>
-                <Input id="r-date" type="date" value={reviewFields.pay_date} onChange={(e) => updateField('pay_date', e.target.value)} />
+                <Input className="pi-review-input" id="r-date" type="date" value={reviewFields.pay_date} onChange={(e) => updateField('pay_date', e.target.value)} />
               </div>
-              <div className="space-y-1.5">
+              <div className="pi-review-row">
                 <div className="flex items-center justify-between">
                   <Label htmlFor="r-employer">Employer</Label>
                   {renderFieldStatus('employer_name')}
                 </div>
-                <Input id="r-employer" value={reviewFields.employer_name} onChange={(e) => updateField('employer_name', e.target.value)} placeholder="e.g. Acme Ltd" />
+                <Input className="pi-review-input" id="r-employer" value={reviewFields.employer_name} onChange={(e) => updateField('employer_name', e.target.value)} placeholder="e.g. Acme Ltd" />
               </div>
             </div>
 
-            {/* Monetary fields */}
-            <div className="space-y-3">
-              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Pay figures</p>
+            <div className="pi-review-section">
+              <div className="pi-review-section-heading">
+                <p>Pay figures</p>
+                <span>You can leave a figure blank if it is not on your payslip.</span>
+              </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1.5">
+              <div className="pi-review-grid">
+                <div className="pi-review-row">
                   <div className="flex items-center justify-between gap-1">
                     <Label htmlFor="r-gross" className="text-xs">Gross pay <span className="text-destructive">*</span></Label>
                     {renderFieldStatus('gross_pay')}
                   </div>
-                  <Input id="r-gross" type="number" min="0" step="0.01" value={reviewFields.gross_pay} onChange={(e) => updateField('gross_pay', e.target.value)} />
+                  <Input className="pi-review-input" id="r-gross" type="number" min="0" step="0.01" value={reviewFields.gross_pay} onChange={(e) => updateField('gross_pay', e.target.value)} />
                 </div>
-                <div className="space-y-1.5">
+                <div className="pi-review-row">
                   <div className="flex items-center justify-between gap-1">
                     <Label htmlFor="r-net" className="text-xs">Net pay <span className="text-destructive">*</span></Label>
                     {renderFieldStatus('net_pay')}
                   </div>
-                  <Input id="r-net" type="number" min="0" step="0.01" value={reviewFields.net_pay} onChange={(e) => updateField('net_pay', e.target.value)} />
+                  <Input className="pi-review-input" id="r-net" type="number" min="0" step="0.01" value={reviewFields.net_pay} onChange={(e) => updateField('net_pay', e.target.value)} />
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1.5">
+              <div className="pi-review-grid">
+                <div className="pi-review-row">
                   <div className="flex items-center justify-between gap-1">
                     <Label htmlFor="r-tax" className="text-xs">Tax</Label>
                     {renderFieldStatus('tax_amount')}
                   </div>
-                  <Input id="r-tax" type="number" min="0" step="0.01" value={reviewFields.tax_amount} onChange={(e) => updateField('tax_amount', e.target.value)} />
+                  <Input className="pi-review-input" id="r-tax" type="number" min="0" step="0.01" value={reviewFields.tax_amount} onChange={(e) => updateField('tax_amount', e.target.value)} />
                 </div>
 
                 {!isIreland && (
-                  <div className="space-y-1.5">
+                  <div className="pi-review-row">
                     <div className="flex items-center justify-between gap-1">
                       <Label htmlFor="r-ni" className="text-xs">National Insurance</Label>
                       {renderFieldStatus('ni_amount')}
                     </div>
-                    <Input id="r-ni" type="number" min="0" step="0.01" value={reviewFields.ni_amount} onChange={(e) => updateField('ni_amount', e.target.value)} />
+                    <Input className="pi-review-input" id="r-ni" type="number" min="0" step="0.01" value={reviewFields.ni_amount} onChange={(e) => updateField('ni_amount', e.target.value)} />
                   </div>
                 )}
 
                 {isIreland && (
-                  <>
-                    <div className="space-y-1.5">
-                      <div className="flex items-center justify-between gap-1">
-                        <Label htmlFor="r-prsi" className="text-xs">PRSI</Label>
-                        {renderFieldStatus('prsi_amount')}
-                      </div>
-                      <Input id="r-prsi" type="number" min="0" step="0.01" value={reviewFields.prsi_amount} onChange={(e) => updateField('prsi_amount', e.target.value)} />
+                  <div className="pi-review-row">
+                    <div className="flex items-center justify-between gap-1">
+                      <Label htmlFor="r-prsi" className="text-xs">PRSI</Label>
+                      {renderFieldStatus('prsi_amount')}
                     </div>
-                  </>
+                    <Input className="pi-review-input" id="r-prsi" type="number" min="0" step="0.01" value={reviewFields.prsi_amount} onChange={(e) => updateField('prsi_amount', e.target.value)} />
+                  </div>
                 )}
               </div>
 
               {isIreland && (
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1.5">
+                <div className="pi-review-grid">
+                  <div className="pi-review-row">
                     <div className="flex items-center justify-between gap-1">
                       <Label htmlFor="r-usc" className="text-xs">USC</Label>
                       {renderFieldStatus('usc_amount')}
                     </div>
-                    <Input id="r-usc" type="number" min="0" step="0.01" value={reviewFields.usc_amount} onChange={(e) => updateField('usc_amount', e.target.value)} />
+                    <Input className="pi-review-input" id="r-usc" type="number" min="0" step="0.01" value={reviewFields.usc_amount} onChange={(e) => updateField('usc_amount', e.target.value)} />
                   </div>
-                  <div className="space-y-1.5">
+                  <div className="pi-review-row">
                     <div className="flex items-center justify-between gap-1">
                       <Label htmlFor="r-pension" className="text-xs">Pension</Label>
                       {renderFieldStatus('pension_amount')}
                     </div>
-                    <Input id="r-pension" type="number" min="0" step="0.01" value={reviewFields.pension_amount} onChange={(e) => updateField('pension_amount', e.target.value)} />
+                    <Input className="pi-review-input" id="r-pension" type="number" min="0" step="0.01" value={reviewFields.pension_amount} onChange={(e) => updateField('pension_amount', e.target.value)} />
                   </div>
                 </div>
               )}
 
               {!isIreland && (
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1.5">
+                <div className="pi-review-grid">
+                  <div className="pi-review-row">
                     <div className="flex items-center justify-between gap-1">
                       <Label htmlFor="r-pension" className="text-xs">Pension</Label>
                       {renderFieldStatus('pension_amount')}
                     </div>
-                    <Input id="r-pension" type="number" min="0" step="0.01" value={reviewFields.pension_amount} onChange={(e) => updateField('pension_amount', e.target.value)} />
+                    <Input className="pi-review-input" id="r-pension" type="number" min="0" step="0.01" value={reviewFields.pension_amount} onChange={(e) => updateField('pension_amount', e.target.value)} />
                   </div>
-                  <div className="space-y-1.5">
+                  <div className="pi-review-row">
                     <div className="flex items-center justify-between gap-1">
                       <Label htmlFor="r-deductions" className="text-xs">Total deductions</Label>
                       {renderFieldStatus('total_deductions')}
                     </div>
-                    <Input id="r-deductions" type="number" min="0" step="0.01" value={reviewFields.total_deductions} onChange={(e) => updateField('total_deductions', e.target.value)} />
+                    <Input className="pi-review-input" id="r-deductions" type="number" min="0" step="0.01" value={reviewFields.total_deductions} onChange={(e) => updateField('total_deductions', e.target.value)} />
                   </div>
                 </div>
               )}
 
               {isIreland && (
-                <div className="space-y-1.5">
+                <div className="pi-review-row">
                   <div className="flex items-center justify-between gap-1">
                     <Label htmlFor="r-deductions" className="text-xs">Total deductions</Label>
                     {renderFieldStatus('total_deductions')}
                   </div>
-                  <Input id="r-deductions" type="number" min="0" step="0.01" value={reviewFields.total_deductions} onChange={(e) => updateField('total_deductions', e.target.value)} />
+                  <Input className="pi-review-input" id="r-deductions" type="number" min="0" step="0.01" value={reviewFields.total_deductions} onChange={(e) => updateField('total_deductions', e.target.value)} />
                 </div>
               )}
             </div>
 
-            <p className="text-xs text-muted-foreground text-center">
-              Fields marked <span className="text-destructive">*</span> are required. Others can be left blank if not on your payslip.
+            <p className="pi-review-disclaimer">
+              This review helps you spot details worth checking. It does not confirm that your payslip is correct.
             </p>
 
-            <div className="flex gap-2 pt-1">
-              <Button className="flex-1" onClick={handleReviewSave} disabled={reviewSaving}>
-                {reviewSaving ? 'Saving…' : 'Confirm & save'}
+            <div className="pi-review-actions">
+              <Button className="pi-review-confirm" onClick={handleReviewSave} disabled={reviewSaving}>
+                {reviewSaving ? 'Saving…' : 'Confirm my payslip'}
               </Button>
-              <Button variant="outline" onClick={resetState}>Cancel</Button>
+              <Button className="pi-review-cancel" variant="outline" onClick={resetState}>Cancel</Button>
             </div>
           </div>
         )}
 
         {state === 'success' && (
           <>
-            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-success/10 mb-4">
-              <CheckCircle className="h-7 w-7 text-success" />
+            <div className="pi-upload-icon pi-upload-icon--success">
+              <CheckCircle aria-hidden="true" />
             </div>
-            <h3 className="text-lg font-semibold text-foreground">Upload complete</h3>
-            <p className="mt-1 text-sm text-muted-foreground">{fileName}</p>
-            <Button variant="outline" className="mt-4" onClick={resetState}>Upload another</Button>
+            <h3 className="pi-upload-title">Upload complete</h3>
+            <p className="pi-upload-body">{fileName}</p>
+            <Button variant="outline" className="pi-upload-action pi-upload-action--quiet" onClick={resetState}>Upload another</Button>
           </>
         )}
 
         {state === 'error' && (
           <>
-            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-destructive/10 mb-4">
-              <AlertCircle className="h-7 w-7 text-destructive" />
+            <div className="pi-upload-icon pi-upload-icon--error">
+              <AlertCircle aria-hidden="true" />
             </div>
-            <h3 className="text-lg font-semibold text-foreground">Upload failed</h3>
-            <p className="mt-1 text-sm text-destructive">{errorMsg}</p>
-            <div className="mt-4 flex flex-wrap justify-center gap-2">
+            <h3 className="pi-upload-title">Upload failed</h3>
+            <p className="pi-upload-body pi-upload-body--error">{errorMsg}</p>
+            <div className="pi-upload-error-actions">
               {failedPayslipId ? (
-                <Button onClick={retryProcessing}>Retry processing</Button>
+                <Button className="pi-upload-action" onClick={retryProcessing}>Retry processing</Button>
               ) : null}
-              <Button variant={failedPayslipId ? 'outline' : 'default'} onClick={resetState}>
+              <Button className={failedPayslipId ? 'pi-upload-action pi-upload-action--quiet' : 'pi-upload-action'} variant={failedPayslipId ? 'outline' : 'default'} onClick={resetState}>
                 {failedPayslipId ? 'Upload another' : 'Try again'}
               </Button>
             </div>

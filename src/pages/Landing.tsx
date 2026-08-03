@@ -2,29 +2,113 @@ import { useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useDemo } from '@/contexts/DemoContext';
 import { useAuth } from '@/contexts/AuthContext';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
+import {
+  AlertTriangle,
+  ArrowRight,
+  BarChart3,
+  Check,
+  ChevronRight,
+  Eye,
+  FileCheck,
+  MessageSquare,
+  TrendingUp,
+  Upload,
+} from 'lucide-react';
 import {
   Accordion,
   AccordionContent,
   AccordionItem,
   AccordionTrigger,
 } from '@/components/ui/accordion';
-import {
-  Upload,
-  Shield,
-  TrendingUp,
-  AlertTriangle,
-  FileCheck,
-  MessageSquare,
-  CheckCircle,
-  ArrowRight,
-  Lock,
-  Eye,
-  BarChart3,
-} from 'lucide-react';
-import heroImg from '@/assets/hero-illustration.jpg';
+import payslipCheckHero from '@/assets/option-one-payslip-check-hero-v1.webp';
+import payslipMark from '@/assets/payslip-insights-mark.webp';
+import aquaCorner from '@/assets/option-one-aqua-corner-v2.webp';
+import './Landing.css';
+
+const STEPS = [
+  {
+    icon: Upload,
+    number: '01',
+    title: 'Upload your payslip',
+    description: 'Add a PDF or photo, then review the figures we find before you confirm anything.',
+  },
+  {
+    icon: Eye,
+    number: '02',
+    title: 'See what changed',
+    description: 'Compare this payday with the last one and bring changes worth checking into focus.',
+  },
+  {
+    icon: MessageSquare,
+    number: '03',
+    title: 'Take the next step',
+    description: 'Keep a clear history and prepare a message for payroll when you need one.',
+  },
+] as const;
+
+const FEATURES = [
+  {
+    icon: FileCheck,
+    title: 'Review before you rely on it',
+    description: 'Check and edit extracted figures before a payslip becomes part of your history.',
+  },
+  {
+    icon: TrendingUp,
+    title: 'Track your pay over time',
+    description: 'Follow net pay, tax, and deductions from one confirmed payslip to the next.',
+  },
+  {
+    icon: AlertTriangle,
+    title: 'Notice unexpected changes',
+    description: 'Bring changes such as a new deduction or a tax jump into one clear review.',
+  },
+  {
+    icon: BarChart3,
+    title: 'Compare without the spreadsheet',
+    description: 'See two confirmed payslips side by side when you want a closer look.',
+  },
+] as const;
+
+const FREE_FEATURES = [
+  '3 automatic payslip checks per Dublin calendar month',
+  'Checks for changes worth reviewing',
+  'Payslip comparison and history',
+  '2 payroll-message drafts per Dublin calendar month',
+] as const;
+
+const PLUS_FEATURES = [
+  'Automatic payslip checks beyond the Free plan allowance',
+  'Payroll-message drafts beyond the Free plan allowance',
+  'Review, track, and compare confirmed payslips',
+  'PDF export of your payslip history',
+] as const;
+
+const FAQ_ITEMS = [
+  {
+    question: 'Is Payslip Insights tax advice?',
+    answer: 'No. Payslip Insights is a payslip review and planning tool. It can flag changes worth checking, but it does not provide formal tax, legal, or payroll advice. Always confirm a concern with your employer or a qualified professional.',
+  },
+  {
+    question: 'How is my payslip data handled?',
+    answer: 'We use your payslip to provide review, tracking, and planning features. We may use service providers for hosting and document extraction. Read the Privacy Policy before uploading for the current details.',
+  },
+  {
+    question: 'Which payslip formats do you support?',
+    answer: "We support PDF payslips and photos/images of payslips. We're continually improving our extraction engine to handle more formats.",
+  },
+  {
+    question: 'Which countries does Payslip Insights support?',
+    answer: 'Payslip Insights is currently focused on employees paid in the UK and Ireland. You should still review every extracted figure and raise any question with your payroll team.',
+  },
+  {
+    question: 'Can I cancel my subscription anytime?',
+    answer: "Yes. You can cancel your Plus subscription at any time. You'll keep access until the end of your current billing period.",
+  },
+  {
+    question: 'What if the extraction gets something wrong?',
+    answer: 'You can review and edit extracted values before confirming. If a figure is missing or does not match your original payslip, correct it or leave it blank before you save.',
+  },
+] as const;
 
 const Landing = () => {
   const navigate = useNavigate();
@@ -44,274 +128,225 @@ const Landing = () => {
   };
 
   return (
-    <div className="min-h-screen bg-card">
-      {/* Nav */}
-      <nav className="sticky top-0 z-50 border-b border-border bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80">
-        <div className="container flex h-16 items-center justify-between">
-          <Link to="/" className="flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
-              <CheckCircle className="h-5 w-5 text-primary-foreground" />
-            </div>
-            <span className="text-xl font-bold text-foreground">Payslip Insights</span>
+    <div className="pi-landing">
+      <header className="pi-landing__nav-wrap">
+        <nav className="pi-landing__nav" aria-label="Primary navigation">
+          <Link to="/" className="pi-landing__brand" aria-label="Payslip Insights home">
+            <img src={payslipMark} alt="" className="pi-landing__brand-mark" />
+            <span>payslip insights</span>
           </Link>
-          <div className="hidden items-center gap-6 md:flex">
-            <a href="#how-it-works" className="text-sm text-muted-foreground hover:text-foreground transition-colors">How it works</a>
-            <a href="#features" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Features</a>
-            <a href="#pricing" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Pricing</a>
-            <a href="#faq" className="text-sm text-muted-foreground hover:text-foreground transition-colors">FAQ</a>
-            <Link to="/guides" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Guides</Link>
-          </div>
-          <div className="flex items-center gap-3">
-            <Link to="/sign-in">
-              <Button variant="ghost" size="sm">Sign in</Button>
-            </Link>
-            <Link to="/sign-up">
-              <Button size="sm">Get started</Button>
-            </Link>
-          </div>
-        </div>
-      </nav>
 
-      {/* Hero */}
-      <section className="relative overflow-hidden py-20 md:py-32">
-        <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-accent/5" />
-        <div className="container relative">
-          <div className="grid gap-12 md:grid-cols-2 md:items-center">
-            <div className="animate-fade-in">
-              <Badge variant="secondary" className="mb-4 rounded-full px-4 py-1.5 text-xs font-medium">
-                Built for UK &amp; Ireland payslips
-              </Badge>
-              <h1 className="text-4xl font-extrabold tracking-tight text-foreground md:text-5xl lg:text-6xl">
-                Upload your payslip.{' '}
-                <span className="text-primary">Spot changes worth checking.</span>
-              </h1>
-              <p className="mt-6 max-w-lg text-lg text-muted-foreground leading-relaxed">
-                Payslip Insights helps you review each payslip, track changes over time, and plan to your next payday. Clear figures. No guesswork.
+          <div className="pi-landing__nav-links">
+            <a href="#how-it-works">How it works</a>
+            <a href="#features">Features</a>
+            <a href="#pricing">Pricing</a>
+            <a href="#faq">FAQ</a>
+            <Link to="/guides">Guides</Link>
+          </div>
+
+          <div className="pi-landing__nav-actions">
+            <Link to="/sign-in" className="pi-landing__sign-in">Sign in</Link>
+            <Link to="/sign-up" className="pi-landing__button pi-landing__button--small">Get started</Link>
+          </div>
+        </nav>
+      </header>
+
+      <main>
+        <section className="pi-landing__hero">
+          <img src={aquaCorner} alt="" className="pi-landing__aqua-corner" aria-hidden="true" />
+          <div className="pi-landing__container pi-landing__hero-grid">
+            <div className="pi-landing__hero-copy">
+              <h1>Your payday, clear.</h1>
+              <p>
+                Upload your payslip, spot changes worth checking, and plan to your next payday. Clear figures and a calmer next step.
               </p>
-                <div className="mt-8 flex flex-wrap gap-4">
-                <Link to="/sign-up">
-                  <Button size="lg" className="gap-2 px-6">
-                    Start checking payslips <ArrowRight className="h-4 w-4" />
-                  </Button>
+              <div className="pi-landing__hero-actions">
+                <Link to="/sign-up" className="pi-landing__button">
+                  Check a payslip <ArrowRight aria-hidden="true" />
                 </Link>
-                <Button variant="outline" size="lg" className="px-6" onClick={handleTryDemo}>
-                  Try the demo
-                </Button>
+                <button type="button" className="pi-landing__secondary-action" onClick={handleTryDemo}>
+                  Try the demo <ArrowRight aria-hidden="true" />
+                </button>
               </div>
-              <div className="mt-8 flex items-center gap-6 text-sm text-muted-foreground">
-                <span className="flex items-center gap-1.5"><Lock className="h-4 w-4" /> Review every extracted figure</span>
-                <span className="flex items-center gap-1.5"><Shield className="h-4 w-4" /> UK &amp; Ireland focused</span>
+              <div className="pi-landing__hero-notes" aria-label="Product highlights">
+                <span><Check aria-hidden="true" /> Review every extracted figure</span>
+                <span><Check aria-hidden="true" /> UK &amp; Ireland focused</span>
               </div>
             </div>
-            <div className="animate-fade-in-delay-1 flex justify-center">
+
+            <div className="pi-landing__hero-art-wrap">
               <img
-                src={heroImg}
-                alt="Payslip Insights payslip analysis illustration"
-                className="w-full max-w-md rounded-2xl shadow-2xl shadow-primary/10"
-                width={1280}
-                height={960}
+                src={payslipCheckHero}
+                alt="Illustration of a payslip being checked"
+                className="pi-landing__hero-art"
+                width={1201}
+                height={1309}
               />
             </div>
           </div>
-        </div>
-      </section>
+        </section>
 
-      {/* How it works */}
-      <section id="how-it-works" className="scroll-mt-16 bg-background py-20 md:py-28">
-        <div className="container">
-          <div className="text-center animate-fade-in">
-            <h2 className="text-3xl font-bold text-foreground md:text-4xl">How Payslip Insights works</h2>
-            <p className="mt-4 text-muted-foreground max-w-2xl mx-auto">Three simple steps to take control of your pay</p>
-          </div>
-          <div className="mt-16 grid gap-8 md:grid-cols-3">
-            {[
-              { icon: Upload, title: 'Upload your payslip', desc: 'Drop in a PDF or photo of your payslip. We extract the key figures automatically.', step: '1' },
-              { icon: Eye, title: 'See what changed', desc: 'We compare your payslip to previous months and highlight any differences worth reviewing.', step: '2' },
-              { icon: MessageSquare, title: 'Raise issues easily', desc: 'If something looks off, we draft a clear message you can send straight to payroll.', step: '3' },
-            ].map((item, i) => (
-              <Card key={i} className={`relative overflow-hidden border-0 shadow-md animate-fade-in-delay-${i + 1}`}>
-                <CardContent className="p-8">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-primary mb-5">
-                    <item.icon className="h-6 w-6" />
+        <section id="how-it-works" className="pi-landing__section pi-landing__steps-section">
+          <div className="pi-landing__container">
+            <div className="pi-landing__section-heading pi-landing__section-heading--split">
+              <h2>Three small steps.<br />One clearer payday.</h2>
+              <p>Everything starts with the payslip you already have. You stay in control of what gets confirmed.</p>
+            </div>
+            <div className="pi-landing__steps">
+              {STEPS.map(({ icon: Icon, number, title, description }) => (
+                <article className="pi-landing__step" key={number}>
+                  <div className="pi-landing__step-topline">
+                    <span>{number}</span>
+                    <Icon aria-hidden="true" />
                   </div>
-                  <div className="absolute top-4 right-6 text-6xl font-bold text-muted/50">{item.step}</div>
-                  <h3 className="text-lg font-semibold text-foreground">{item.title}</h3>
-                  <p className="mt-2 text-sm text-muted-foreground leading-relaxed">{item.desc}</p>
-                </CardContent>
-              </Card>
-            ))}
+                  <h3>{title}</h3>
+                  <p>{description}</p>
+                </article>
+              ))}
+            </div>
           </div>
-        </div>
-      </section>
+        </section>
 
-      {/* Features */}
-      <section id="features" className="py-20 md:py-28">
-        <div className="container">
-          <div className="text-center">
-            <h2 className="text-3xl font-bold text-foreground md:text-4xl">Everything you need to stay on top of your pay</h2>
-            <p className="mt-4 text-muted-foreground max-w-2xl mx-auto">Payslip review and planning for employees in the UK and Ireland</p>
-          </div>
-          <div className="mt-16 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {[
-              { icon: FileCheck, title: 'Smart extraction', desc: 'We read your payslip and pull out gross pay, tax, NI/PRSI, USC, pension, and more.' },
-              { icon: TrendingUp, title: 'Month-to-month tracking', desc: 'See trends in your net pay, tax, and deductions over time with clear charts.' },
-              { icon: AlertTriangle, title: 'Anomaly detection', desc: 'We flag unexpected changes — like a sudden tax jump or a new deduction you didn\'t expect.' },
-              { icon: BarChart3, title: 'Side-by-side comparison', desc: 'Compare any two payslips side by side. Every difference is highlighted clearly.' },
-              { icon: MessageSquare, title: 'Ready-to-send drafts', desc: 'We generate professional messages you can copy and send to your payroll team.' },
-              { icon: Lock, title: 'Clear data handling', desc: 'Your payslip is processed to provide the service. Read our Privacy Policy for the details.' },
-            ].map((feature, i) => (
-              <Card key={i} className="border-0 shadow-sm hover:shadow-md transition-shadow">
-                <CardContent className="p-6">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-accent/10 text-accent mb-4">
-                    <feature.icon className="h-5 w-5" />
-                  </div>
-                  <h3 className="font-semibold text-foreground">{feature.title}</h3>
-                  <p className="mt-2 text-sm text-muted-foreground leading-relaxed">{feature.desc}</p>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Country support */}
-      <section className="bg-background py-20 md:py-28">
-        <div className="container">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold text-foreground md:text-4xl">Country-aware payslip checks</h2>
-            <p className="mt-4 text-muted-foreground max-w-2xl mx-auto">
-              Payslip conventions differ across the UK and Ireland. Payslip Insights focuses on the figures and deductions employees commonly need to review.
-            </p>
-          </div>
-          <div className="mx-auto grid max-w-2xl gap-4 sm:grid-cols-2">
-            {[
-              { flag: '🇬🇧', name: 'United Kingdom', desc: 'Income Tax, NI, student loans' },
-              { flag: '🇮🇪', name: 'Ireland', desc: 'PAYE, PRSI, USC' },
-            ].map((c) => (
-              <Card key={c.name} className="border-0 shadow-sm hover:shadow-md transition-shadow">
-                <CardContent className="p-5">
-                  <div className="text-2xl mb-2" aria-hidden="true">{c.flag}</div>
-                  <h3 className="text-sm font-semibold text-foreground">{c.name}</h3>
-                  <p className="mt-1 text-xs text-muted-foreground leading-relaxed">{c.desc}</p>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-          <div className="mt-10 text-center">
-            <Link to="/calculator" className="text-sm text-primary hover:underline">
-              Try our free take-home calculators →
-            </Link>
-          </div>
-        </div>
-      </section>
-
-      {/* Pricing */}
-      <section id="pricing" className="py-20 md:py-28">
-        <div className="container">
-          <div className="text-center">
-            <h2 className="text-3xl font-bold text-foreground md:text-4xl">Simple, transparent pricing</h2>
-            <p className="mt-4 text-muted-foreground">Start free. Upgrade when you need more.</p>
-          </div>
-          <div className="mt-16 grid gap-8 md:grid-cols-2 max-w-3xl mx-auto">
-             <Card className="border shadow-sm">
-              <CardContent className="p-8">
-                <h3 className="font-semibold text-foreground">Free</h3>
-                <div className="mt-4"><span className="text-4xl font-bold text-foreground">€0</span><span className="text-muted-foreground">/month</span></div>
-                <p className="mt-2 text-sm text-muted-foreground">Great for getting started.</p>
-                <ul className="mt-6 space-y-3 text-sm text-muted-foreground">
-                  {['3 automatic payslip checks per Dublin calendar month', 'Checks for changes worth reviewing', 'Payslip comparison and history', '2 payroll-message drafts per Dublin calendar month'].map((f, i) => (
-                    <li key={i} className="flex items-start gap-2"><CheckCircle className="h-4 w-4 text-success mt-0.5 shrink-0" />{f}</li>
-                  ))}
-                </ul>
-                <Link to="/sign-up" className="mt-8 block">
-                  <Button variant="outline" className="w-full">Get started free</Button>
-                </Link>
-              </CardContent>
-            </Card>
-            <Card className="border-2 border-primary shadow-lg relative">
-              <CardContent className="p-8">
-                <h3 className="font-semibold text-foreground">Plus</h3>
-                <div className="mt-4"><span className="text-4xl font-bold text-foreground">€19.99</span><span className="text-muted-foreground">/year</span></div>
-                <p className="mt-1 text-xs text-muted-foreground">Just €1.67/month</p>
-                <p className="mt-2 text-sm text-muted-foreground">More automatic checks and payroll-message drafts when you need them.</p>
-                <ul className="mt-6 space-y-3 text-sm text-muted-foreground">
-                  {['Automatic payslip checks beyond the Free plan allowance', 'Payroll-message drafts beyond the Free plan allowance', 'Review, track, and compare confirmed payslips', 'PDF export of your payslip history'].map((f, i) => (
-                    <li key={i} className="flex items-start gap-2"><CheckCircle className="h-4 w-4 text-success mt-0.5 shrink-0" />{f}</li>
-                  ))}
-                </ul>
-                <Link to="/sign-up" className="mt-8 block">
-                  <Button className="w-full">Choose Plus</Button>
-                </Link>
-              </CardContent>
-            </Card>
-          </div>
-          <div className="mt-8 text-center">
-            <Link to="/pricing" className="text-sm text-primary hover:underline">
-              View full pricing comparison →
-            </Link>
-          </div>
-        </div>
-      </section>
-
-      {/* FAQ */}
-      <section id="faq" className="bg-background py-20 md:py-28">
-        <div className="container max-w-3xl">
-          <div className="text-center">
-            <h2 className="text-3xl font-bold text-foreground md:text-4xl">Frequently asked questions</h2>
-          </div>
-          <Accordion type="single" collapsible className="mt-12">
-            {[
-              { q: 'Is Payslip Insights tax advice?', a: 'No. Payslip Insights is a payslip review and planning tool. It can flag changes worth checking, but it does not provide formal tax, legal, or payroll advice. Always confirm a concern with your employer or a qualified professional.' },
-              { q: 'How is my payslip data handled?', a: 'We use your payslip to provide review, tracking, and planning features. We may use service providers for hosting and document extraction. Read the Privacy Policy before uploading for the current details.' },
-              { q: 'Which payslip formats do you support?', a: 'We support PDF payslips and photos/images of payslips. We\'re continually improving our extraction engine to handle more formats.' },
-              { q: 'Which countries does Payslip Insights support?', a: 'Payslip Insights is currently focused on employees paid in the UK and Ireland. You should still review every extracted figure and raise any question with your payroll team.' },
-              { q: 'Can I cancel my subscription anytime?', a: 'Yes. You can cancel your Plus subscription at any time. You\'ll keep access until the end of your current billing period.' },
-              { q: 'What if the extraction gets something wrong?', a: 'You can review and edit any extracted values before confirming. We also show confidence scores so you know when to double-check a figure.' },
-            ].map((item, i) => (
-              <AccordionItem key={i} value={`faq-${i}`}>
-                <AccordionTrigger className="text-left text-foreground">{item.q}</AccordionTrigger>
-                <AccordionContent className="text-muted-foreground">{item.a}</AccordionContent>
-              </AccordionItem>
-            ))}
-          </Accordion>
-        </div>
-      </section>
-
-      {/* CTA */}
-      <section className="py-20">
-        <div className="container">
-          <Card className="bg-primary border-0 overflow-hidden">
-            <CardContent className="p-12 text-center">
-              <h2 className="text-3xl font-bold text-primary-foreground md:text-4xl">Ready to check your payslips?</h2>
-              <p className="mt-4 text-primary-foreground/80 max-w-lg mx-auto">Upload a payslip, understand what changed, and make a simple plan to your next payday.</p>
-              <Link to="/sign-up" className="mt-8 inline-block">
-                <Button size="lg" variant="secondary" className="gap-2 px-8">
-                  Get started for free <ArrowRight className="h-4 w-4" />
-                </Button>
+        <section id="features" className="pi-landing__feature-band">
+          <div className="pi-landing__container pi-landing__feature-grid">
+            <div className="pi-landing__feature-intro">
+              <h2>Built around the moment your pay lands.</h2>
+              <p>Not another generic budgeting dashboard. A simple place to understand what changed and decide what to do next.</p>
+              <Link to="/calculator" className="pi-landing__text-link">
+                Try the take-home calculator <ArrowRight aria-hidden="true" />
               </Link>
-            </CardContent>
-          </Card>
-        </div>
-      </section>
-
-      {/* Footer */}
-      <footer className="border-t border-border bg-card py-12">
-        <div className="container">
-          <div className="flex flex-col items-center justify-between gap-6 md:flex-row">
-            <div className="flex items-center gap-2">
-              <div className="flex h-7 w-7 items-center justify-center rounded-md bg-primary">
-                <CheckCircle className="h-4 w-4 text-primary-foreground" />
-              </div>
-              <span className="font-semibold text-foreground">Payslip Insights</span>
             </div>
-            <div className="flex gap-6 text-sm text-muted-foreground">
-              <Link to="/pricing" className="hover:text-foreground transition-colors">Pricing</Link>
-              <Link to="/privacy" className="hover:text-foreground transition-colors">Privacy</Link>
-              <Link to="/terms" className="hover:text-foreground transition-colors">Terms</Link>
-              <a href="mailto:support@payslipinsights.com" className="hover:text-foreground transition-colors">Contact</a>
+            <div className="pi-landing__feature-list">
+              {FEATURES.map(({ icon: Icon, title, description }) => (
+                <article className="pi-landing__feature" key={title}>
+                  <div className="pi-landing__feature-icon"><Icon aria-hidden="true" /></div>
+                  <div>
+                    <h3>{title}</h3>
+                    <p>{description}</p>
+                  </div>
+                </article>
+              ))}
             </div>
-            <p className="text-xs text-muted-foreground">© 2026 Payslip Insights. Not tax or legal advice.</p>
           </div>
+        </section>
+
+        <section className="pi-landing__section pi-landing__countries">
+          <div className="pi-landing__container pi-landing__country-grid">
+            <div className="pi-landing__country-copy">
+              <h2>Made for the payslips you actually receive.</h2>
+              <p>
+                Payslip conventions differ across the UK and Ireland. Payslip Insights focuses on the figures and deductions employees commonly need to review.
+              </p>
+            </div>
+            <div className="pi-landing__country-list" aria-label="Supported countries">
+              <article>
+                <span>UK</span>
+                <div>
+                  <h3>United Kingdom</h3>
+                  <p>Income Tax, NI, student loans</p>
+                </div>
+                <ChevronRight aria-hidden="true" />
+              </article>
+              <article>
+                <span>IE</span>
+                <div>
+                  <h3>Ireland</h3>
+                  <p>PAYE, PRSI, USC</p>
+                </div>
+                <ChevronRight aria-hidden="true" />
+              </article>
+            </div>
+          </div>
+        </section>
+
+        <section id="pricing" className="pi-landing__section pi-landing__pricing-section">
+          <div className="pi-landing__container">
+            <div className="pi-landing__section-heading pi-landing__section-heading--center">
+              <h2>Simple, transparent pricing.</h2>
+              <p>Start free. Upgrade when you need more.</p>
+            </div>
+
+            <div className="pi-landing__pricing-grid">
+              <article className="pi-landing__price-card">
+                <div>
+                  <h3>Free</h3>
+                  <p className="pi-landing__price"><strong>€0</strong><span>/month</span></p>
+                  <p className="pi-landing__price-intro">Great for getting started.</p>
+                </div>
+                <ul>
+                  {FREE_FEATURES.map((feature) => (
+                    <li key={feature}><Check aria-hidden="true" />{feature}</li>
+                  ))}
+                </ul>
+                <Link to="/sign-up" className="pi-landing__outline-button">Get started free</Link>
+              </article>
+
+              <article className="pi-landing__price-card pi-landing__price-card--plus">
+                <div>
+                  <h3>Plus</h3>
+                  <p className="pi-landing__price"><strong>€19.99</strong><span>/year</span></p>
+                  <p className="pi-landing__price-intro">More automatic checks and payroll-message drafts when you need them.</p>
+                </div>
+                <ul>
+                  {PLUS_FEATURES.map((feature) => (
+                    <li key={feature}><Check aria-hidden="true" />{feature}</li>
+                  ))}
+                </ul>
+                <Link to="/sign-up" className="pi-landing__button">Choose Plus <ArrowRight aria-hidden="true" /></Link>
+              </article>
+            </div>
+            <div className="pi-landing__pricing-link-wrap">
+              <Link to="/pricing" className="pi-landing__text-link">View full pricing comparison <ArrowRight aria-hidden="true" /></Link>
+            </div>
+          </div>
+        </section>
+
+        <section id="faq" className="pi-landing__section pi-landing__faq-section">
+          <div className="pi-landing__container pi-landing__faq-grid">
+            <div>
+              <h2>Good questions.<br />Straight answers.</h2>
+              <p>We want you to understand what the app can help with before you upload anything.</p>
+              <Link to="/privacy" className="pi-landing__text-link">Read the Privacy Policy <ArrowRight aria-hidden="true" /></Link>
+            </div>
+            <Accordion type="single" collapsible className="pi-landing__faq-list">
+              {FAQ_ITEMS.map(({ question, answer }, index) => (
+                <AccordionItem key={question} value={`faq-${index}`}>
+                  <AccordionTrigger>{question}</AccordionTrigger>
+                  <AccordionContent>{answer}</AccordionContent>
+                </AccordionItem>
+              ))}
+            </Accordion>
+          </div>
+        </section>
+
+        <section className="pi-landing__closing-section">
+          <div className="pi-landing__container">
+            <div className="pi-landing__closing-panel">
+              <div>
+                <h2>Ready to check your payslips?</h2>
+                <p>Upload a payslip, understand what changed, and make a simple plan to your next payday.</p>
+              </div>
+              <Link to="/sign-up" className="pi-landing__button pi-landing__button--light">
+                Get started for free <ArrowRight aria-hidden="true" />
+              </Link>
+            </div>
+          </div>
+        </section>
+      </main>
+
+      <footer className="pi-landing__footer">
+        <div className="pi-landing__container pi-landing__footer-inner">
+          <Link to="/" className="pi-landing__brand" aria-label="Payslip Insights home">
+            <img src={payslipMark} alt="" className="pi-landing__brand-mark" />
+            <span>payslip insights</span>
+          </Link>
+          <div className="pi-landing__footer-links">
+            <Link to="/pricing">Pricing</Link>
+            <Link to="/privacy">Privacy</Link>
+            <Link to="/terms">Terms</Link>
+            <a href="mailto:support@payslipinsights.com">Contact</a>
+          </div>
+          <p>© 2026 Payslip Insights. Not tax or legal advice.</p>
         </div>
       </footer>
     </div>
