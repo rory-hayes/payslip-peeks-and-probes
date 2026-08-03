@@ -221,7 +221,6 @@ export type Database = {
           payslip_id: string
           pension_amount: number | null
           prsi_amount: number | null
-          processing_token: string | null
           raw_extraction_json: Json | null
           social_security_amount: number | null
           solidarity_amount: number | null
@@ -248,7 +247,6 @@ export type Database = {
           payslip_id: string
           pension_amount?: number | null
           prsi_amount?: number | null
-          processing_token?: string | null
           raw_extraction_json?: Json | null
           social_security_amount?: number | null
           solidarity_amount?: number | null
@@ -275,7 +273,6 @@ export type Database = {
           payslip_id?: string
           pension_amount?: number | null
           prsi_amount?: number | null
-          processing_token?: string | null
           raw_extraction_json?: Json | null
           social_security_amount?: number | null
           solidarity_amount?: number | null
@@ -297,33 +294,6 @@ export type Database = {
           },
         ]
       }
-      payslip_check_reservations: {
-        Row: {
-          created_at: string
-          id: string
-          payslip_id: string | null
-          period: string
-          provider_started_at: string | null
-          user_id: string
-        }
-        Insert: {
-          created_at?: string
-          id?: string
-          payslip_id?: string | null
-          period: string
-          provider_started_at?: string | null
-          user_id: string
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          payslip_id?: string | null
-          period?: string
-          provider_started_at?: string | null
-          user_id?: string
-        }
-        Relationships: []
-      }
       payslips: {
         Row: {
           country: string | null
@@ -335,8 +305,6 @@ export type Database = {
           pay_date: string | null
           pay_period_end: string | null
           pay_period_start: string | null
-          processing_token: string | null
-          provider_started_at: string | null
           status: string | null
           user_id: string
         }
@@ -350,8 +318,6 @@ export type Database = {
           pay_date?: string | null
           pay_period_end?: string | null
           pay_period_start?: string | null
-          processing_token?: string | null
-          provider_started_at?: string | null
           status?: string | null
           user_id: string
         }
@@ -365,8 +331,6 @@ export type Database = {
           pay_date?: string | null
           pay_period_end?: string | null
           pay_period_start?: string | null
-          processing_token?: string | null
-          provider_started_at?: string | null
           status?: string | null
           user_id?: string
         }
@@ -571,21 +535,6 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      confirm_payslip_review: {
-        Args: {
-          p_payslip_id: string
-          p_pay_date: string
-          p_gross_pay: number
-          p_net_pay: number
-          p_tax_amount: number | null
-          p_national_insurance_amount: number | null
-          p_prsi_amount: number | null
-          p_usc_amount: number | null
-          p_pension_amount: number | null
-          p_total_deductions: number | null
-        }
-        Returns: undefined
-      }
       has_active_subscription: {
         Args: { check_env?: string; user_uuid: string }
         Returns: boolean
