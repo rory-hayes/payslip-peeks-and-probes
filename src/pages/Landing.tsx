@@ -23,7 +23,6 @@ import {
   Lock,
   Eye,
   BarChart3,
-  Zap,
 } from 'lucide-react';
 import heroImg from '@/assets/hero-illustration.jpg';
 
@@ -53,7 +52,7 @@ const Landing = () => {
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
               <CheckCircle className="h-5 w-5 text-primary-foreground" />
             </div>
-            <span className="text-xl font-bold text-foreground">PayCheck</span>
+            <span className="text-xl font-bold text-foreground">Payslip Insights</span>
           </Link>
           <div className="hidden items-center gap-6 md:flex">
             <a href="#how-it-works" className="text-sm text-muted-foreground hover:text-foreground transition-colors">How it works</a>
@@ -80,14 +79,14 @@ const Landing = () => {
           <div className="grid gap-12 md:grid-cols-2 md:items-center">
             <div className="animate-fade-in">
               <Badge variant="secondary" className="mb-4 rounded-full px-4 py-1.5 text-xs font-medium">
-                UK, Ireland, US & 7 European countries
+                Built for UK &amp; Ireland payslips
               </Badge>
               <h1 className="text-4xl font-extrabold tracking-tight text-foreground md:text-5xl lg:text-6xl">
                 Upload your payslip.{' '}
-                <span className="text-primary">Catch mistakes early.</span>
+                <span className="text-primary">Spot changes worth checking.</span>
               </h1>
               <p className="mt-6 max-w-lg text-lg text-muted-foreground leading-relaxed">
-                PayCheck helps you understand your payslips, track changes month to month, and spot issues before they become problems. No jargon. No guesswork.
+                Payslip Insights helps you review each payslip, track changes over time, and plan to your next payday. Clear figures. No guesswork.
               </p>
                 <div className="mt-8 flex flex-wrap gap-4">
                 <Link to="/sign-up">
@@ -100,14 +99,14 @@ const Landing = () => {
                 </Button>
               </div>
               <div className="mt-8 flex items-center gap-6 text-sm text-muted-foreground">
-                <span className="flex items-center gap-1.5"><Lock className="h-4 w-4" /> Bank-level security</span>
-                <span className="flex items-center gap-1.5"><Shield className="h-4 w-4" /> Your data stays yours</span>
+                <span className="flex items-center gap-1.5"><Lock className="h-4 w-4" /> Review every extracted figure</span>
+                <span className="flex items-center gap-1.5"><Shield className="h-4 w-4" /> UK &amp; Ireland focused</span>
               </div>
             </div>
             <div className="animate-fade-in-delay-1 flex justify-center">
               <img
                 src={heroImg}
-                alt="PayCheck payslip analysis illustration"
+                alt="Payslip Insights payslip analysis illustration"
                 className="w-full max-w-md rounded-2xl shadow-2xl shadow-primary/10"
                 width={1280}
                 height={960}
@@ -121,7 +120,7 @@ const Landing = () => {
       <section id="how-it-works" className="bg-background py-20 md:py-28">
         <div className="container">
           <div className="text-center animate-fade-in">
-            <h2 className="text-3xl font-bold text-foreground md:text-4xl">How PayCheck works</h2>
+            <h2 className="text-3xl font-bold text-foreground md:text-4xl">How Payslip Insights works</h2>
             <p className="mt-4 text-muted-foreground max-w-2xl mx-auto">Three simple steps to take control of your pay</p>
           </div>
           <div className="mt-16 grid gap-8 md:grid-cols-3">
@@ -150,7 +149,7 @@ const Landing = () => {
         <div className="container">
           <div className="text-center">
             <h2 className="text-3xl font-bold text-foreground md:text-4xl">Everything you need to stay on top of your pay</h2>
-            <p className="mt-4 text-muted-foreground max-w-2xl mx-auto">Country-specific checks for employees across the UK, Ireland, US and Europe</p>
+            <p className="mt-4 text-muted-foreground max-w-2xl mx-auto">Payslip review and planning for employees in the UK and Ireland</p>
           </div>
           <div className="mt-16 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
             {[
@@ -159,7 +158,7 @@ const Landing = () => {
               { icon: AlertTriangle, title: 'Anomaly detection', desc: 'We flag unexpected changes — like a sudden tax jump or a new deduction you didn\'t expect.' },
               { icon: BarChart3, title: 'Side-by-side comparison', desc: 'Compare any two payslips side by side. Every difference is highlighted clearly.' },
               { icon: MessageSquare, title: 'Ready-to-send drafts', desc: 'We generate professional messages you can copy and send to your payroll team.' },
-              { icon: Lock, title: 'Privacy first', desc: 'Your payslip data is encrypted and stored securely. Only you can access it.' },
+              { icon: Lock, title: 'Clear data handling', desc: 'Your payslip is processed to provide the service. Read our Privacy Policy for the details.' },
             ].map((feature, i) => (
               <Card key={i} className="border-0 shadow-sm hover:shadow-md transition-shadow">
                 <CardContent className="p-6">
@@ -181,21 +180,13 @@ const Landing = () => {
           <div className="text-center mb-12">
             <h2 className="text-3xl font-bold text-foreground md:text-4xl">Country-aware payslip checks</h2>
             <p className="mt-4 text-muted-foreground max-w-2xl mx-auto">
-              Each country uses its own tax bands, social-security rates and payslip conventions. PayCheck handles them all.
+              Payslip conventions differ across the UK and Ireland. Payslip Insights focuses on the figures and deductions employees commonly need to review.
             </p>
           </div>
-          <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5">
+          <div className="mx-auto grid max-w-2xl gap-4 sm:grid-cols-2">
             {[
               { flag: '🇬🇧', name: 'United Kingdom', desc: 'Income Tax, NI, student loans' },
               { flag: '🇮🇪', name: 'Ireland', desc: 'PAYE, PRSI, USC' },
-              { flag: '🇺🇸', name: 'United States', desc: 'FIT, FICA, state tax' },
-              { flag: '🇩🇪', name: 'Germany', desc: 'Lohnsteuer, Soli, KV/RV' },
-              { flag: '🇫🇷', name: 'France', desc: 'IR, CSG/CRDS, cotisations' },
-              { flag: '🇳🇱', name: 'Netherlands', desc: 'Loonheffing, ZVW' },
-              { flag: '🇪🇸', name: 'Spain', desc: 'IRPF, Seguridad Social' },
-              { flag: '🇮🇹', name: 'Italy', desc: 'IRPEF, INPS, addizionali' },
-              { flag: '🇧🇪', name: 'Belgium', desc: 'Bedrijfsvoorheffing, ONSS' },
-              { flag: '🇵🇹', name: 'Portugal', desc: 'IRS, Segurança Social' },
             ].map((c) => (
               <Card key={c.name} className="border-0 shadow-sm hover:shadow-md transition-shadow">
                 <CardContent className="p-5">
@@ -228,7 +219,7 @@ const Landing = () => {
                 <div className="mt-4"><span className="text-4xl font-bold text-foreground">€0</span><span className="text-muted-foreground">/month</span></div>
                 <p className="mt-2 text-sm text-muted-foreground">Great for getting started.</p>
                 <ul className="mt-6 space-y-3 text-sm text-muted-foreground">
-                  {['3 payslip uploads/month', 'Basic anomaly checks', '1 month comparison', '2 issue drafts/month'].map((f, i) => (
+                  {['3 automatic payslip checks per Dublin calendar month', 'Checks for changes worth reviewing', 'Payslip comparison and history', '2 payroll-message drafts per Dublin calendar month'].map((f, i) => (
                     <li key={i} className="flex items-start gap-2"><CheckCircle className="h-4 w-4 text-success mt-0.5 shrink-0" />{f}</li>
                   ))}
                 </ul>
@@ -238,21 +229,18 @@ const Landing = () => {
               </CardContent>
             </Card>
             <Card className="border-2 border-primary shadow-lg relative">
-              <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                <Badge className="bg-primary text-primary-foreground">Most popular</Badge>
-              </div>
               <CardContent className="p-8">
                 <h3 className="font-semibold text-foreground">Plus</h3>
                 <div className="mt-4"><span className="text-4xl font-bold text-foreground">€19.99</span><span className="text-muted-foreground">/year</span></div>
                 <p className="mt-1 text-xs text-muted-foreground">Just €1.67/month</p>
-                <p className="mt-2 text-sm text-muted-foreground">Full access. Peace of mind, every pay day.</p>
+                <p className="mt-2 text-sm text-muted-foreground">More automatic checks and payroll-message drafts when you need them.</p>
                 <ul className="mt-6 space-y-3 text-sm text-muted-foreground">
-                  {['Unlimited payslip uploads', 'Full anomaly detection suite', 'Compare any two payslips', 'Unlimited issue drafts', 'Historical trends & insights', 'Priority support'].map((f, i) => (
+                  {['Automatic payslip checks beyond the Free plan allowance', 'Payroll-message drafts beyond the Free plan allowance', 'Review, track, and compare confirmed payslips', 'PDF export of your payslip history'].map((f, i) => (
                     <li key={i} className="flex items-start gap-2"><CheckCircle className="h-4 w-4 text-success mt-0.5 shrink-0" />{f}</li>
                   ))}
                 </ul>
                 <Link to="/sign-up" className="mt-8 block">
-                  <Button className="w-full">Start free trial</Button>
+                  <Button className="w-full">Choose Plus</Button>
                 </Link>
               </CardContent>
             </Card>
@@ -273,10 +261,10 @@ const Landing = () => {
           </div>
           <Accordion type="single" collapsible className="mt-12">
             {[
-              { q: 'Is PayCheck tax advice?', a: 'No. PayCheck is a payslip checking and issue-spotting tool. Our findings are guidance only — not formal tax, legal, or payroll advice. Always confirm with your employer or a professional if you\'re unsure.' },
-              { q: 'Is my payslip data secure?', a: 'Absolutely. Your data is encrypted in transit and at rest. We use bank-level security practices. Only you can access your payslips — we never share your data with third parties.' },
+              { q: 'Is Payslip Insights tax advice?', a: 'No. Payslip Insights is a payslip review and planning tool. It can flag changes worth checking, but it does not provide formal tax, legal, or payroll advice. Always confirm a concern with your employer or a qualified professional.' },
+              { q: 'How is my payslip data handled?', a: 'We use your payslip to provide review, tracking, and planning features. We may use service providers for hosting and document extraction. Read the Privacy Policy before uploading for the current details.' },
               { q: 'Which payslip formats do you support?', a: 'We support PDF payslips and photos/images of payslips. We\'re continually improving our extraction engine to handle more formats.' },
-              { q: 'Which countries does PayCheck support?', a: 'PayCheck supports the UK, Ireland, United States, Germany, France, Netherlands, Spain, Italy, Belgium and Portugal — each with country-specific tax bands, social-security rates and payslip conventions. US users can also pick their state and filing status.' },
+              { q: 'Which countries does Payslip Insights support?', a: 'Payslip Insights is currently focused on employees paid in the UK and Ireland. You should still review every extracted figure and raise any question with your payroll team.' },
               { q: 'Can I cancel my subscription anytime?', a: 'Yes. You can cancel your Plus subscription at any time. You\'ll keep access until the end of your current billing period.' },
               { q: 'What if the extraction gets something wrong?', a: 'You can review and edit any extracted values before confirming. We also show confidence scores so you know when to double-check a figure.' },
             ].map((item, i) => (
@@ -295,7 +283,7 @@ const Landing = () => {
           <Card className="bg-primary border-0 overflow-hidden">
             <CardContent className="p-12 text-center">
               <h2 className="text-3xl font-bold text-primary-foreground md:text-4xl">Ready to check your payslips?</h2>
-              <p className="mt-4 text-primary-foreground/80 max-w-lg mx-auto">Join thousands of employees who use PayCheck to stay informed about their pay.</p>
+              <p className="mt-4 text-primary-foreground/80 max-w-lg mx-auto">Upload a payslip, understand what changed, and make a simple plan to your next payday.</p>
               <Link to="/sign-up" className="mt-8 inline-block">
                 <Button size="lg" variant="secondary" className="gap-2 px-8">
                   Get started for free <ArrowRight className="h-4 w-4" />
@@ -314,15 +302,15 @@ const Landing = () => {
               <div className="flex h-7 w-7 items-center justify-center rounded-md bg-primary">
                 <CheckCircle className="h-4 w-4 text-primary-foreground" />
               </div>
-              <span className="font-semibold text-foreground">PayCheck</span>
+              <span className="font-semibold text-foreground">Payslip Insights</span>
             </div>
             <div className="flex gap-6 text-sm text-muted-foreground">
               <Link to="/pricing" className="hover:text-foreground transition-colors">Pricing</Link>
               <Link to="/privacy" className="hover:text-foreground transition-colors">Privacy</Link>
               <Link to="/terms" className="hover:text-foreground transition-colors">Terms</Link>
-              <a href="mailto:support@paycheckinsights.com" className="hover:text-foreground transition-colors">Contact</a>
+              <a href="mailto:support@payslipinsights.com" className="hover:text-foreground transition-colors">Contact</a>
             </div>
-            <p className="text-xs text-muted-foreground">© 2026 PayCheck. Not tax or legal advice.</p>
+            <p className="text-xs text-muted-foreground">© 2026 Payslip Insights. Not tax or legal advice.</p>
           </div>
         </div>
       </footer>

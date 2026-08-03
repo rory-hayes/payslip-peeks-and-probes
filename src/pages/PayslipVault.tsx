@@ -31,7 +31,7 @@ const PayslipVault = () => {
           <div>
             <h1 className="text-2xl font-bold text-foreground">Payslip Vault</h1>
             <p className="text-sm text-muted-foreground">
-              {allPayslips.length} payslip{allPayslips.length !== 1 ? 's' : ''} stored securely
+              {allPayslips.length} payslip{allPayslips.length !== 1 ? 's' : ''} saved to your account
             </p>
           </div>
         </div>

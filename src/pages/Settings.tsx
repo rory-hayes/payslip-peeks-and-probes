@@ -2,21 +2,21 @@
  * IMPLEMENTATION NOTES (internal / admin reference):
  *
  * Custom Domain:
- *   - This app runs on the custom primary domain paycheckinsights.com.
+ *   - This app runs on the custom primary domain payslipinsights.com.
  *   - Configure the domain via Project Settings → Domains in the Lovable dashboard.
- *   - All internal references use the "PayCheck" brand — no platform references leak to users.
+ *   - All visible references use the "Payslip Insights" brand — no platform references leak to users.
  *
  * Branded Sender Email Domain:
- *   - Auth and transactional emails should be sent from a branded domain (e.g. notify@paycheckinsights.com).
+ *   - Auth and transactional emails should be sent from a branded domain (e.g. notify@payslipinsights.com).
  *   - Configure via Cloud → Emails in the Lovable dashboard.
  *
  * Google OAuth Credentials:
  *   - For full branding control on the Google consent screen, use your own Google OAuth
  *     client ID and secret. Configure via Cloud → Users → Auth Settings → Google.
- *   - This ensures users see "PayCheck" (not a third-party name) on the Google sign-in prompt.
+ *   - This ensures users see "Payslip Insights" (not a third-party name) on the Google sign-in prompt.
  *
  * Stripe Billing:
- *   - When enabling Stripe, configure the PayCheck brand name, logo, and colours
+ *   - When enabling Stripe, configure the Payslip Insights brand name, logo, and colours
  *     in the Stripe dashboard so checkout and invoices are fully branded.
  *
  * Favicon / Logo:
@@ -55,8 +55,14 @@ import { getStripeEnvironment } from '@/lib/stripe';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { Download, Trash2, HelpCircle, Sparkles, ExternalLink } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { deleteUserAccountData } from '@/lib/delete-account';
-import { COUNTRY_LIST, getCountryConfig, type CountryCode } from '@/lib/countries';
+import { deleteCurrentUserAccount } from '@/lib/delete-account';
+import {
+  LAUNCH_COUNTRY_LIST,
+  getCountryConfig,
+  isLaunchCountry,
+  type CountryCode,
+  type LaunchCountryCode,
+} from '@/lib/countries';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 const STUDENT_LOAN_PLANS = [
@@ -67,13 +73,27 @@ const STUDENT_LOAN_PLANS = [
   { value: 'postgrad', label: 'Postgraduate', desc: 'Postgraduate loan' },
 ];
 
+type ExportPayslipJoin = { user_id?: string | null };
+type ExportRow = Record<string, unknown> & {
+  payslips?: ExportPayslipJoin | ExportPayslipJoin[] | null;
+};
+
+function rowsForExport(value: unknown): ExportRow[] {
+  return Array.isArray(value) ? value as ExportRow[] : [];
+}
+
+function exportRowOwnerId(row: ExportRow): string | null {
+  const payslip = Array.isArray(row.payslips) ? row.payslips[0] : row.payslips;
+  return typeof payslip?.user_id === 'string' ? payslip.user_id : null;
+}
+
 const Settings = () => {
   const { toast } = useToast();
   const { user, signOut } = useAuth();
   const { subscription } = useSubscription();
   const { uploadsRemaining, draftsRemaining, isPremium, limits } = useUsage();
   const [firstName, setFirstName] = useState('');
-  const [country, setCountry] = useState<CountryCode>('UK');
+  const [country, setCountry] = useState<LaunchCountryCode | ''>('UK');
   const [annualSalary, setAnnualSalary] = useState('');
   const [frequency, setFrequency] = useState('monthly');
   const [employer, setEmployer] = useState('');
@@ -91,10 +111,12 @@ const Settings = () => {
   const [deleting, setDeleting] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [managingBilling, setManagingBilling] = useState(false);
-  const countryConfig = getCountryConfig(country);
+  const countryConfig = getCountryConfig(country || 'UK');
   const currencySymbol = countryConfig.currencySymbol;
 
   const planLabel = subscription.plan === 'lifetime' ? 'Lifetime' : subscription.plan === 'plus' ? 'Plus' : 'Free';
+  const needsBillingReview = subscription.needsBillingReview === true;
+  const canManageBilling = (isPremium && subscription.plan !== 'lifetime') || needsBillingReview;
 
   const handleManageBilling = async () => {
     setManagingBilling(true);
@@ -126,7 +148,8 @@ const Settings = () => {
       .then(({ data }) => {
         if (data) {
           setFirstName(data.first_name || '');
-          setCountry((data.country as CountryCode) || 'UK');
+          const savedCountry = data.country as CountryCode | null;
+          setCountry(isLaunchCountry(savedCountry) ? savedCountry : '');
           setAnnualSalary(data.annual_salary ? String(data.annual_salary) : '');
           setFrequency(data.pay_frequency || 'monthly');
           setEmployer(data.employer_name || '');
@@ -151,6 +174,14 @@ const Settings = () => {
 
   const handleSave = async () => {
     if (!user) return;
+    if (!country) {
+      toast({
+        title: 'Choose a launch country',
+        description: 'Payslip Insights is currently available for UK and Ireland employees.',
+        variant: 'destructive',
+      });
+      return;
+    }
     setLoading(true);
     const { error } = await supabase
       .from('profiles')
@@ -201,12 +232,12 @@ const Settings = () => {
         supabase.from('employers').select('*').eq('user_id', user.id),
       ]);
 
-      const cleanExtractions = (extractions ?? [])
-        .filter((e: any) => e.payslips?.user_id === user.id)
-        .map(({ payslips: _j, ...rest }: any) => rest);
-      const cleanAnomalies = (anomalies ?? [])
-        .filter((a: any) => a.payslips?.user_id === user.id)
-        .map(({ payslips: _j, ...rest }: any) => rest);
+      const cleanExtractions = rowsForExport(extractions)
+        .filter((extraction) => exportRowOwnerId(extraction) === user.id)
+        .map(({ payslips: _payslip, ...rest }) => rest);
+      const cleanAnomalies = rowsForExport(anomalies)
+        .filter((anomaly) => exportRowOwnerId(anomaly) === user.id)
+        .map(({ payslips: _payslip, ...rest }) => rest);
 
       const exportData = {
         exported_at: new Date().toISOString(),
@@ -224,7 +255,7 @@ const Settings = () => {
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `paycheck-export-${new Date().toISOString().split('T')[0]}.json`;
+      a.download = `payslip-insights-export-${new Date().toISOString().split('T')[0]}.json`;
       a.click();
       URL.revokeObjectURL(url);
       toast({ title: 'Data exported', description: 'Your data has been downloaded as a JSON file.' });
@@ -238,12 +269,7 @@ const Settings = () => {
     if (deleteConfirm !== 'DELETE' || !user) return;
     setDeleting(true);
     try {
-      await deleteUserAccountData(supabase as never, {
-        userId: user.id,
-        isPremium: subscription.isPremium,
-        plan: subscription.plan,
-        environment: getStripeEnvironment(),
-      });
+      await deleteCurrentUserAccount(supabase as never);
 
       await signOut();
       window.location.href = '/';
@@ -274,17 +300,19 @@ const Settings = () => {
                   {isPremium
                     ? subscription.cancelAtPeriodEnd
                       ? `Access until ${subscription.currentPeriodEnd ? new Date(subscription.currentPeriodEnd).toLocaleDateString() : 'period end'}`
-                      : subscription.plan === 'lifetime' ? 'Lifetime access — no renewal needed' : 'Unlimited uploads and drafts'
-                    : 'Limited uploads and drafts per month'}
+                      : subscription.plan === 'lifetime' ? 'One payment — no renewal' : 'Automatic checks and drafts beyond the Free plan allowance'
+                    : needsBillingReview
+                      ? 'We found an existing billing record. Manage it while we finish checking the account.'
+                      : '3 automatic checks and 2 payroll-message drafts per Dublin calendar month'}
                 </p>
               </div>
               <div className="flex gap-2">
-                {isPremium && subscription.plan !== 'lifetime' && (
+                {canManageBilling && (
                   <Button variant="outline" size="sm" className="gap-1.5" onClick={handleManageBilling} disabled={managingBilling}>
                     <ExternalLink className="h-3.5 w-3.5" /> {managingBilling ? 'Opening…' : 'Manage billing'}
                   </Button>
                 )}
-                {!isPremium && (
+                {!isPremium && !needsBillingReview && (
                   <Link to="/pricing">
                     <Button size="sm" className="gap-1.5">
                       <Sparkles className="h-3.5 w-3.5" /> Upgrade
@@ -297,7 +325,7 @@ const Settings = () => {
               <div className="grid grid-cols-2 gap-4 pt-2">
                 <div>
                   <div className="flex justify-between text-xs text-muted-foreground mb-1">
-                    <span>Uploads</span>
+                    <span>Automatic checks</span>
                     <span>{limits.uploads_per_month - uploadsRemaining}/{limits.uploads_per_month} used</span>
                   </div>
                   <div className="h-2 rounded-full bg-muted overflow-hidden">
@@ -334,8 +362,8 @@ const Settings = () => {
               </div>
               <div className="space-y-2">
                 <Label>Country</Label>
-                <div className="grid grid-cols-3 gap-2">
-                  {COUNTRY_LIST.map((c) => (
+                <div className="grid grid-cols-2 gap-2">
+                  {LAUNCH_COUNTRY_LIST.map((c) => (
                     <button
                       key={c.code}
                       onClick={() => setCountry(c.code)}
@@ -345,6 +373,11 @@ const Settings = () => {
                     </button>
                   ))}
                 </div>
+                {!country && (
+                  <p className="text-xs text-muted-foreground">
+                    Choose UK or Ireland to update your payroll profile. Other countries are not available in this launch.
+                  </p>
+                )}
               </div>
             </div>
             {countryConfig.subRegions && countryConfig.subRegions.length > 0 && (
@@ -403,7 +436,7 @@ const Settings = () => {
                 value={annualSalary}
                 onChange={(e) => setAnnualSalary(e.target.value)}
               />
-              <p className="text-xs text-muted-foreground">Used to estimate expected tax and net pay. Kept private.</p>
+              <p className="text-xs text-muted-foreground">Used to calculate your in-app estimate. See the Privacy Policy for current data-handling details.</p>
             </div>
           </CardContent>
         </Card>
@@ -533,7 +566,7 @@ const Settings = () => {
         <Card className="border-0 shadow-sm">
           <CardHeader className="pb-2">
             <CardTitle className="text-base flex items-center gap-2">
-              <HelpCircle className="h-4 w-4" /> How PayCheck works
+              <HelpCircle className="h-4 w-4" /> How Payslip Insights works
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -547,19 +580,19 @@ const Settings = () => {
               <AccordionItem value="anomalies">
                 <AccordionTrigger className="text-sm">What are anomalies?</AccordionTrigger>
                 <AccordionContent className="text-sm text-muted-foreground">
-                  Anomalies are changes or issues we've flagged on your payslip — like a sudden tax increase, a missing deduction, or a drop in net pay. Each one includes an explanation and suggested next step.
+                  Anomalies are changes or figures worth checking — like a sudden tax increase, a missing deduction, or a drop in net pay. Each one includes an explanation and a suggested next step.
                 </AccordionContent>
               </AccordionItem>
               <AccordionItem value="advice">
-                <AccordionTrigger className="text-sm">Is PayCheck tax advice?</AccordionTrigger>
+                <AccordionTrigger className="text-sm">Is Payslip Insights tax advice?</AccordionTrigger>
                 <AccordionContent className="text-sm text-muted-foreground">
-                  No. PayCheck provides guidance and issue spotting to help you understand your payslips. Our findings are not formal tax, legal, or payroll advice. Always confirm with your employer or a qualified professional.
+                  No. Payslip Insights provides guidance and issue spotting to help you understand your payslips. Our findings are not formal tax, legal, or payroll advice. Always confirm with your employer or a qualified professional.
                 </AccordionContent>
               </AccordionItem>
               <AccordionItem value="security">
-                <AccordionTrigger className="text-sm">Is my data secure?</AccordionTrigger>
+                <AccordionTrigger className="text-sm">How is my data handled?</AccordionTrigger>
                 <AccordionContent className="text-sm text-muted-foreground">
-                  Yes. Your payslip data is encrypted in transit and at rest. Only you can access your data — we never share it with third parties. You can export or delete your data at any time.
+                  We use authenticated accounts and technical controls intended to limit access to customer data. To provide document processing, your payslip or the information needed to process it may be sent to configured providers. Read the Privacy Policy for current details on providers, access, retention, and deletion.
                 </AccordionContent>
               </AccordionItem>
             </Accordion>
@@ -572,7 +605,7 @@ const Settings = () => {
           <CardHeader className="pb-2"><CardTitle className="text-base">Privacy & security</CardTitle></CardHeader>
           <CardContent className="space-y-4">
             <p className="text-sm text-muted-foreground leading-relaxed">
-              Your payslip data is encrypted and stored securely. Only you can access it. PayCheck provides guidance and issue spotting — not formal tax, legal, or payroll advice.
+              We handle your payslip, extracted figures, and saved preferences to provide the service. Configured providers may process document information. Read the Privacy Policy for current details; Payslip Insights provides guidance and issue spotting, not formal tax, legal, or payroll advice.
             </p>
             <div className="flex gap-4 text-xs">
               <a href="/privacy" className="text-primary hover:underline">Privacy Policy</a>
@@ -612,7 +645,7 @@ const Settings = () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-foreground">Delete account</p>
-                <p className="text-xs text-muted-foreground">Permanently delete your account and all stored payslips. This cannot be undone.</p>
+                <p className="text-xs text-muted-foreground">Request account deletion and removal of stored payslips. This cannot be undone once completed.</p>
               </div>
               <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
                 <DialogTrigger asChild>
@@ -622,16 +655,16 @@ const Settings = () => {
                 </DialogTrigger>
                 <DialogContent>
                   <DialogHeader>
-                    <DialogTitle>Delete your PayCheck account?</DialogTitle>
+                    <DialogTitle>Delete your Payslip Insights account?</DialogTitle>
                     <DialogDescription className="space-y-3">
-                      <p>This will permanently delete:</p>
+                      <p>This starts deletion of:</p>
                       <ul className="list-disc pl-5 space-y-1 text-sm">
                         <li>Your profile and settings</li>
                         <li>All uploaded payslips and extracted data</li>
                         <li>All anomaly results and issue drafts</li>
                         <li>Your employer records</li>
                       </ul>
-                      <p className="font-medium text-destructive">This action cannot be undone.</p>
+                      <p className="font-medium text-destructive">Once completed, this action cannot be undone.</p>
                       <p className="text-sm">Type <strong>DELETE</strong> to confirm:</p>
                     </DialogDescription>
                   </DialogHeader>

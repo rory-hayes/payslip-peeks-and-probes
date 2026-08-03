@@ -32,7 +32,7 @@ export function parsePayDate(input: string | null | undefined): Date | null {
   }
 
   // DD/MM/YYYY or DD-MM-YYYY or DD.MM.YYYY — explicit parse to avoid US/UK ambiguity
-  const dmyMatch = trimmed.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})$/);
+  const dmyMatch = trimmed.match(/^(\d{1,2})[/.-](\d{1,2})[/.-](\d{2,4})$/);
   if (dmyMatch) {
     let year = parseInt(dmyMatch[3]);
     if (year < 100) year += 2000;

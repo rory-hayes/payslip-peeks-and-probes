@@ -3,25 +3,25 @@ import { Link } from 'react-router-dom';
 import MarketingNav from '@/components/marketing/MarketingNav';
 import MarketingFooter from '@/components/marketing/MarketingFooter';
 import { Card, CardContent } from '@/components/ui/card';
-import { COUNTRY_LIST } from '@/lib/countries';
+import { LAUNCH_COUNTRY_LIST } from '@/lib/countries';
 import { applySeo } from '@/lib/seo';
 import { ArrowRight, Calculator as CalculatorIcon } from 'lucide-react';
 
 const CalculatorIndex = () => {
   useEffect(() => {
     applySeo({
-      title: 'Take-home pay calculator — UK, Ireland & Europe | PayCheck',
+      title: 'Take-home pay calculator — UK & Ireland | Payslip Insights',
       description:
-        'Free 2024/25 net pay calculator for the UK, Ireland, Germany, France, Netherlands, Spain, Italy, Belgium and Portugal. Enter your gross salary and see your monthly take-home in seconds.',
+        'Free 2024/25 net pay calculator for the UK and Ireland. Enter your gross salary and see your monthly take-home in seconds.',
       jsonLd: {
         '@context': 'https://schema.org',
         '@type': 'WebApplication',
-        name: 'PayCheck Take-home Calculator',
+        name: 'Payslip Insights Take-home Calculator',
         applicationCategory: 'FinanceApplication',
         operatingSystem: 'Any',
         offers: { '@type': 'Offer', price: '0', priceCurrency: 'EUR' },
         description:
-          'Free 2024/25 net pay calculator for the UK, Ireland and 7 European countries.',
+          'Free 2024/25 net pay calculator for the UK and Ireland.',
       },
     });
   }, []);
@@ -40,14 +40,14 @@ const CalculatorIndex = () => {
             Take-home pay calculator
           </h1>
           <p className="mt-5 text-lg text-muted-foreground leading-relaxed">
-            Free 2024/25 net pay calculators for nine European countries. Enter your gross salary, see your monthly take-home, and share the result.
+            Free 2024/25 net pay calculators for the UK and Ireland. Enter your gross salary, see your monthly take-home, and share the result.
           </p>
         </div>
       </section>
 
       <main className="container max-w-5xl pb-20">
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {COUNTRY_LIST.map((c) => (
+          {LAUNCH_COUNTRY_LIST.map((c) => (
             <Link
               key={c.code}
               to={`/calculator/${c.code.toLowerCase()}`}
@@ -75,8 +75,7 @@ const CalculatorIndex = () => {
           <p>
             <strong className="text-foreground">How accurate are these?</strong> Each calculator uses the
             country's 2024/25 income-tax bands and standard employee social-security rates, sourced from
-            HMRC, Revenue.ie, the BMF, DGFiP, Belastingdienst, AEAT, Agenzia delle Entrate, ONSS/RSZ and
-            the Autoridade Tributária. Results are estimates for a single person with no children — your
+            HMRC and Revenue.ie. Results are estimates for a single person with no children — your
             actual deductions may vary based on regional rates, marital status, and benefits in kind.
           </p>
         </div>

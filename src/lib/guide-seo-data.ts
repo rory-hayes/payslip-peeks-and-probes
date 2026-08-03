@@ -22,7 +22,7 @@ export const ORG_NAME = 'Payslip Insights';
 export const TITLE_SUFFIX = ' | Payslip Insights';
 export const DEFAULT_OG_IMAGE = `${SITE_ORIGIN}/og-default.png`;
 
-export const GUIDES_SEO: GuideSeo[] = [
+const ALL_GUIDES_SEO: GuideSeo[] = [
   {
     path: '/guides/how-to-check-your-payslip',
     title: 'How to Check Your Payslip',
@@ -122,6 +122,28 @@ export const GUIDES_SEO: GuideSeo[] = [
     datePublished: '2025-04-15',
   },
 ];
+
+/**
+ * Kept with the guide metadata so these routes can be enabled intentionally
+ * when their country-specific product work is ready. They are neither routed
+ * to content nor emitted as static SEO pages during the UK/Ireland launch.
+ */
+export const FUTURE_GUIDE_PATHS = [
+  '/guides/germany-payslip-guide',
+  '/guides/france-payslip-guide',
+  '/guides/netherlands-payslip-guide',
+  '/guides/spain-payslip-guide',
+  '/guides/italy-payslip-guide',
+  '/guides/belgium-payslip-guide',
+  '/guides/portugal-payslip-guide',
+  '/guides/us-payslip-guide',
+] as const;
+
+const FUTURE_GUIDE_PATH_SET = new Set<string>(FUTURE_GUIDE_PATHS);
+
+export const GUIDES_SEO: GuideSeo[] = ALL_GUIDES_SEO.filter(
+  ({ path }) => !FUTURE_GUIDE_PATH_SET.has(path),
+);
 
 export function buildArticleJsonLd(g: GuideSeo): Record<string, unknown> {
   const url = SITE_ORIGIN + g.path;

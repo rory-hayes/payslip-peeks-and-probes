@@ -193,7 +193,7 @@ export const analytics = {
 //     return new Promise<void>((resolve) => {
 //       const s = document.createElement('script');
 //       s.defer = true;
-//       s.dataset.domain = 'paycheckinsights.com';
+//       s.dataset.domain = 'payslipinsights.com';
 //       s.src = 'https://plausible.io/js/script.js';
 //       s.onload = () => resolve();
 //       document.head.appendChild(s);

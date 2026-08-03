@@ -73,4 +73,22 @@ describe("CheckoutReturn", () => {
 
     expect(screen.getByText("Something went wrong")).toBeInTheDocument();
   });
+
+  it("shows a pending state instead of inviting a second payment after the confirmation poll window", async () => {
+    const refetch = vi.fn(async () => ({ data: { plan: "free", status: "active", isPremium: false } }));
+    mockUseSubscription.mockReturnValue({
+      subscription: { plan: "free", status: "active", isPremium: false },
+      refetch,
+    });
+    mockUseSearchParams.mockReturnValue([new URLSearchParams("session_id=test_session")]);
+
+    renderPage();
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(15_000);
+    });
+
+    expect(screen.getByText("Your payment is being confirmed")).toBeInTheDocument();
+    expect(screen.queryByText("Something went wrong")).not.toBeInTheDocument();
+  });
 });

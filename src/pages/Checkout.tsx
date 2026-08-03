@@ -22,7 +22,7 @@ export default function Checkout() {
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
               <CheckCircle className="h-5 w-5 text-primary-foreground" />
             </div>
-            <span className="text-xl font-bold text-foreground">PayCheck</span>
+            <span className="text-xl font-bold text-foreground">Payslip Insights</span>
           </Link>
           <Link to="/pricing">
             <Button variant="ghost" size="sm" className="gap-1.5">
@@ -32,11 +32,7 @@ export default function Checkout() {
         </div>
       </nav>
       <div className="container max-w-2xl py-12">
-        <StripeEmbeddedCheckout
-          priceId={priceId}
-          quantity={1}
-          returnUrl={`${window.location.origin}/checkout/return?session_id={CHECKOUT_SESSION_ID}`}
-        />
+        <StripeEmbeddedCheckout priceId={priceId} />
       </div>
     </div>
   );

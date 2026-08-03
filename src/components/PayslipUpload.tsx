@@ -1,7 +1,7 @@
 import { useState, useCallback, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
-import { logError, logInfo } from '@/lib/logger';
+import { logError } from '@/lib/logger';
 import { useAuth } from '@/contexts/AuthContext';
 import { useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
@@ -39,17 +39,65 @@ interface PayslipUploadProps {
   onUploadComplete?: (payslipId: string) => void;
 }
 
+const STORAGE_FILENAME_MAX_LENGTH = 96;
+const SAFE_STORAGE_FILENAME_CHARACTERS = /[^A-Za-z0-9._-]+/g;
+const STORAGE_FILENAME_SEPARATORS = /[\\/]+/g;
+
+/**
+ * Object keys are security boundaries in the private payslips bucket. Keep the
+ * user-controlled filename to one safe path segment so it cannot introduce a
+ * second directory (or a traversal-looking key) beneath the authenticated
+ * user's prefix.
+ */
+// eslint-disable-next-line react-refresh/only-export-components -- Pure storage-key boundary tested in isolation.
+export const sanitizeStorageFilename = (fileName: string): string => {
+  const lastPathSegment = fileName
+    .normalize('NFKC')
+    .replace(STORAGE_FILENAME_SEPARATORS, '/')
+    .split('/')
+    .pop() ?? '';
+
+  const sanitized = lastPathSegment
+    .replace(SAFE_STORAGE_FILENAME_CHARACTERS, '-')
+    .replace(/\.{2,}/g, '.')
+    .replace(/-{2,}/g, '-')
+    .replace(/-+\./g, '.')
+    .replace(/^[._-]+|[._-]+$/g, '')
+    .slice(0, STORAGE_FILENAME_MAX_LENGTH);
+
+  return sanitized || 'payslip';
+};
+
+// eslint-disable-next-line react-refresh/only-export-components -- Pure storage-key boundary tested in isolation.
+export const createPayslipStoragePath = (userId: string, fileName: string): string => {
+  // Supabase Auth user IDs are UUIDs. Enforcing that shape keeps this client
+  // from ever constructing a nested or cross-user storage key.
+  if (!/^[A-Fa-f0-9]{8}-(?:[A-Fa-f0-9]{4}-){3}[A-Fa-f0-9]{12}$/.test(userId)) {
+    throw new Error('Unable to create a secure storage path for this account.');
+  }
+
+  return `${userId}/${crypto.randomUUID()}-${sanitizeStorageFilename(fileName)}`;
+};
+
 const PayslipUpload = ({ onUploadComplete }: PayslipUploadProps) => {
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const { canUpload, uploadsRemaining, isPremium } = useUsage();
+  const {
+    accessError,
+    accessReady,
+    canUpload,
+    uploadsRemaining,
+    isPremium,
+    refetchAccess,
+  } = useUsage();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [state, setState] = useState<UploadState>('idle');
   const [progress, setProgress] = useState(0);
   const [dragOver, setDragOver] = useState(false);
   const [fileName, setFileName] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
+  const [failedPayslipId, setFailedPayslipId] = useState<string | null>(null);
 
   // Review state
   const [reviewPayslipId, setReviewPayslipId] = useState<string | null>(null);
@@ -67,6 +115,8 @@ const PayslipUpload = ({ onUploadComplete }: PayslipUploadProps) => {
     setProgress(0);
     setFileName('');
     setErrorMsg('');
+    setFailedPayslipId(null);
+    if (fileInputRef.current) fileInputRef.current.value = '';
     setReviewPayslipId(null);
     setReviewFields({
       pay_date: '', employer_name: '', gross_pay: '', net_pay: '',
@@ -81,11 +131,130 @@ const PayslipUpload = ({ onUploadComplete }: PayslipUploadProps) => {
     setFieldMeta(prev => ({ ...prev, [key]: { ...prev[key], edited: true } }));
   };
 
+  const invalidatePayslipQueries = useCallback(async () => {
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: ['payslips'] }),
+      queryClient.invalidateQueries({ queryKey: ['anomalies'] }),
+      queryClient.invalidateQueries({ queryKey: ['usage'] }),
+    ]);
+  }, [queryClient]);
+
+  const showProcessingFailure = useCallback((payslipId: string, eventType: string) => {
+    logError(eventType, 'Payslip processing could not be completed', { payslipId });
+    setFailedPayslipId(payslipId);
+    setErrorMsg('We couldn\'t complete the payslip check. Your file is saved in the vault, so you can retry processing or upload a different copy.');
+    setState('error');
+    toast({
+      title: 'Payslip needs another try',
+      description: 'We couldn\'t complete the check. You can retry it now.',
+      variant: 'destructive',
+    });
+  }, [toast]);
+
+  const processPayslip = useCallback(async (payslipId: string): Promise<boolean> => {
+    setFailedPayslipId(null);
+    setErrorMsg('');
+    setProgress(80);
+    setState('processing');
+
+    try {
+      const { data: fnData, error: fnError } = await supabase.functions.invoke('process-payslip', {
+        body: { payslip_id: payslipId },
+      });
+
+      if (fnError) {
+        showProcessingFailure(payslipId, 'processing_failed');
+        return false;
+      }
+
+      const [
+        { data: updatedPayslip, error: payslipFetchError },
+        { data: extraction, error: extractionFetchError },
+      ] = await Promise.all([
+        supabase.from('payslips').select('status, pay_date, pay_period_start, pay_period_end, country').eq('id', payslipId).single(),
+        supabase.from('payslip_extractions').select('*').eq('payslip_id', payslipId).single(),
+      ]);
+
+      if (payslipFetchError || extractionFetchError || !updatedPayslip) {
+        showProcessingFailure(payslipId, 'processing_result_unavailable');
+        return false;
+      }
+
+      if (updatedPayslip.status === 'failed' || extraction?.extraction_status === 'failed') {
+        showProcessingFailure(payslipId, 'processing_result_failed');
+        return false;
+      }
+
+      if (updatedPayslip.status === 'needs_review') {
+        // Populate review form with extracted values
+        const ext = extraction || {} as Record<string, unknown>;
+        const country = (updatedPayslip.country || 'UK') as string;
+        setReviewCountry(country);
+
+        const fields: ReviewFields = {
+          pay_date: updatedPayslip.pay_date || '',
+          employer_name: (fnData?.extraction?.employer_name as string) || '',
+          gross_pay: ext.gross_pay != null ? String(ext.gross_pay) : '',
+          net_pay: ext.net_pay != null ? String(ext.net_pay) : '',
+          tax_amount: ext.tax_amount != null ? String(ext.tax_amount) : '',
+          ni_amount: ext.national_insurance_amount != null ? String(ext.national_insurance_amount) : '',
+          prsi_amount: ext.prsi_amount != null ? String(ext.prsi_amount) : '',
+          usc_amount: ext.usc_amount != null ? String(ext.usc_amount) : '',
+          pension_amount: ext.pension_amount != null ? String(ext.pension_amount) : '',
+          total_deductions: ext.total_deductions != null ? String(ext.total_deductions) : '',
+        };
+        setReviewFields(fields);
+
+        // Track which fields were auto-extracted
+        const meta: Record<string, FieldMeta> = {};
+        for (const [k, v] of Object.entries(fields)) {
+          meta[k] = { extracted: v !== '', edited: false };
+        }
+        setFieldMeta(meta);
+
+        setReviewPayslipId(payslipId);
+        setState('review');
+        return true;
+      }
+
+      if (updatedPayslip.status !== 'completed') {
+        // The function is synchronous: a successful HTTP response without a
+        // terminal record state is not proof that the payslip was processed.
+        showProcessingFailure(payslipId, 'processing_result_not_final');
+        return false;
+      }
+
+      const anomalyCount = fnData?.anomalies_found || 0;
+      toast({
+        title: 'Payslip processed',
+        description: anomalyCount > 0
+          ? `We found ${anomalyCount} item${anomalyCount !== 1 ? 's' : ''} worth reviewing.`
+          : 'No changes were flagged in this check. Review the extracted figures before confirming.',
+      });
+      setProgress(100);
+      setState('success');
+      return true;
+    } catch {
+      showProcessingFailure(payslipId, 'edge_function_failed');
+      return false;
+    } finally {
+      await invalidatePayslipQueries();
+    }
+  }, [invalidatePayslipQueries, showProcessingFailure, toast]);
+
   const uploadFile = useCallback(async (file: File) => {
     if (!user) return;
 
+    if (!accessReady) {
+      setErrorMsg(accessError
+        ? 'We could not verify your upload access. Check your connection and try again.'
+        : 'We are still checking your upload access. Please wait a moment and try again.');
+      setState('error');
+      return;
+    }
+
     if (!canUpload) {
-      setErrorMsg('You\'ve reached your free upload limit this month. Upgrade to Plus for unlimited uploads.');
+      setErrorMsg('You\'ve reached your free automatic-check limit this Dublin calendar month. See Plus options for more checks.');
       setState('error');
       return;
     }
@@ -103,17 +272,27 @@ const PayslipUpload = ({ onUploadComplete }: PayslipUploadProps) => {
     }
 
     setFileName(file.name);
+    setErrorMsg('');
+    setFailedPayslipId(null);
     setState('uploading');
     setProgress(10);
 
-    const filePath = `${user.id}/${Date.now()}_${file.name}`;
+    let filePath: string;
+    try {
+      filePath = createPayslipStoragePath(user.id, file.name);
+    } catch {
+      setErrorMsg('We couldn\'t prepare a secure upload for this account. Please sign out and back in, then try again.');
+      setState('error');
+      return;
+    }
+
     const { error: storageError } = await supabase.storage
       .from('payslips')
       .upload(filePath, file, { contentType: file.type });
 
     if (storageError) {
-      console.error('Storage upload error:', storageError.message);
-      logError('upload_failed', 'Storage upload failed', { error: storageError.message, fileName: file.name });
+      console.error('Storage upload failed');
+      logError('upload_failed', 'Storage upload failed');
       setErrorMsg('Upload failed. Please check your file and try again.');
       setState('error');
       return;
@@ -127,159 +306,108 @@ const PayslipUpload = ({ onUploadComplete }: PayslipUploadProps) => {
       .single();
 
     if (dbError || !payslip) {
-      console.error('Payslip record error:', dbError?.message);
+      console.error('Payslip record could not be created');
+      try {
+        const { error: cleanupError } = await supabase.storage.from('payslips').remove([filePath]);
+        if (cleanupError) {
+          logError('upload_cleanup_failed', 'Could not remove an orphaned payslip upload');
+        }
+      } catch {
+        logError('upload_cleanup_failed', 'Could not remove an orphaned payslip upload');
+      }
       setErrorMsg('Something went wrong saving your payslip. Please try again.');
       setState('error');
       return;
     }
 
-    setProgress(80);
-    setState('processing');
+    // The server creates the extraction record inside its atomic processing
+    // claim, so a browser retry cannot leave duplicate pending records.
+    const processed = await processPayslip(payslip.id);
+    if (processed) onUploadComplete?.(payslip.id);
+  }, [accessError, accessReady, canUpload, onUploadComplete, processPayslip, user]);
 
-    await supabase.from('payslip_extractions').insert({ payslip_id: payslip.id, extraction_status: 'pending' });
-
-    try {
-      const { data: fnData, error: fnError } = await supabase.functions.invoke('process-payslip', {
-        body: { payslip_id: payslip.id },
-      });
-
-      if (fnError) {
-        console.error('Processing error:', fnError);
-        logError('processing_failed', 'Payslip processing failed', { error: String(fnError), payslipId: payslip.id });
-        toast({ title: 'Upload complete', description: 'Processing encountered an issue. You can retry from the vault.' });
-        setProgress(100);
-        setState('success');
-      } else {
-        // Fetch current state
-        const [{ data: updatedPayslip }, { data: extraction }] = await Promise.all([
-          supabase.from('payslips').select('status, pay_date, pay_period_start, pay_period_end, country').eq('id', payslip.id).single(),
-          supabase.from('payslip_extractions').select('*').eq('payslip_id', payslip.id).single(),
-        ]);
-
-        if (updatedPayslip?.status === 'needs_review') {
-          // Populate review form with extracted values
-          const ext = extraction || {} as Record<string, unknown>;
-          const country = (updatedPayslip.country || 'UK') as string;
-          setReviewCountry(country);
-
-          const fields: ReviewFields = {
-            pay_date: updatedPayslip.pay_date || '',
-            employer_name: (fnData?.extraction?.employer_name as string) || '',
-            gross_pay: ext.gross_pay != null ? String(ext.gross_pay) : '',
-            net_pay: ext.net_pay != null ? String(ext.net_pay) : '',
-            tax_amount: ext.tax_amount != null ? String(ext.tax_amount) : '',
-            ni_amount: ext.national_insurance_amount != null ? String(ext.national_insurance_amount) : '',
-            prsi_amount: ext.prsi_amount != null ? String(ext.prsi_amount) : '',
-            usc_amount: ext.usc_amount != null ? String(ext.usc_amount) : '',
-            pension_amount: ext.pension_amount != null ? String(ext.pension_amount) : '',
-            total_deductions: ext.total_deductions != null ? String(ext.total_deductions) : '',
-          };
-          setReviewFields(fields);
-
-          // Track which fields were auto-extracted
-          const meta: Record<string, FieldMeta> = {};
-          for (const [k, v] of Object.entries(fields)) {
-            meta[k] = { extracted: v !== '', edited: false };
-          }
-          setFieldMeta(meta);
-
-          setReviewPayslipId(payslip.id);
-          setState('review');
-        } else {
-          const anomalyCount = fnData?.anomalies_found || 0;
-          toast({
-            title: 'Payslip processed',
-            description: anomalyCount > 0
-              ? `We found ${anomalyCount} item${anomalyCount !== 1 ? 's' : ''} worth reviewing.`
-              : 'Everything looks good — no issues found.',
-          });
-          setProgress(100);
-          setState('success');
-        }
-      }
-    } catch (err) {
-      console.error('Edge function call failed:', err);
-      logError('edge_function_failed', 'Edge function invocation failed', { error: String(err) });
-      toast({ title: 'Upload complete', description: 'Processing will continue in the background.' });
-      setProgress(100);
-      setState('success');
+  const retryProcessing = useCallback(async () => {
+    if (!failedPayslipId) {
+      resetState();
+      return;
     }
 
-    queryClient.invalidateQueries({ queryKey: ['payslips'] });
-    queryClient.invalidateQueries({ queryKey: ['anomalies'] });
-    queryClient.invalidateQueries({ queryKey: ['usage'] });
-    onUploadComplete?.(payslip.id);
-  }, [user, toast, onUploadComplete, queryClient, canUpload]);
+    const processed = await processPayslip(failedPayslipId);
+    if (processed) onUploadComplete?.(failedPayslipId);
+  }, [failedPayslipId, onUploadComplete, processPayslip]);
 
   const handleReviewSave = async () => {
     if (!reviewPayslipId) return;
+    const grossPay = parseReviewAmount(reviewFields.gross_pay);
+    const netPay = parseReviewAmount(reviewFields.net_pay);
     if (!reviewFields.pay_date) {
       toast({ title: 'Pay date required', description: 'Please enter the pay date from your payslip.', variant: 'destructive' });
       return;
     }
-    if (!reviewFields.gross_pay || Number(reviewFields.gross_pay) <= 0) {
+    if (grossPay === null || grossPay <= 0) {
       toast({ title: 'Gross pay required', description: 'Please enter a valid gross pay amount.', variant: 'destructive' });
       return;
     }
-    if (!reviewFields.net_pay || Number(reviewFields.net_pay) <= 0) {
+    if (netPay === null || netPay <= 0) {
       toast({ title: 'Net pay required', description: 'Please enter a valid net pay amount.', variant: 'destructive' });
       return;
     }
 
     setReviewSaving(true);
+    try {
+      const { error: confirmationError } = await supabase.rpc('confirm_payslip_review', {
+        p_payslip_id: reviewPayslipId,
+        p_pay_date: reviewFields.pay_date,
+        p_gross_pay: grossPay,
+        p_net_pay: netPay,
+        p_tax_amount: parseReviewAmount(reviewFields.tax_amount),
+        p_national_insurance_amount: parseReviewAmount(reviewFields.ni_amount),
+        p_prsi_amount: parseReviewAmount(reviewFields.prsi_amount),
+        p_usc_amount: parseReviewAmount(reviewFields.usc_amount),
+        p_pension_amount: parseReviewAmount(reviewFields.pension_amount),
+        p_total_deductions: parseReviewAmount(reviewFields.total_deductions),
+      });
 
-    // Update payslip record
-    const { error: payslipError } = await supabase
-      .from('payslips')
-      .update({
-        pay_date: reviewFields.pay_date,
-        status: 'completed',
-      })
-      .eq('id', reviewPayslipId);
-
-    // Update extraction record
-    const { error: extError } = await supabase
-      .from('payslip_extractions')
-      .update({
-        gross_pay: reviewFields.gross_pay ? Number(reviewFields.gross_pay) : null,
-        net_pay: reviewFields.net_pay ? Number(reviewFields.net_pay) : null,
-        tax_amount: reviewFields.tax_amount ? Number(reviewFields.tax_amount) : null,
-        national_insurance_amount: reviewFields.ni_amount ? Number(reviewFields.ni_amount) : null,
-        prsi_amount: reviewFields.prsi_amount ? Number(reviewFields.prsi_amount) : null,
-        usc_amount: reviewFields.usc_amount ? Number(reviewFields.usc_amount) : null,
-        pension_amount: reviewFields.pension_amount ? Number(reviewFields.pension_amount) : null,
-        total_deductions: reviewFields.total_deductions ? Number(reviewFields.total_deductions) : null,
-      })
-      .eq('payslip_id', reviewPayslipId);
-
-    // Update employer if edited
-    if (reviewFields.employer_name && fieldMeta.employer_name?.edited) {
-      const { data: payslipData } = await supabase
-        .from('payslips')
-        .select('employer_id')
-        .eq('id', reviewPayslipId)
-        .single();
-
-      if (payslipData?.employer_id) {
-        await supabase
-          .from('employers')
-          .update({ name: reviewFields.employer_name })
-          .eq('id', payslipData.employer_id);
+      if (confirmationError) {
+        toast({ title: 'Save failed', description: confirmationError.message, variant: 'destructive' });
+        return;
       }
-    }
 
-    setReviewSaving(false);
+      // Employer names are profile data, not extraction state. Keep that optional
+      // edit separate from the atomic confirmation path.
+      if (reviewFields.employer_name && fieldMeta.employer_name?.edited) {
+        const { data: payslipData } = await supabase
+          .from('payslips')
+          .select('employer_id')
+          .eq('id', reviewPayslipId)
+          .single();
 
-    if (payslipError || extError) {
-      toast({ title: 'Save failed', description: (payslipError || extError)?.message, variant: 'destructive' });
-    } else {
+        if (payslipData?.employer_id) {
+          await supabase
+            .from('employers')
+            .update({ name: reviewFields.employer_name })
+            .eq('id', payslipData.employer_id);
+        }
+      }
+
       toast({ title: 'Payslip confirmed', description: `Saved with pay date ${formatDate(reviewFields.pay_date)}.` });
       queryClient.invalidateQueries({ queryKey: ['payslips'] });
       queryClient.invalidateQueries({ queryKey: ['anomalies'] });
       queryClient.invalidateQueries({ queryKey: ['usage'] });
       setProgress(100);
       setState('success');
+    } catch {
+      toast({ title: 'Save failed', description: 'We could not confirm this payslip. Please try again.', variant: 'destructive' });
+    } finally {
+      setReviewSaving(false);
     }
+  };
+
+  const parseReviewAmount = (value: string): number | null => {
+    const normalized = value.trim().replace(/,/g, '');
+    if (!normalized) return null;
+    const parsed = Number(normalized);
+    return Number.isFinite(parsed) ? parsed : null;
   };
 
   const handleDrop = useCallback((e: React.DragEvent) => {
@@ -327,23 +455,40 @@ const PayslipUpload = ({ onUploadComplete }: PayslipUploadProps) => {
           className="hidden"
         />
 
-        {state === 'idle' && !canUpload && (
+        {state === 'idle' && !accessReady && (
+          <>
+            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10 mb-4">
+              <FileText className="h-7 w-7 text-primary" />
+            </div>
+            <h3 className="text-lg font-semibold text-foreground">
+              {accessError ? 'We couldn’t verify upload access' : 'Checking upload access'}
+            </h3>
+            <p className="mt-1 text-sm text-muted-foreground">
+              {accessError
+                ? 'Check your connection, then try again before uploading a payslip.'
+                : 'We’re confirming your account and monthly allowance before you upload.'}
+            </p>
+            {accessError ? <Button className="mt-4" onClick={() => void refetchAccess()}>Try again</Button> : null}
+          </>
+        )}
+
+        {state === 'idle' && accessReady && !canUpload && (
           <>
             <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10 mb-4">
               <Sparkles className="h-7 w-7 text-primary" />
             </div>
-            <h3 className="text-lg font-semibold text-foreground">Upload limit reached</h3>
+            <h3 className="text-lg font-semibold text-foreground">Automatic-check limit reached</h3>
             <p className="mt-1 text-sm text-muted-foreground">
-              You've used all 3 free uploads this month. Upgrade to Plus for unlimited uploads.
+              You've used all 3 free automatic checks this Dublin calendar month. See Plus options for more checks.
             </p>
             <Link to="/pricing">
               <Button className="mt-4">Upgrade to Plus</Button>
             </Link>
-            <p className="mt-2 text-xs text-muted-foreground">Limits reset at the start of each month</p>
+            <p className="mt-2 text-xs text-muted-foreground">Limits reset at the start of each Dublin calendar month</p>
           </>
         )}
 
-        {state === 'idle' && canUpload && (
+        {state === 'idle' && accessReady && canUpload && (
           <>
             <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10 mb-4">
               <Upload className="h-7 w-7 text-primary" />
@@ -354,7 +499,7 @@ const PayslipUpload = ({ onUploadComplete }: PayslipUploadProps) => {
             <p className="mt-2 text-xs text-muted-foreground">PDF, PNG, JPG up to 10 MB</p>
             {!isPremium && (
               <p className="mt-1 text-xs text-muted-foreground">
-                {uploadsRemaining} upload{uploadsRemaining !== 1 ? 's' : ''} remaining this month
+                {uploadsRemaining} automatic check{uploadsRemaining !== 1 ? 's' : ''} remaining this Dublin calendar month
               </p>
             )}
           </>
@@ -537,7 +682,14 @@ const PayslipUpload = ({ onUploadComplete }: PayslipUploadProps) => {
             </div>
             <h3 className="text-lg font-semibold text-foreground">Upload failed</h3>
             <p className="mt-1 text-sm text-destructive">{errorMsg}</p>
-            <Button variant="outline" className="mt-4" onClick={resetState}>Try again</Button>
+            <div className="mt-4 flex flex-wrap justify-center gap-2">
+              {failedPayslipId ? (
+                <Button onClick={retryProcessing}>Retry processing</Button>
+              ) : null}
+              <Button variant={failedPayslipId ? 'outline' : 'default'} onClick={resetState}>
+                {failedPayslipId ? 'Upload another' : 'Try again'}
+              </Button>
+            </div>
           </>
         )}
       </CardContent>

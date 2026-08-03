@@ -94,7 +94,7 @@ const GuideLayout = ({
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
               <CheckCircle className="h-5 w-5 text-primary-foreground" />
             </div>
-            <span className="text-xl font-bold text-foreground">PayCheck</span>
+            <span className="text-xl font-bold text-foreground">Payslip Insights</span>
           </Link>
           <div className="hidden items-center gap-6 md:flex">
             <Link to="/#how-it-works" className="text-sm text-muted-foreground hover:text-foreground transition-colors">How it works</Link>

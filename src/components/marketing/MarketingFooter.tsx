@@ -9,7 +9,7 @@ const MarketingFooter = () => (
           <div className="flex h-7 w-7 items-center justify-center rounded-md bg-primary">
             <CheckCircle className="h-4 w-4 text-primary-foreground" />
           </div>
-          <span className="font-semibold text-foreground">PayCheck</span>
+          <span className="font-semibold text-foreground">Payslip Insights</span>
         </div>
         <div className="flex flex-wrap justify-center gap-x-6 gap-y-2 text-sm text-muted-foreground">
           <Link to="/calculator" className="hover:text-foreground transition-colors">Take-home calculator</Link>
@@ -18,9 +18,9 @@ const MarketingFooter = () => (
           <Link to="/pricing" className="hover:text-foreground transition-colors">Pricing</Link>
           <Link to="/privacy" className="hover:text-foreground transition-colors">Privacy</Link>
           <Link to="/terms" className="hover:text-foreground transition-colors">Terms</Link>
-          <a href="mailto:support@paycheckinsights.com" className="hover:text-foreground transition-colors">Contact</a>
+          <a href="mailto:support@payslipinsights.com" className="hover:text-foreground transition-colors">Contact</a>
         </div>
-        <p className="text-xs text-muted-foreground">© 2026 PayCheck. Not tax or legal advice.</p>
+        <p className="text-xs text-muted-foreground">© 2026 Payslip Insights. Not tax or legal advice.</p>
       </div>
     </div>
   </footer>

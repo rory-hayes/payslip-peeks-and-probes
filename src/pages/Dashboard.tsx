@@ -14,6 +14,7 @@ import UpgradePrompt from '@/components/UpgradePrompt';
 import { useCurrency, useProfile } from '@/hooks/use-profile';
 import { formatDate } from '@/lib/date-utils';
 import { generatePaySummaryPdf } from '@/lib/generate-pay-summary-pdf';
+import type { DeductionOptions } from '@/lib/tax-calculator';
 import { useDemo } from '@/contexts/DemoContext';
 import { DEMO_PAYSLIPS, DEMO_ANOMALIES, DEMO_TRENDS } from '@/lib/demo-data';
 import type { Payslip, AnomalyResult, PayTrend } from '@/lib/types';
@@ -55,18 +56,20 @@ const Dashboard = () => {
 
   const handleExportPdf = () => {
     if (!allPayslips || allPayslips.length === 0) return;
+    const studentLoanPlan = profile?.student_loan_plan;
+    const deductionOpts: DeductionOptions = {
+      pensionPercent: profile?.has_pension ? (profile.pension_percent ?? 5) : 0,
+      hasStudentLoan: profile?.has_student_loan,
+      studentLoanPlan: studentLoanPlan === 'plan1' || studentLoanPlan === 'plan2' || studentLoanPlan === 'plan4' || studentLoanPlan === 'plan5' || studentLoanPlan === 'postgrad' ? studentLoanPlan : 'plan2',
+      subRegion: profile?.sub_region,
+      filingStatus: profile?.filing_status,
+    };
     generatePaySummaryPdf({
       payslips: allPayslips,
       currency,
       country: profile?.country ?? null,
       annualSalary: profile?.annual_salary,
-      deductionOpts: {
-        pensionPercent: profile?.has_pension ? (profile.pension_percent ?? 5) : 0,
-        hasStudentLoan: profile?.has_student_loan,
-        studentLoanPlan: (profile?.student_loan_plan as any) ?? 'plan2',
-        subRegion: profile?.sub_region,
-        filingStatus: profile?.filing_status,
-      },
+      deductionOpts,
       firstName: profile?.first_name,
     });
   };
@@ -97,7 +100,7 @@ const Dashboard = () => {
           <div>
             <h1 className="text-2xl font-bold text-foreground md:text-3xl">{greeting} {isDemo ? '🔍' : '👋'}</h1>
             <p className="mt-1 text-muted-foreground">
-              {isDemo ? 'Explore how PayCheck works with sample data.' : isEmpty ? 'Let\'s get started with your first payslip.' : 'Here\'s your pay overview.'}
+              {isDemo ? 'Explore how Payslip Insights works with sample data.' : isEmpty ? 'Let\'s get started with your first payslip.' : 'Here\'s your pay overview.'}
             </p>
           </div>
           <div className="flex gap-2 flex-wrap">
@@ -136,7 +139,7 @@ const Dashboard = () => {
               </div>
               <h3 className="text-xl font-bold text-foreground">Your pay dashboard</h3>
               <p className="mt-3 max-w-md text-muted-foreground leading-relaxed">
-                Upload a payslip and PayCheck will extract the key figures, compare them against your profile, and flag anything that looks unusual. Your data stays private and secure.
+                Upload a payslip and Payslip Insights will extract the key figures, compare them against your profile, and flag changes worth checking. We use the document to provide these features; read the <Link to="/privacy" className="text-primary hover:underline">Privacy Policy</Link> for current handling details.
               </p>
               <div className="mt-6">
                 <Link to="/vault">
@@ -146,11 +149,11 @@ const Dashboard = () => {
               <div className="mt-8 grid grid-cols-3 gap-6 text-center">
                 <div>
                   <Shield className="h-5 w-5 mx-auto text-muted-foreground/60" />
-                  <p className="mt-2 text-xs text-muted-foreground">Encrypted & private</p>
+                  <p className="mt-2 text-xs text-muted-foreground">Review before confirming</p>
                 </div>
                 <div>
                   <AlertTriangle className="h-5 w-5 mx-auto text-muted-foreground/60" />
-                  <p className="mt-2 text-xs text-muted-foreground">Anomaly detection</p>
+                  <p className="mt-2 text-xs text-muted-foreground">Changes worth checking</p>
                 </div>
                 <div>
                   <TrendingUp className="h-5 w-5 mx-auto text-muted-foreground/60" />
@@ -204,7 +207,7 @@ const Dashboard = () => {
                       Review now <ArrowRight className="h-3 w-3" />
                     </Link>
                   ) : (
-                    <p className="mt-1 text-xs text-success">Everything looks normal</p>
+                    <p className="mt-1 text-xs text-success">No changes currently flagged</p>
                   )}
                 </CardContent>
               </Card>
@@ -215,7 +218,7 @@ const Dashboard = () => {
                     <FileText className="h-4 w-4 text-muted-foreground" />
                   </div>
                   <div className="mt-2 text-2xl font-bold text-foreground">{allPayslips.length}</div>
-                  <div className="mt-1 text-xs text-muted-foreground">Stored securely</div>
+                  <div className="mt-1 text-xs text-muted-foreground">Saved to your account</div>
                 </CardContent>
               </Card>
             </div>
@@ -235,7 +238,7 @@ const Dashboard = () => {
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <div className="flex justify-between text-xs text-muted-foreground mb-1">
-                        <span>Uploads</span>
+                        <span>Automatic checks</span>
                         <span>{limits.uploads_per_month - uploadsRemaining}/{limits.uploads_per_month}</span>
                       </div>
                       <div className="h-2 rounded-full bg-muted overflow-hidden">
@@ -265,7 +268,7 @@ const Dashboard = () => {
             {!isPremium && (uploadsRemaining === 0 || draftsRemaining === 0) && (
               <UpgradePrompt
                 title="You've hit your free limit"
-                description="Upgrade to Plus for unlimited uploads, drafts, and full anomaly detection."
+                description="See Plus options for automatic checks and payroll-message drafts beyond the Free plan allowance."
               />
             )}
 
@@ -366,7 +369,7 @@ const Dashboard = () => {
         )}
 
         <p className="text-xs text-muted-foreground text-center pb-4">
-          PayCheck provides guidance and issue spotting — not formal tax, legal, or payroll advice. Always confirm findings with your employer or a professional.
+          Payslip Insights provides guidance and issue spotting — not formal tax, legal, or payroll advice. Always confirm findings with your employer or a professional.
         </p>
       </div>
     </AppLayout>

@@ -65,7 +65,7 @@ const AppLayout = ({ children }: { children: ReactNode }) => {
             <div className="flex h-7 w-7 items-center justify-center rounded-md bg-primary">
               <CheckCircle className="h-4 w-4 text-primary-foreground" />
             </div>
-            <span className="font-bold text-foreground">PayCheck</span>
+            <span className="font-bold text-foreground">Payslip Insights</span>
           </Link>
         </div>
         <nav className="flex-1 p-4">
@@ -98,7 +98,7 @@ const AppLayout = ({ children }: { children: ReactNode }) => {
             <div className="flex h-7 w-7 items-center justify-center rounded-md bg-primary">
               <CheckCircle className="h-4 w-4 text-primary-foreground" />
             </div>
-            <span className="font-bold text-foreground">PayCheck</span>
+            <span className="font-bold text-foreground">Payslip Insights</span>
           </Link>
           <Sheet open={open} onOpenChange={setOpen}>
             <SheetTrigger asChild>

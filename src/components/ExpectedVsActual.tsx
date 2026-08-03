@@ -1,6 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useProfile, useCurrency } from '@/hooks/use-profile';
 import { calculateExpectedMonthly } from '@/lib/tax-calculator';
+import type { DeductionOptions } from '@/lib/tax-calculator';
 import { getCountryConfig } from '@/lib/countries';
 import type { Payslip } from '@/lib/types';
 import { ArrowDown, ArrowUp, Minus, Info } from 'lucide-react';
@@ -16,10 +17,11 @@ const ExpectedVsActual = ({ latestPayslip }: Props) => {
 
   if (!profile?.annual_salary) return null;
 
-  const opts = {
+  const studentLoanPlan = profile.student_loan_plan;
+  const opts: DeductionOptions = {
     pensionPercent: profile.has_pension ? (profile.pension_percent ?? 5) : 0,
     hasStudentLoan: profile.has_student_loan,
-    studentLoanPlan: (profile.student_loan_plan as any) ?? 'plan2',
+    studentLoanPlan: studentLoanPlan === 'plan1' || studentLoanPlan === 'plan2' || studentLoanPlan === 'plan4' || studentLoanPlan === 'plan5' || studentLoanPlan === 'postgrad' ? studentLoanPlan : 'plan2',
     subRegion: profile.sub_region,
     filingStatus: profile.filing_status,
   };
@@ -29,8 +31,8 @@ const ExpectedVsActual = ({ latestPayslip }: Props) => {
   // Build rows from the country's deductionLines, dropping zero-expected optional rows.
   const deductionRows = config.deductionLines
     .map((line) => {
-      const expectedAmount = (expected[line.expectedKey] as number) ?? 0;
-      const actualAmount = ((latestPayslip as any)[line.fieldKey] as number) ?? 0;
+      const expectedAmount = expected[line.expectedKey] ?? 0;
+      const actualAmount = latestPayslip[line.fieldKey] ?? 0;
       return { label: line.label, expected: expectedAmount, actual: actualAmount, isOptional: line.fieldKey === 'pension_amount' || line.fieldKey === 'student_loan_amount' || line.fieldKey === 'church_tax_amount' };
     })
     .filter((row) => !row.isOptional || row.expected > 0 || row.actual > 0);

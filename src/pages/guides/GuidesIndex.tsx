@@ -15,14 +15,6 @@ const coreGuides = [
 const countryGuides = [
   { title: 'UK Payslip Guide', desc: 'Tax codes, NI, pension and the parts of a UK payslip every employee should understand.', to: '/guides/uk-payslip-guide', icon: Flag },
   { title: 'Ireland Payslip Guide', desc: 'PAYE, PRSI and USC explained in plain English for Ireland-based employees.', to: '/guides/ireland-payslip-guide', icon: Globe },
-  { title: 'Germany Payslip Guide', desc: 'Lohnsteuer, Sozialversicherung and Soli explained in plain English for Germany-based employees.', to: '/guides/germany-payslip-guide', icon: Globe },
-  { title: 'France Payslip Guide', desc: 'Prélèvement à la source, cotisations sociales and AGIRC-ARRCO explained for France-based employees.', to: '/guides/france-payslip-guide', icon: Globe },
-  { title: 'Netherlands Payslip Guide', desc: 'Loonheffing, heffingskorting and vakantiegeld explained for Netherlands-based employees.', to: '/guides/netherlands-payslip-guide', icon: Globe },
-  { title: 'Spain Payslip Guide', desc: 'IRPF, Seguridad Social and bases de cotización explained for Spain-based employees.', to: '/guides/spain-payslip-guide', icon: Globe },
-  { title: 'Italy Payslip Guide', desc: 'IRPEF, INPS, addizionali and TFR explained for Italy-based employees.', to: '/guides/italy-payslip-guide', icon: Globe },
-  { title: 'Belgium Payslip Guide', desc: 'Précompte professionnel, ONSS / RSZ and pécule de vacances explained for Belgium-based employees.', to: '/guides/belgium-payslip-guide', icon: Globe },
-  { title: 'Portugal Payslip Guide', desc: 'IRS, Segurança Social and subsídios explained for Portugal-based employees.', to: '/guides/portugal-payslip-guide', icon: Globe },
-  { title: 'US Payslip Guide', desc: 'Federal Withholding, FICA (OASDI + Medicare), state tax and pre-tax 401(k)/HSA/FSA explained for US employees.', to: '/guides/us-payslip-guide', icon: Globe },
 ];
 
 const GuidesIndex = () => {
@@ -42,7 +34,7 @@ const GuidesIndex = () => {
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
               <CheckCircle className="h-5 w-5 text-primary-foreground" />
             </div>
-            <span className="text-xl font-bold text-foreground">PayCheck</span>
+            <span className="text-xl font-bold text-foreground">Payslip Insights</span>
           </Link>
           <div className="hidden items-center gap-6 md:flex">
             <Link to="/#how-it-works" className="text-sm text-muted-foreground hover:text-foreground transition-colors">How it works</Link>
