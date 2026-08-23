@@ -27,11 +27,13 @@ npx expo config --type public
 npx expo export --platform web
 ```
 
-The current Expo/React Native dependency train still reports four high
-severity `npm audit --omit=dev` findings in the Metro/image-size build chain
-pulled through React Native 0.86.2. The safe audit fix updated the compatible
-Expo packages, but the remaining advisories require an upstream Expo/React
-Native train update rather than an unsafe override. Treat this as a native
+The Expo SDK 57 packages are aligned to the current compatible patch train
+(`expo` 57.0.15, `@expo/metro-runtime` 57.0.12, `expo-file-system` 57.0.5,
+and `expo-image-picker` 57.0.12), but `npm audit --omit=dev` still reports four
+high-severity findings in the Metro/image-size build chain pulled through React
+Native 0.86.2. `npm audit fix --dry-run` has no safe package change available;
+the remaining advisories require an upstream Expo/React Native train update or
+vendor remediation rather than an unsafe override. Treat this as a native
 release gate: the companion is locally typechecked, tested, and web-exported,
 but it is not a production device binary until the dependency chain is
 resolved and a signed device build is verified.
