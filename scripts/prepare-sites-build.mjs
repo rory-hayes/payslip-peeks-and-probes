@@ -11,6 +11,7 @@ const hosting = path.join(root, ".openai", "hosting.json");
 for (const file of [
   path.join(client, "index.html"),
   path.join(client, "release.json"),
+  path.join(client, "_routes.json"),
   worker,
   hosting,
 ]) {
