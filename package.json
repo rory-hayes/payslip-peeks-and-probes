@@ -5,18 +5,19 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build": "vite build && node scripts/prepare-sites-build.mjs",
     "build:dev": "vite build --mode development",
     "lint": "eslint .",
-    "preview": "vite preview",
+    "preview": "vite preview --outDir dist/client",
     "check:edge-functions": "node scripts/check-edge-functions.mjs",
     "release:web:preflight": "node scripts/release-web-preflight.mjs",
-    "release:web:build:paid": "npm run release:web:preflight -- --paid && vite build",
+    "release:web:build:paid": "npm run release:web:preflight -- --paid && npm run build",
     "release:web:verify-public": "node scripts/verify-public-web-release.mjs",
     "test": "vitest run",
+    "test:sites": "node --test scripts/sites-worker.test.mjs",
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit",
-    "verify": "npm run typecheck && npm run lint && npm run check:edge-functions && npm test && npm run build"
+    "verify": "npm run typecheck && npm run lint && npm run check:edge-functions && npm run test:sites && npm test && npm run build"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",

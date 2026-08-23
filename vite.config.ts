@@ -21,6 +21,11 @@ export default defineConfig(({ mode }) => {
   }
 
   return {
+    build: {
+      // Sites serves the built browser bundle through the ASSETS binding and
+      // the worker entrypoint created by scripts/prepare-sites-build.mjs.
+      outDir: "dist/client",
+    },
     server: {
       host: "::",
       port: 8080,

@@ -76,7 +76,13 @@ Configure the selected production host to build the paid web release with:
 npm run release:web:build:paid
 ```
 
-That command runs the paid launch gate before Vite creates `dist`. Do not use the plain `npm run build` command as the production-host build command: it remains available for local and CI verification, where no real provider configuration is intentionally present.
+That command runs the paid launch gate before Vite creates the browser bundle. The plain `npm run build` command also prepares the Cloudflare/Sites worker archive for local and CI verification, but it does not deploy or prove that the external backend, provider, billing, or legal gates are complete. `npm run preview` serves the generated browser bundle from `dist/client`.
+
+The checked-in `.openai/hosting.json`, `worker/index.js`, and
+`scripts/prepare-sites-build.mjs` make the exact web artifact deployable to the
+owner-controlled Sites project without changing the app's Supabase boundary.
+The worker adds the SPA fallback and production response headers because Sites
+serves the Vite bundle through its `ASSETS` binding.
 
 The preflight deliberately never prints environment values. It checks that the browser configuration is production-shaped, no release environment file is tracked, the artifact is clean, and the public legal pages no longer contain launch placeholders. It cannot replace the staged Storage rollout, cleanup scheduling, real-provider, payment, or customer-flow checks listed above.
 
