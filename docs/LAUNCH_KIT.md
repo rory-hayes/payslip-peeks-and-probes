@@ -112,6 +112,10 @@ parameters to analytics.
 
 - [ ] Legal entity, contact, governing law, provider, retention, and cookie
   disclosures are final and reviewed by the owner.
+- [ ] From the account that owns the intended Supabase project, set the
+  database password only in the local shell and run
+  `npm run deploy:supabase -- --confirm` from a clean worktree; do not use
+  `--functions-only` for a release.
 - [ ] Supabase migrations and Edge Functions are deployed from the same clean
   revision.
 - [ ] `npm run verify:supabase-deployment` passes against the intended project;
