@@ -114,6 +114,9 @@ parameters to analytics.
   disclosures are final and reviewed by the owner.
 - [ ] Supabase migrations and Edge Functions are deployed from the same clean
   revision.
+- [ ] `npm run verify:supabase-deployment` passes against the intended project;
+  this is a non-mutating route-existence check, not a substitute for the
+  authenticated backend acceptance tests below.
 - [ ] Two-account upload, review, original-link, deletion, and isolation tests
   pass in the target project.
 - [ ] Provider DPA/retention and cleanup scheduling are observed in the target
