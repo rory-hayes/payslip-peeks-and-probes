@@ -23,17 +23,36 @@ function withSecurityHeaders(response, pathname) {
   });
 }
 
+function internalAssetRequest(request, pathname) {
+  const url = new URL(request.url);
+  url.pathname = pathname;
+  return new Request(url, request);
+}
+
+function routeDocumentPath(pathname) {
+  const normalizedPath = pathname === "/" ? "" : pathname.replace(/\/+$/, "");
+  return `/__pages${normalizedPath}/`;
+}
+
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
-    let response = await env.ASSETS.fetch(request);
     const acceptsHtml = request.headers.get("accept")?.includes("text/html");
+    const canServeDocument = acceptsHtml && ["GET", "HEAD"].includes(request.method);
+    let response;
 
-    if (response.status === 404 && acceptsHtml && ["GET", "HEAD"].includes(request.method)) {
-      const indexUrl = new URL(request.url);
-      indexUrl.pathname = "/index.html";
-      indexUrl.search = "";
-      response = await env.ASSETS.fetch(new Request(indexUrl, request));
+    if (url.pathname === "/release.json" && ["GET", "HEAD"].includes(request.method)) {
+      response = await env.ASSETS.fetch(internalAssetRequest(request, "/__pages/release.json"));
+    } else {
+      response = await env.ASSETS.fetch(request);
+    }
+
+    if (response.status === 404 && canServeDocument) {
+      response = await env.ASSETS.fetch(internalAssetRequest(request, routeDocumentPath(url.pathname)));
+    }
+
+    if (response.status === 404 && canServeDocument && url.pathname !== "/") {
+      response = await env.ASSETS.fetch(internalAssetRequest(request, "/__pages/index.html"));
     }
 
     return withSecurityHeaders(response, url.pathname);

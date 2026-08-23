@@ -8,8 +8,9 @@ function assetResponse(requests) {
       fetch: async (request) => {
         const url = new URL(request.url);
         requests.push(url.pathname + url.search);
-        if (url.pathname === "/index.html") return new Response("app", { status: 200 });
-        if (url.pathname === "/release.json") return new Response("{}", { status: 200 });
+        if (url.pathname === "/__pages/dashboard/") return new Response("dashboard", { status: 200 });
+        if (url.pathname === "/__pages/") return new Response("app", { status: 200 });
+        if (url.pathname === "/__pages/release.json") return new Response("{}", { status: 200 });
         return new Response("missing", { status: 404 });
       },
     },
@@ -26,8 +27,8 @@ test("falls back to the app shell for an unknown browser route", async () => {
   );
 
   assert.equal(response.status, 200);
-  assert.equal(await response.text(), "app");
-  assert.deepEqual(requests, ["/dashboard?source=demo", "/index.html"]);
+  assert.equal(await response.text(), "dashboard");
+  assert.deepEqual(requests, ["/dashboard?source=demo", "/__pages/dashboard/?source=demo"]);
   assert.equal(response.headers.get("X-Frame-Options"), "DENY");
   assert.equal(response.headers.get("Content-Security-Policy"), "frame-ancestors 'none';");
 });
@@ -51,6 +52,7 @@ test("marks release provenance as non-cacheable", async () => {
   );
 
   assert.equal(response.status, 200);
+  assert.equal(await response.text(), "{}");
   assert.equal(response.headers.get("Cache-Control"), "no-store");
   assert.equal(response.headers.get("X-Content-Type-Options"), "nosniff");
 });

@@ -1,4 +1,12 @@
-import { existsSync, mkdirSync, readdirSync, rmSync, copyFileSync, writeFileSync } from "node:fs";
+import {
+  copyFileSync,
+  existsSync,
+  mkdirSync,
+  readdirSync,
+  renameSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -8,6 +16,7 @@ const client = path.join(dist, "client");
 const worker = path.join(root, "worker", "index.js");
 const hosting = path.join(root, ".openai", "hosting.json");
 const workerConfig = path.join(dist, "wrangler.jsonc");
+const pageAssets = path.join(client, "__pages");
 
 for (const file of [
   path.join(client, "index.html"),
@@ -18,6 +27,31 @@ for (const file of [
 ]) {
   if (!existsSync(file)) throw new Error(`Missing Sites build input: ${file}`);
 }
+
+function collectRouteIndexFiles(directory) {
+  const files = [];
+  for (const entry of readdirSync(directory, { withFileTypes: true })) {
+    const entryPath = path.join(directory, entry.name);
+    if (entry.isDirectory()) {
+      files.push(...collectRouteIndexFiles(entryPath));
+    } else if (entry.isFile() && entry.name === "index.html") {
+      files.push(entryPath);
+    }
+  }
+  return files;
+}
+
+// Sites currently serves matching client assets before invoking the Worker.
+// Keep prerendered route documents under a non-public namespace so the Worker
+// can add response headers and still return route-specific SEO metadata.
+rmSync(pageAssets, { force: true, recursive: true });
+for (const source of collectRouteIndexFiles(client)) {
+  const relative = path.relative(client, source);
+  const target = path.join(pageAssets, relative);
+  mkdirSync(path.dirname(target), { recursive: true });
+  renameSync(source, target);
+}
+renameSync(path.join(client, "release.json"), path.join(pageAssets, "release.json"));
 
 // Keep the archive deterministic and prevent a prior flat Vite build from
 // being packaged alongside the current client bundle.
