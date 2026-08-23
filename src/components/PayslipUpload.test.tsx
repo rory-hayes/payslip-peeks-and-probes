@@ -1,31 +1,30 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 
-vi.mock('@/integrations/supabase/client', () => ({ supabase: {} }));
-
-import { createPayslipStoragePath, sanitizeStorageFilename } from './PayslipUpload';
+import { isOwnedPayslipObjectPath, parseIssuedPayslipUpload, sanitizePayslipDisplayFileName } from '@/lib/payslip-upload';
 
 describe('payslip storage paths', () => {
-  afterEach(() => {
-    vi.restoreAllMocks();
-  });
-
   it('reduces a user-controlled filename to one safe storage segment', () => {
-    expect(sanitizeStorageFilename('../../Payroll\\April payslip (final).pdf'))
+    expect(sanitizePayslipDisplayFileName('../../Payroll\\April payslip (final).pdf'))
       .toBe('April-payslip-final.pdf');
-    expect(sanitizeStorageFilename('..\\..\\..')).toBe('payslip');
+    expect(sanitizePayslipDisplayFileName('..\\..\\..')).toBe('payslip');
   });
 
-  it('keeps each upload within the authenticated user prefix', () => {
-    vi.spyOn(globalThis.crypto, 'randomUUID').mockReturnValue('123e4567-e89b-12d3-a456-426614174000');
+  it('only accepts a server-issued single object segment beneath the signed-in user prefix', () => {
+    const userId = '00000000-0000-4000-8000-000000000001';
 
-    expect(createPayslipStoragePath(
-      '00000000-0000-4000-8000-000000000001',
-      '../another-user/April payslip.pdf',
-    )).toBe('00000000-0000-4000-8000-000000000001/123e4567-e89b-12d3-a456-426614174000-April-payslip.pdf');
+    expect(isOwnedPayslipObjectPath(userId, `${userId}/safe-payslip.bin`)).toBe(true);
+    expect(isOwnedPayslipObjectPath(userId, `${userId}/nested/safe-payslip.bin`)).toBe(false);
+    expect(isOwnedPayslipObjectPath(userId, `another-user/safe-payslip.bin`)).toBe(false);
   });
 
-  it('refuses a user prefix that could create a nested storage path', () => {
-    expect(() => createPayslipStoragePath('../another-user', 'payslip.pdf'))
-      .toThrow('Unable to create a secure storage path');
+  it('rejects a malformed signed-upload response before bytes are sent', () => {
+    const userId = '00000000-0000-4000-8000-000000000001';
+    expect(parseIssuedPayslipUpload({
+      sessionId: '00000000-0000-4000-8000-000000000002',
+      path: 'another-user/not-owned.bin',
+      token: 'a-valid-temporary-token',
+      contentType: 'application/pdf',
+      expiresAt: '2026-08-04T12:00:00.000Z',
+    }, userId)).toBeNull();
   });
 });

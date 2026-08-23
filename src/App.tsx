@@ -1,17 +1,11 @@
 import { lazy, Suspense } from "react";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Route, Routes } from "react-router-dom";
-import { Toaster as Sonner } from "@/components/ui/sonner";
-import { Toaster } from "@/components/ui/toaster";
-import { TooltipProvider } from "@/components/ui/tooltip";
-import { AuthProvider } from "@/contexts/AuthContext";
+import { BrowserRouter, Route, Routes } from "react-router";
 import { DemoProvider } from "@/contexts/DemoContext";
 import DemoExitOnArrival from "@/components/DemoExitOnArrival";
-import ProtectedRoute from "@/components/ProtectedRoute";
+import ScrollToTop from "@/components/ScrollToTop";
 import CookieConsent from "@/components/CookieConsent";
 import { initAnalytics } from "@/lib/analytics";
-
-const queryClient = new QueryClient();
+import AppErrorBoundary from "@/components/AppErrorBoundary";
 
 const Landing = lazy(() => import("./pages/Landing"));
 const SignIn = lazy(() => import("./pages/SignIn"));
@@ -42,6 +36,12 @@ const UkPayslipGuide = lazy(() => import("./pages/guides/UkPayslipGuide"));
 const IrelandPayslipGuide = lazy(() => import("./pages/guides/IrelandPayslipGuide"));
 const CalculatorIndex = lazy(() => import("./pages/calculator/CalculatorIndex"));
 const CountryCalculator = lazy(() => import("./pages/calculator/CountryCalculator"));
+// Keep account providers (and therefore the Supabase SDK, React Query and
+// authenticated UI) out of the marketing entry path. React Router only
+// renders these layouts for account routes, so a first visit to `/` can paint
+// before the account runtime is requested.
+const AccountRouteLayout = lazy(() => import("./components/AccountRouteLayout"));
+const ProtectedRouteLayout = lazy(() => import("./components/ProtectedRouteLayout"));
 
 const RouteLoadingFallback = () => (
   <main
@@ -59,33 +59,14 @@ const RouteLoadingFallback = () => (
 initAnalytics();
 
 const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter>
-        <DemoProvider>
+  <AppErrorBoundary>
+    <BrowserRouter>
+      <DemoProvider>
         <DemoExitOnArrival />
-        <AuthProvider>
-          <Suspense fallback={<RouteLoadingFallback />}>
-            <Routes>
+        <ScrollToTop />
+        <Suspense fallback={<RouteLoadingFallback />}>
+          <Routes>
               <Route path="/" element={<Landing />} />
-              <Route path="/sign-in" element={<SignIn />} />
-              <Route path="/sign-up" element={<SignUp />} />
-              <Route path="/forgot-password" element={<ForgotPassword />} />
-              <Route path="/reset-password" element={<ResetPassword />} />
-              <Route path="/onboarding" element={<ProtectedRoute><Onboarding /></ProtectedRoute>} />
-              <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-              <Route path="/plan" element={<ProtectedRoute><Plan /></ProtectedRoute>} />
-              <Route path="/vault" element={<ProtectedRoute><PayslipVault /></ProtectedRoute>} />
-              <Route path="/payslip/:id" element={<ProtectedRoute><PayslipDetail /></ProtectedRoute>} />
-              <Route path="/compare" element={<ProtectedRoute><ComparePayslips /></ProtectedRoute>} />
-              <Route path="/anomalies" element={<ProtectedRoute><Anomalies /></ProtectedRoute>} />
-              <Route path="/draft/:id" element={<ProtectedRoute><DraftQuery /></ProtectedRoute>} />
-              <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
-              <Route path="/pricing" element={<Pricing />} />
-              <Route path="/checkout" element={<ProtectedRoute><Checkout /></ProtectedRoute>} />
-              <Route path="/checkout/return" element={<ProtectedRoute><CheckoutReturn /></ProtectedRoute>} />
               <Route path="/privacy" element={<Privacy />} />
               <Route path="/terms" element={<Terms />} />
               <Route path="/guides" element={<GuidesIndex />} />
@@ -97,15 +78,33 @@ const App = () => (
               <Route path="/guides/ireland-payslip-guide" element={<IrelandPayslipGuide />} />
               <Route path="/calculator" element={<CalculatorIndex />} />
               <Route path="/calculator/:country" element={<CountryCalculator />} />
+              <Route element={<AccountRouteLayout />}>
+                <Route path="/sign-in" element={<SignIn />} />
+                <Route path="/sign-up" element={<SignUp />} />
+                <Route path="/forgot-password" element={<ForgotPassword />} />
+                <Route path="/reset-password" element={<ResetPassword />} />
+                <Route path="/pricing" element={<Pricing />} />
+                <Route element={<ProtectedRouteLayout />}>
+                  <Route path="/onboarding" element={<Onboarding />} />
+                  <Route path="/dashboard" element={<Dashboard />} />
+                  <Route path="/plan" element={<Plan />} />
+                  <Route path="/vault" element={<PayslipVault />} />
+                  <Route path="/payslip/:id" element={<PayslipDetail />} />
+                  <Route path="/compare" element={<ComparePayslips />} />
+                  <Route path="/anomalies" element={<Anomalies />} />
+                  <Route path="/draft/:id" element={<DraftQuery />} />
+                  <Route path="/settings" element={<Settings />} />
+                  <Route path="/checkout" element={<Checkout />} />
+                  <Route path="/checkout/return" element={<CheckoutReturn />} />
+                </Route>
+              </Route>
               <Route path="*" element={<NotFound />} />
-            </Routes>
-          </Suspense>
-          <CookieConsent />
-        </AuthProvider>
-        </DemoProvider>
-      </BrowserRouter>
-    </TooltipProvider>
-  </QueryClientProvider>
+          </Routes>
+        </Suspense>
+        <CookieConsent />
+      </DemoProvider>
+    </BrowserRouter>
+  </AppErrorBoundary>
 );
 
 export default App;

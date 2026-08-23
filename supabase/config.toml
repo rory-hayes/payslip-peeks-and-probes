@@ -3,8 +3,11 @@ project_id = "shvivlhawhczbljzhvmr"
 [functions.create-checkout]
 verify_jwt = false
 
-[functions.get-stripe-price]
+[functions.verify-checkout-return]
 verify_jwt = false
+
+[functions.get-stripe-price]
+verify_jwt = true
 
 [functions.payments-webhook]
 verify_jwt = false
@@ -19,4 +22,19 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.create-issue-draft]
+verify_jwt = false
+
+[functions.start-payslip-upload]
+verify_jwt = false
+
+[functions.finish-payslip-upload]
+verify_jwt = false
+
+[functions.get-payslip-original-url]
+verify_jwt = false
+
+[functions.delete-failed-payslip]
+verify_jwt = false
+
+[functions.cleanup-expired-payslip-uploads]
 verify_jwt = false

@@ -1,12 +1,17 @@
 import { useState, type ComponentProps } from 'react';
 import { Alert, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Brand, HeroIllustration, PrimaryButton } from '../components/chrome';
+import type { AccountDeletionResult } from '../lib/delete-account';
 import { LegalLinks } from '../components/legal-links';
 import { EMAIL_CONFIRMATION_REDIRECT_URL, PASSWORD_RESET_REDIRECT_URL } from '../lib/deep-links';
 import { hasSupabaseConfig, supabase } from '../lib/supabase';
 import { colors, radius, spacing } from '../theme';
 
-export function AuthScreen() {
+export function AuthScreen({
+  accountDeletionNotice = null,
+}: {
+  accountDeletionNotice?: AccountDeletionResult | null;
+}) {
   const [mode, setMode] = useState<'sign-in' | 'sign-up'>('sign-in');
   const [firstName, setFirstName] = useState('');
   const [email, setEmail] = useState('');
@@ -107,6 +112,16 @@ export function AuthScreen() {
         </View>
 
         <View style={styles.form}>
+          {accountDeletionNotice ? (
+            <View accessibilityRole="alert" style={styles.accountDeletionNotice}>
+              <Text style={styles.accountDeletionNoticeTitle}>Account deleted</Text>
+              <Text style={styles.accountDeletionNoticeText}>
+                {accountDeletionNotice.billingFollowUpRequired
+                  ? 'Your account data has been removed. A recent payment needs a manual follow-up; please contact support.'
+                  : 'Your account data has been removed from this app.'}
+              </Text>
+            </View>
+          ) : null}
           <View style={styles.switcher}>
             <Pressable accessibilityRole="button" accessibilityState={{ selected: mode === 'sign-in' }} onPress={() => chooseMode('sign-in')} style={[styles.switch, mode === 'sign-in' && styles.switchActive]}>
               <Text style={[styles.switchText, mode === 'sign-in' && styles.switchTextActive]}>Sign in</Text>
@@ -191,6 +206,9 @@ const styles = StyleSheet.create({
   title: { color: colors.navy, fontSize: 39, fontWeight: '800', letterSpacing: -1.8, lineHeight: 42, maxWidth: 310 },
   subtitle: { color: colors.muted, fontSize: 17, lineHeight: 25, marginTop: spacing.md, maxWidth: 325 },
   form: { backgroundColor: colors.white, borderTopColor: colors.lavenderLine, borderTopWidth: 1, gap: spacing.md, padding: spacing.lg },
+  accountDeletionNotice: { backgroundColor: colors.aquaSoft, borderColor: '#BDEEF6', borderRadius: radius.medium, borderWidth: 1, gap: 4, padding: spacing.md },
+  accountDeletionNoticeTitle: { color: colors.navy, fontSize: 16, fontWeight: '800' },
+  accountDeletionNoticeText: { color: colors.muted, fontSize: 13, lineHeight: 19 },
   switcher: { backgroundColor: colors.lavender, borderRadius: radius.pill, flexDirection: 'row', marginBottom: spacing.xs, padding: 4 },
   switch: { alignItems: 'center', borderRadius: radius.pill, flex: 1, minHeight: 42, justifyContent: 'center' },
   switchActive: { backgroundColor: colors.white, boxShadow: '0px 2px 8px rgba(23, 21, 93, 0.10)' },

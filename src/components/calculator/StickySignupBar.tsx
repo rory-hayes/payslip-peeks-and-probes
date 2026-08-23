@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link } from 'react-router';
 import { Button } from '@/components/ui/button';
 import { ArrowRight } from 'lucide-react';
 
@@ -33,17 +33,17 @@ const StickySignupBar = () => {
           </span>
         </div>
         <div className="flex items-center gap-2 shrink-0">
-          <Link to="/sign-up">
-            <Button size="sm" className="gap-1.5">
+          <Button asChild size="sm" className="min-h-11 gap-1.5">
+            <Link to="/sign-up">
               Get started <ArrowRight className="h-3.5 w-3.5" />
-            </Button>
-          </Link>
+            </Link>
+          </Button>
           <button
             onClick={() => {
               sessionStorage.setItem('signup-bar-dismissed', '1');
               setDismissed(true);
             }}
-            className="text-xs text-muted-foreground hover:text-foreground px-2"
+            className="min-h-11 min-w-11 text-xs text-muted-foreground hover:text-foreground"
             aria-label="Dismiss"
           >
             ✕

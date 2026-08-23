@@ -15,6 +15,7 @@ import {
   View,
 } from 'react-native';
 import { AquaCorner, Brand, PrimaryButton, QuietButton, SectionHeading } from '../components/chrome';
+import { AccountDeletionBlockedError, AccountDeletionPendingError, deleteCurrentAccount, type AccountDeletionResult } from '../lib/delete-account';
 import { saveProfileSetup } from '../lib/data';
 import { supabase } from '../lib/supabase';
 import { colors, radius, spacing } from '../theme';
@@ -32,7 +33,7 @@ export function MeScreen({
   user: AccountUser;
   profile: Profile | null;
   onSignOut: () => Promise<void>;
-  onAccountDeleted: () => Promise<void>;
+  onAccountDeleted: (result: AccountDeletionResult) => Promise<void>;
   onProfileChanged: () => Promise<void>;
 }) {
   const [signingOut, setSigningOut] = useState(false);
@@ -97,18 +98,23 @@ export function MeScreen({
     setDeleting(true);
     setDeletionError(null);
     try {
-      await deleteCurrentAccount();
+      const deletion = await deleteCurrentAccount();
 
       // The server has already confirmed deletion at this point. This callback
-      // clears the local session and lets the authenticated app shell reset.
+      // clears the local session, then lets the authenticated app shell show
+      // any safe billing follow-up after leaving this sensitive screen.
       try {
-        await onAccountDeleted();
+        await onAccountDeleted(deletion);
       } catch {
         await supabase?.auth.signOut({ scope: 'local' });
       }
-    } catch {
+    } catch (cause) {
       setDeleting(false);
-      setDeletionError('We could not delete your account. Nothing has been confirmed as deleted, so please try again.');
+      setDeletionError(
+        cause instanceof AccountDeletionPendingError || cause instanceof AccountDeletionBlockedError
+          ? cause.message
+          : 'We could not confirm that deletion completed. Please try again or contact support.',
+      );
     }
   };
 
@@ -251,14 +257,6 @@ export function MeScreen({
       </Modal>
     </>
   );
-}
-
-async function deleteCurrentAccount(): Promise<void> {
-  if (!supabase) throw new Error('Supabase is not configured.');
-  const { data, error } = await supabase.functions.invoke('delete-account', { body: {} });
-  if (error || !data || typeof data !== 'object' || (data as { success?: unknown }).success !== true) {
-    throw new Error('Account deletion was not confirmed by the server.');
-  }
 }
 
 function initialFor(name: string | null, email: string | undefined): string {

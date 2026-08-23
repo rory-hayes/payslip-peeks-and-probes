@@ -175,8 +175,8 @@
   background: #eeeafe !important;
   border-radius: 999px !important;
   color: #704bff !important;
-  height: 40px !important;
-  width: 40px !important;
+  height: 44px !important;
+  width: 44px !important;
 }
 
 .pi-bottom-tabs {
@@ -311,11 +311,14 @@
   }
 
   .pi-sidebar {
+    align-self: flex-start;
     border-right: 1px solid #e5e0fa;
     display: flex;
     flex: 0 0 248px;
     flex-direction: column;
-    min-height: 100vh;
+    height: 100vh;
+    max-height: 100vh;
+    overflow-y: auto;
     padding: 28px 16px 18px;
     position: sticky;
     top: 0;
@@ -778,13 +781,44 @@
   margin-top: 4px;
 }
 
+.pi-upload-trust {
+  border-top: 1px solid #e5e0fa;
+  margin-top: 0.9rem;
+  max-width: 27rem;
+  padding-top: 0.8rem;
+  text-align: center;
+}
+
+.pi-upload-trust p {
+  color: #64658d;
+  font-size: 0.75rem;
+  line-height: 1.45;
+  margin: 0;
+}
+
+.pi-upload-trust p + p {
+  margin-top: 0.32rem;
+}
+
+.pi-upload-trust a {
+  color: #17155d;
+  font-weight: 750;
+  text-decoration: underline;
+  text-underline-offset: 0.16em;
+}
+
+.pi-upload-trust a:hover {
+  color: #704bff;
+}
+
 .pi-upload-progress {
   margin-top: 19px;
   max-width: 240px;
   width: 100%;
 }
 
-.pi-upload-error-actions {
+.pi-upload-error-actions,
+.pi-upload-success-actions {
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
@@ -841,6 +875,74 @@
   line-height: 1.45;
   margin: 9px 0 0;
   max-width: 450px;
+}
+
+.pi-review-source {
+  align-items: center;
+  background: #f9f8ff;
+  border: 1px solid #e5e0fa;
+  border-radius: 14px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  justify-content: space-between;
+  padding: 13px 14px;
+}
+
+.pi-review-source-copy {
+  align-items: center;
+  display: flex;
+  gap: 10px;
+  min-width: 0;
+}
+
+.pi-review-source-copy > svg {
+  color: #704bff;
+  flex: 0 0 auto;
+  height: 19px;
+  width: 19px;
+}
+
+.pi-review-source-copy p,
+.pi-review-source-copy span,
+.pi-review-source-status {
+  display: block;
+  margin: 0;
+}
+
+.pi-review-source-copy p {
+  color: #17155d;
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.pi-review-source-copy span,
+.pi-review-source-status {
+  color: #64658d;
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+.pi-review-source-link {
+  align-items: center;
+  color: #17155d;
+  display: inline-flex;
+  flex: 0 0 auto;
+  font-size: 12px;
+  font-weight: 900;
+  gap: 5px;
+  text-decoration: underline;
+  text-decoration-color: #b6acf0;
+  text-underline-offset: 3px;
+}
+
+.pi-review-source-link:hover {
+  color: #704bff;
+}
+
+.pi-review-source-link svg {
+  height: 14px;
+  width: 14px;
 }
 
 .pi-review-section {
@@ -921,7 +1023,7 @@
   color: #17155d !important;
   font-size: 16px !important;
   font-weight: 800 !important;
-  height: 32px !important;
+  height: 44px !important;
   margin-top: 4px;
   padding: 0 !important;
 }

@@ -11,12 +11,12 @@ const HowToCheckPayslip = () => (
   >
     <h1 className="text-4xl font-extrabold tracking-tight text-foreground">How to Check Your Payslip</h1>
     <p className="mt-4 text-lg text-muted-foreground leading-relaxed">
-      Most people glance at the net pay figure and move on. A two-minute check each month can catch tax, pension and deduction errors that quietly cost you hundreds of pounds or euros a year.
+      It is easy to glance at the net-pay figure and move on. A short check each month can help you notice tax, pension, or deduction figures you may want to query with payroll.
     </p>
 
     <h2 className="mt-12 text-2xl font-bold text-foreground">Why checking your payslip matters</h2>
     <p className="mt-3 text-muted-foreground leading-relaxed">
-      Payroll systems make mistakes. Tax codes get applied late, pension contributions change without warning, and one-off deductions can appear without explanation. You are the only person who notices when something is off — and the sooner you spot it, the easier it is to fix.
+      Payslip figures can change for reasons that are not immediately obvious: a tax code update, a pension change, or a one-off deduction. Comparing the details against your own records makes it easier to raise a clear question with payroll when something does not match.
     </p>
 
     <h2 className="mt-10 text-2xl font-bold text-foreground">The main parts of a payslip</h2>

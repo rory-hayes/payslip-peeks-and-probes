@@ -11,12 +11,12 @@ const UkPayslipGuide = () => (
   >
     <h1 className="text-4xl font-extrabold tracking-tight text-foreground">UK Payslip Guide</h1>
     <p className="mt-4 text-lg text-muted-foreground leading-relaxed">
-      A clear walkthrough of UK payslips — what each section means, what to compare each month, and the issues UK employees most often run into.
+      A clear walkthrough of UK payslips — what each section means, what to compare each month, and details that may be worth checking with payroll.
     </p>
 
     <h2 className="mt-12 text-2xl font-bold text-foreground">What appears on a UK payslip</h2>
     <ul className="mt-3 list-disc pl-6 space-y-1.5 text-muted-foreground">
-      <li><strong className="text-foreground">Tax code</strong> — usually 1257L for most full-time employees in the standard tax year.</li>
+      <li><strong className="text-foreground">Tax code</strong> — a code such as 1257L may appear on a standard UK payslip; check it against your HMRC record if it changes unexpectedly.</li>
       <li><strong className="text-foreground">National Insurance number</strong> and <strong className="text-foreground">NI category letter</strong>.</li>
       <li><strong className="text-foreground">Gross pay</strong>, <strong className="text-foreground">taxable pay</strong> and <strong className="text-foreground">net pay</strong>.</li>
       <li><strong className="text-foreground">Income Tax (PAYE)</strong> deducted this period and year-to-date.</li>
@@ -27,7 +27,7 @@ const UkPayslipGuide = () => (
 
     <h2 className="mt-10 text-2xl font-bold text-foreground">Common UK payslip issues</h2>
     <p className="mt-3 text-muted-foreground leading-relaxed">
-      The most frequent problems are an out-of-date tax code (still showing as emergency or BR after a job change), missing pension contributions in the first month of a new job, and unexpected jumps in tax after a bonus.
+      Things worth checking include a tax code that has changed unexpectedly, pension contributions that do not match your scheme information, or a change in tax after a bonus or job change.
     </p>
 
     <h2 className="mt-10 text-2xl font-bold text-foreground">Tax code, NI and pension overview</h2>

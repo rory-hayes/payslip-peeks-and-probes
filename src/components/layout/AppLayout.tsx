@@ -1,7 +1,7 @@
 import { ReactNode, useState } from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router';
 import { Button } from '@/components/ui/button';
-import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
+import { Sheet, SheetContent, SheetDescription, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import {
   AlertTriangle,
   CalendarDays,
@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useDemo } from '@/contexts/DemoContext';
+import { useToast } from '@/hooks/use-toast';
 import VerifyEmailBanner from '@/components/VerifyEmailBanner';
 import brandMark from '@/assets/payslip-insights-mark.webp';
 
@@ -35,7 +36,9 @@ const AppLayout = ({ children }: { children: ReactNode }) => {
   const navigate = useNavigate();
   const { signOut } = useAuth();
   const { isDemo } = useDemo();
+  const { toast } = useToast();
   const [open, setOpen] = useState(false);
+  const [signingOut, setSigningOut] = useState(false);
 
   const handleSignOut = async () => {
     if (isDemo) {
@@ -43,8 +46,19 @@ const AppLayout = ({ children }: { children: ReactNode }) => {
       return;
     }
 
-    await signOut();
-    navigate('/');
+    setSigningOut(true);
+    try {
+      await signOut();
+      navigate('/');
+    } catch {
+      toast({
+        title: 'Could not sign out',
+        description: 'Check your connection and try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setSigningOut(false);
+    }
   };
 
   const visiblePrimaryItems = isDemo
@@ -113,9 +127,9 @@ const AppLayout = ({ children }: { children: ReactNode }) => {
             <CreditCard aria-hidden="true" />
             <span>See Plus</span>
           </Link>
-          <button className="pi-sign-out" onClick={() => void handleSignOut()} type="button">
+          <button className="pi-sign-out" disabled={signingOut} onClick={() => void handleSignOut()} type="button">
             <LogOut aria-hidden="true" />
-            <span>{isDemo ? 'Exit demo' : 'Sign out'}</span>
+            <span>{isDemo ? 'Exit demo' : signingOut ? 'Signing out…' : 'Sign out'}</span>
           </button>
         </div>
       </aside>
@@ -134,6 +148,8 @@ const AppLayout = ({ children }: { children: ReactNode }) => {
               </Button>
             </SheetTrigger>
             <SheetContent className="pi-mobile-menu w-[20rem] p-5" side="right">
+              <SheetTitle className="sr-only">Navigation menu</SheetTitle>
+              <SheetDescription className="sr-only">Navigate your payslip tools or sign out.</SheetDescription>
               <div className="pi-mobile-menu-brand">
                 <img alt="" aria-hidden="true" className="pi-brand-mark" src={brandMark} />
                 <span className="pi-brand-copy"><strong>Payslip</strong><small>Insights</small></span>
@@ -152,9 +168,9 @@ const AppLayout = ({ children }: { children: ReactNode }) => {
                   <CreditCard aria-hidden="true" />
                   <span>See Plus</span>
                 </Link>
-                <button onClick={() => { setOpen(false); void handleSignOut(); }} type="button">
+                <button disabled={signingOut} onClick={() => { setOpen(false); void handleSignOut(); }} type="button">
                   <LogOut aria-hidden="true" />
-                  <span>{isDemo ? 'Exit demo' : 'Sign out'}</span>
+                  <span>{isDemo ? 'Exit demo' : signingOut ? 'Signing out…' : 'Sign out'}</span>
                 </button>
               </div>
             </SheetContent>

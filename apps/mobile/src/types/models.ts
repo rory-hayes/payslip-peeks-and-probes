@@ -12,12 +12,16 @@ export interface Profile {
 
 export interface Payslip {
   id: string;
+  employer_id: string | null;
   file_path: string | null;
   pay_date: string | null;
+  pay_period_end: string | null;
+  pay_period_start: string | null;
   country: 'UK' | 'Ireland' | null;
   file_name: string | null;
   status: PayslipStatus;
   processing_failure_code: string | null;
+  cleanup_requested_at: string | null;
   created_at: string;
 }
 
@@ -58,6 +62,8 @@ export interface PaydayPlan {
   next_payday: string;
   currency: CurrencyCode;
   net_pay: number | string;
+  everyday_remaining: number | string | null;
+  everyday_checked_in_at: string | null;
   status: 'draft' | 'active' | 'archived';
   created_at: string;
 }

@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, KeyboardAvoidingView, Linking, Platform, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, KeyboardAvoidingView, Linking, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { AquaCorner, Brand, Notice, PrimaryButton, QuietButton, SectionHeading } from '../components/chrome';
 import { DateInput } from '../components/date-input';
 import { confirmReview, createPayslipOriginalUrl, loadReview, type ReviewInput } from '../lib/data';
@@ -31,6 +31,8 @@ type FieldProvenance = {
   tone: 'auto' | 'edited' | 'missing' | 'manual';
 };
 
+type ReviewCountry = 'UK' | 'Ireland';
+
 export function ReviewScreen({
   payslipId,
   currency = 'GBP',
@@ -49,6 +51,7 @@ export function ReviewScreen({
   const [openingOriginal, setOpeningOriginal] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [editedFields, setEditedFields] = useState<Set<keyof ReviewDraft>>(() => new Set());
+  const [reviewCountry, setReviewCountry] = useState<ReviewCountry>('UK');
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -58,6 +61,7 @@ export function ReviewScreen({
       const nextReview = await loadReview(payslipId);
       setReview(nextReview);
       setDraft(toDraft(nextReview));
+      setReviewCountry(nextReview.payslip.country === 'Ireland' ? 'Ireland' : 'UK');
     } catch (cause) {
       setReview(null);
       setDraft(null);
@@ -71,8 +75,8 @@ export function ReviewScreen({
     void refresh();
   }, [refresh]);
 
-  const reviewCurrency = review?.payslip.country === 'Ireland' ? 'EUR' : currency;
-  const isIreland = review?.payslip.country === 'Ireland' || reviewCurrency === 'EUR';
+  const reviewCurrency = reviewCountry === 'Ireland' ? 'EUR' : 'GBP';
+  const isIreland = reviewCountry === 'Ireland';
   const taxablePay = review?.extraction.taxable_pay;
   const isManualReview = review?.extraction.extraction_status === 'pending';
   const confidenceNote = useMemo(() => {
@@ -86,6 +90,30 @@ export function ReviewScreen({
   const update = (field: keyof ReviewDraft, value: string) => {
     setDraft((current) => current ? { ...current, [field]: value } : current);
     setEditedFields((current) => new Set(current).add(field));
+  };
+
+  const chooseCountry = (country: ReviewCountry) => {
+    if (country === reviewCountry) return;
+
+    const incompatibleFields: Array<keyof ReviewDraft> = country === 'Ireland'
+      ? ['nationalInsuranceAmount']
+      : ['prsiAmount', 'uscAmount'];
+
+    setReviewCountry(country);
+    setDraft((current) => {
+      if (!current) return current;
+      const next = { ...current };
+      incompatibleFields.forEach((field) => {
+        next[field] = '';
+      });
+      return next;
+    });
+    setEditedFields((current) => {
+      const next = new Set(current);
+      incompatibleFields.forEach((field) => next.add(field));
+      return next;
+    });
+    setError(null);
   };
 
   const fieldProvenance = (field: keyof ReviewDraft): FieldProvenance => {
@@ -129,6 +157,7 @@ export function ReviewScreen({
 
     const input: ReviewInput = {
       payslipId,
+      country: reviewCountry,
       payDate: draft.payDate,
       grossPay,
       netPay,
@@ -226,6 +255,17 @@ export function ReviewScreen({
         ) : null}
 
         <View style={styles.section}>
+          <SectionHeading title="Pay country" />
+          <View style={styles.countryCard}>
+            <Text style={styles.countryHelp}>Choose the country shown on this payslip. Changing it clears the deduction fields that do not apply, so you can check them against the original.</Text>
+            <View accessibilityLabel="Pay country" style={styles.countryChoices}>
+              <CountryChoice country="UK" selected={reviewCountry === 'UK'} onPress={() => chooseCountry('UK')} />
+              <CountryChoice country="Ireland" selected={reviewCountry === 'Ireland'} onPress={() => chooseCountry('Ireland')} />
+            </View>
+          </View>
+        </View>
+
+        <View style={styles.section}>
           <SectionHeading title="Your pay" />
           <View style={styles.card}>
             <DateInput label="Pay date" provenance={fieldProvenance('payDate')} value={draft.payDate} onChangeText={(value) => update('payDate', value)} />
@@ -267,6 +307,30 @@ export function ReviewScreen({
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
+  );
+}
+
+function CountryChoice({
+  country,
+  selected,
+  onPress,
+}: {
+  country: ReviewCountry;
+  selected: boolean;
+  onPress: () => void;
+}) {
+  return (
+    <Pressable
+      accessibilityHint="Sets the country used for this payslip review."
+      accessibilityLabel={`Set pay country to ${country}`}
+      accessibilityRole="button"
+      accessibilityState={{ selected }}
+      onPress={onPress}
+      style={({ pressed }) => [styles.countryChoice, selected && styles.countryChoiceSelected, pressed && styles.countryChoicePressed]}
+    >
+      <Text style={[styles.countryChoiceText, selected && styles.countryChoiceTextSelected]}>{country}</Text>
+      {selected ? <Ionicons color={colors.violet} name="checkmark-circle" size={20} /> : null}
+    </Pressable>
   );
 }
 
@@ -415,6 +479,14 @@ const styles = StyleSheet.create({
   promptAction: { color: colors.violet, fontSize: 13, fontWeight: '800', lineHeight: 19, marginTop: spacing.xs },
   section: { marginHorizontal: spacing.lg, marginTop: spacing.xl },
   card: { backgroundColor: colors.white, borderColor: colors.lavenderLine, borderRadius: radius.large, borderWidth: 1, boxShadow: '0px 8px 16px rgba(23, 21, 93, 0.05)', overflow: 'hidden' },
+  countryCard: { backgroundColor: colors.white, borderColor: colors.lavenderLine, borderRadius: radius.large, borderWidth: 1, boxShadow: '0px 8px 16px rgba(23, 21, 93, 0.05)', padding: spacing.md },
+  countryHelp: { color: colors.muted, fontSize: 13, lineHeight: 19 },
+  countryChoices: { flexDirection: 'row', gap: spacing.sm, marginTop: spacing.md },
+  countryChoice: { alignItems: 'center', borderColor: colors.lavenderLine, borderRadius: radius.small, borderWidth: 1, flex: 1, flexDirection: 'row', gap: spacing.xs, justifyContent: 'center', minHeight: 52, paddingHorizontal: spacing.sm },
+  countryChoiceSelected: { backgroundColor: colors.lavender, borderColor: colors.violet, borderWidth: 2 },
+  countryChoicePressed: { opacity: 0.74 },
+  countryChoiceText: { color: colors.navy, fontSize: 15, fontWeight: '800' },
+  countryChoiceTextSelected: { color: colors.violet },
   field: { borderBottomColor: colors.lavenderLine, borderBottomWidth: StyleSheet.hairlineWidth, paddingHorizontal: spacing.md, paddingVertical: spacing.md },
   fieldDivider: { backgroundColor: colors.lavenderLine, height: StyleSheet.hairlineWidth },
   fieldLabelRow: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between', marginBottom: spacing.xs },

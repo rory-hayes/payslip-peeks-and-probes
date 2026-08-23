@@ -1,7 +1,8 @@
 import { useState } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Button } from '@/components/ui/button';
 import AppLayout from '@/components/layout/AppLayout';
 import PayslipUpload from '@/components/PayslipUpload';
 import { usePayslips } from '@/hooks/use-payslip-data';
@@ -14,7 +15,7 @@ import payslipCheckHero from '@/assets/option-one-payslip-check-hero-v1.webp';
 const PayslipVault = () => {
   const [search, setSearch] = useState('');
   const [searchParams] = useSearchParams();
-  const { data: payslips, isLoading } = usePayslips();
+  const { data: payslips, isLoading, isError, refetch } = usePayslips();
   const { format: formatCurrency } = useCurrency();
   const reviewId = searchParams.get('review');
 
@@ -73,6 +74,13 @@ const PayslipVault = () => {
                   <Skeleton className="h-4 w-20" />
                 </div>
               ))}
+            </div>
+          ) : isError ? (
+            <div className="pi-vault-empty" role="alert">
+              <div className="pi-vault-empty-icon"><AlertTriangle aria-hidden="true" /></div>
+              <h3>We couldn’t load your saved payslips.</h3>
+              <p>Your payslips have not been changed. Check your connection and try again before relying on this list.</p>
+              <Button className="mt-4 min-h-11" onClick={() => void refetch()}>Try again</Button>
             </div>
           ) : filtered.length === 0 ? (
             <div className="pi-vault-empty">

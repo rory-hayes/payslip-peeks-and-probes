@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link } from 'react-router';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -10,6 +10,7 @@ import AnomalyExplanation from '@/components/AnomalyExplanation';
 import { usePayslip, usePayslips, useAnomalies } from '@/hooks/use-payslip-data';
 import { useCurrency } from '@/hooks/use-profile';
 import { formatDate } from '@/lib/date-utils';
+import { selectPayslipComparison } from '@/lib/payslip-comparison';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useQueryClient } from '@tanstack/react-query';
@@ -18,9 +19,9 @@ import { AlertTriangle, ArrowLeft, CheckCircle, Eye, FileText, GitCompare, Messa
 
 const PayslipDetail = () => {
   const { id } = useParams();
-  const { data: slip, isLoading } = usePayslip(id);
+  const { data: slip, isLoading, error: payslipError, refetch: refetchPayslip } = usePayslip(id);
   const { data: realPayslips } = usePayslips();
-  const { data: realAllAnomalies } = useAnomalies();
+  const { data: realAllAnomalies, isError: anomaliesError, refetch: refetchAnomalies } = useAnomalies();
   const { format: formatCurrency } = useCurrency();
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -30,8 +31,12 @@ const PayslipDetail = () => {
   const allPayslips = realPayslips || [];
   const allAnomalies = realAllAnomalies || [];
   const anomalies = allAnomalies.filter((a) => a.payslip_id === id);
-  const idx = allPayslips.findIndex((s) => s.id === id);
-  const prevSlip = idx > 0 ? allPayslips[idx - 1] : null;
+  const comparisonForSlip = slip?.status === 'confirmed'
+    ? selectPayslipComparison(allPayslips, slip.id, null).comparison
+    : null;
+  const previousComparableSlip = comparisonForSlip?.current.id === slip?.id
+    ? comparisonForSlip?.previous
+    : null;
 
   const canRetry = slip && (slip.status as string) !== 'confirmed' && (slip.status as string) !== 'extracted';
 
@@ -69,13 +74,33 @@ const PayslipDetail = () => {
     );
   }
 
+  if (payslipError) {
+    return (
+      <AppLayout>
+        <div className="flex flex-col items-center justify-center py-20 text-center" role="alert">
+          <FileText className="h-12 w-12 text-muted-foreground/40" aria-hidden="true" />
+          <h2 className="mt-4 text-lg font-semibold text-foreground">We couldn’t load this payslip.</h2>
+          <p className="mt-2 max-w-md text-sm text-muted-foreground">Your payslip has not been changed. Check your connection and try again before relying on these figures.</p>
+          <div className="mt-4 flex flex-wrap justify-center gap-2">
+            <Button className="min-h-11" onClick={() => void refetchPayslip()}>Try again</Button>
+            <Button asChild variant="outline" className="min-h-11 gap-2">
+              <Link to="/vault"><ArrowLeft className="h-4 w-4" /> Back to vault</Link>
+            </Button>
+          </div>
+        </div>
+      </AppLayout>
+    );
+  }
+
   if (!slip) {
     return (
       <AppLayout>
         <div className="flex flex-col items-center justify-center py-20 text-center">
           <FileText className="h-12 w-12 text-muted-foreground/40" />
           <h2 className="mt-4 text-lg font-semibold text-foreground">Payslip not found</h2>
-          <Link to="/vault"><Button variant="outline" className="mt-4 gap-2"><ArrowLeft className="h-4 w-4" /> Back to vault</Button></Link>
+          <Button asChild variant="outline" className="mt-4 gap-2">
+            <Link to="/vault"><ArrowLeft className="h-4 w-4" /> Back to vault</Link>
+          </Button>
         </div>
       </AppLayout>
     );
@@ -99,7 +124,9 @@ const PayslipDetail = () => {
     <AppLayout>
       <div className="space-y-6 max-w-3xl">
         <div className="flex items-center gap-4">
-          <Link to="/vault"><Button variant="ghost" size="icon"><ArrowLeft className="h-4 w-4" /></Button></Link>
+          <Button asChild variant="ghost" size="icon" className="min-h-11 min-w-11">
+            <Link to="/vault" aria-label="Back to saved payslips"><ArrowLeft aria-hidden="true" className="h-4 w-4" /></Link>
+          </Button>
           <div>
             <h1 className="text-xl font-bold text-foreground">{formatDate(slip.pay_date)}</h1>
             <p className="text-sm text-muted-foreground">{slip.employer_name}</p>
@@ -110,6 +137,15 @@ const PayslipDetail = () => {
             </Badge>
           )}
         </div>
+
+        {anomaliesError && (
+          <Card className="border-warning/30 bg-warning/10 shadow-sm" role="alert">
+            <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
+              <p className="text-sm text-foreground">We couldn’t refresh the flagged items for this payslip. The pay figures above may still be available, but check again before relying on the issue list.</p>
+              <Button variant="outline" size="sm" className="min-h-11 shrink-0" onClick={() => void refetchAnomalies()}>Try again</Button>
+            </CardContent>
+          </Card>
+        )}
 
         <Card className="border-0 shadow-sm">
           <CardHeader className="pb-2"><CardTitle className="text-base">Pay breakdown</CardTitle></CardHeader>
@@ -156,22 +192,22 @@ const PayslipDetail = () => {
                   </div>
                   <div className="mt-3 flex flex-wrap gap-2">
                     {a.status !== 'reviewed' && a.status !== 'resolved' && a.status !== 'raised' && (
-                      <Button variant="outline" size="sm" className="gap-1 text-xs h-7" onClick={() => updateStatus.mutate({ id: a.id, status: 'reviewed' })} disabled={updateStatus.isPending}>
+                      <Button variant="outline" size="sm" className="min-h-11 gap-1 text-xs" onClick={() => updateStatus.mutate({ id: a.id, status: 'reviewed' })} disabled={updateStatus.isPending}>
                         <Eye className="h-3 w-3" /> Mark reviewed
                       </Button>
                     )}
                     {a.status !== 'raised' && a.status !== 'resolved' && (
-                      <Button variant="outline" size="sm" className="gap-1 text-xs h-7" onClick={() => updateStatus.mutate({ id: a.id, status: 'raised' })} disabled={updateStatus.isPending}>
+                      <Button variant="outline" size="sm" className="min-h-11 gap-1 text-xs" onClick={() => updateStatus.mutate({ id: a.id, status: 'raised' })} disabled={updateStatus.isPending}>
                         <Send className="h-3 w-3" /> Raised with payroll
                       </Button>
                     )}
                     {a.status !== 'resolved' && (
-                      <Button size="sm" className="gap-1 text-xs h-7" onClick={() => updateStatus.mutate({ id: a.id, status: 'resolved' })} disabled={updateStatus.isPending}>
+                      <Button size="sm" className="min-h-11 gap-1 text-xs" onClick={() => updateStatus.mutate({ id: a.id, status: 'resolved' })} disabled={updateStatus.isPending}>
                         <CheckCircle className="h-3 w-3" /> Resolve
                       </Button>
                     )}
                     {a.status !== 'new' && (
-                      <Button variant="ghost" size="sm" className="gap-1 text-xs h-7 text-muted-foreground" onClick={() => updateStatus.mutate({ id: a.id, status: 'new' })} disabled={updateStatus.isPending}>
+                      <Button variant="ghost" size="sm" className="min-h-11 gap-1 text-xs text-muted-foreground" onClick={() => updateStatus.mutate({ id: a.id, status: 'new' })} disabled={updateStatus.isPending}>
                         <RotateCcw className="h-3 w-3" /> Reopen
                       </Button>
                     )}
@@ -183,14 +219,14 @@ const PayslipDetail = () => {
         )}
 
         <div className="flex flex-wrap gap-3">
-          {prevSlip && (
-            <Link to={`/compare?current=${slip.id}&previous=${prevSlip.id}`}>
-              <Button variant="outline" className="gap-2"><GitCompare className="h-4 w-4" /> Compare to {formatDate(prevSlip.pay_date)}</Button>
-            </Link>
+          {previousComparableSlip && (
+            <Button asChild variant="outline" className="gap-2">
+              <Link to={`/compare?current=${slip.id}&previous=${previousComparableSlip.id}`}><GitCompare className="h-4 w-4" /> Compare to {formatDate(previousComparableSlip.pay_date)}</Link>
+            </Button>
           )}
-          <Link to={`/draft/${slip.id}`}>
-            <Button variant="outline" className="gap-2"><MessageSquare className="h-4 w-4" /> Draft payroll query</Button>
-          </Link>
+          <Button asChild variant="outline" className="gap-2">
+            <Link to={`/draft/${slip.id}`}><MessageSquare className="h-4 w-4" /> Draft payroll query</Link>
+          </Button>
           {canRetry && (
             <Button variant="outline" className="gap-2" onClick={handleRetry} disabled={retrying}>
               <RefreshCw className={`h-4 w-4 ${retrying ? 'animate-spin' : ''}`} />

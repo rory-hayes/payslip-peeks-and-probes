@@ -176,7 +176,7 @@ Remaining gaps:
 
 ### Frontend Framework
 
-The app is a Vite + React + TypeScript SPA. Routing is centralized in `src/App.tsx` with `react-router-dom`. UI components use Tailwind CSS, shadcn/Radix primitives under `src/components/ui`, lucide-react icons, Recharts, and custom page/components modules.
+The app is a Vite + React + TypeScript SPA. Routing is centralized in `src/App.tsx` with `react-router`. UI components use Tailwind CSS, shadcn/Radix primitives under `src/components/ui`, lucide-react icons, Recharts, and custom page/components modules.
 
 ### Backend / API Structure
 

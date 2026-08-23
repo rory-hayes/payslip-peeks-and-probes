@@ -1,28 +1,24 @@
 import { useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link } from 'react-router';
 import MarketingNav from '@/components/marketing/MarketingNav';
 import MarketingFooter from '@/components/marketing/MarketingFooter';
+import TaxEstimateUnavailable from '@/components/TaxEstimateUnavailable';
 import { Card, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import { LAUNCH_COUNTRY_LIST } from '@/lib/countries';
+import { getTaxEstimateAvailability } from '@/lib/tax-estimate-availability';
 import { applySeo } from '@/lib/seo';
-import { ArrowRight, Calculator as CalculatorIcon } from 'lucide-react';
+import { ArrowRight, Calculator as CalculatorIcon, FileCheck2 } from 'lucide-react';
 
 const CalculatorIndex = () => {
+  const ukAvailability = getTaxEstimateAvailability('UK');
+
   useEffect(() => {
     applySeo({
-      title: 'Take-home pay calculator — UK & Ireland | Payslip Insights',
-      description:
-        'Free 2024/25 net pay calculator for the UK and Ireland. Enter your gross salary and see your monthly take-home in seconds.',
-      jsonLd: {
-        '@context': 'https://schema.org',
-        '@type': 'WebApplication',
-        name: 'Payslip Insights Take-home Calculator',
-        applicationCategory: 'FinanceApplication',
-        operatingSystem: 'Any',
-        offers: { '@type': 'Offer', price: '0', priceCurrency: 'EUR' },
-        description:
-          'Free 2024/25 net pay calculator for the UK and Ireland.',
-      },
+      title: 'Take-home pay calculator update | Payslip Insights',
+      description: 'We are verifying current UK and Ireland payroll rules before publishing new take-home estimates. Review and track your confirmed payslip with Payslip Insights.',
+      canonicalPath: null,
+      noIndex: true,
     });
   }, []);
 
@@ -34,51 +30,55 @@ const CalculatorIndex = () => {
         <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-accent/5" />
         <div className="container relative max-w-3xl text-center">
           <div className="inline-flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-primary mb-5">
-            <CalculatorIcon className="h-6 w-6" />
+            <CalculatorIcon className="h-6 w-6" aria-hidden="true" />
           </div>
           <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight text-foreground">
-            Take-home pay calculator
+            Take-home calculator update in progress
           </h1>
           <p className="mt-5 text-lg text-muted-foreground leading-relaxed">
-            Free 2024/25 net pay calculators for the UK and Ireland. Enter your gross salary, see your monthly take-home, and share the result.
+            We are checking the current UK and Ireland payroll rules before publishing a new estimate.
           </p>
         </div>
       </section>
 
-      <main className="container max-w-5xl pb-20">
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {LAUNCH_COUNTRY_LIST.map((c) => (
-            <Link
-              key={c.code}
-              to={`/calculator/${c.code.toLowerCase()}`}
-              className="block group"
-            >
-              <Card className="h-full transition-all hover:border-primary/40 hover:shadow-md">
-                <CardContent className="p-6">
-                  <div className="text-3xl mb-3" aria-hidden="true">{c.flag}</div>
-                  <h2 className="text-lg font-semibold text-foreground group-hover:text-primary transition-colors">
-                    {c.name} take-home calculator
-                  </h2>
-                  <p className="mt-1.5 text-sm text-muted-foreground">
-                    Net pay in {c.currency}. Includes {c.deductionLines.map((l) => l.label).slice(0, 2).join(', ')}.
-                  </p>
-                  <span className="mt-4 inline-flex items-center gap-1 text-sm font-medium text-primary">
-                    Open calculator <ArrowRight className="h-3.5 w-3.5" />
-                  </span>
-                </CardContent>
-              </Card>
-            </Link>
-          ))}
-        </div>
+      <main className="container max-w-3xl pb-20 space-y-8">
+        <TaxEstimateUnavailable message={ukAvailability.message} />
 
-        <div className="mt-14 rounded-xl border border-border bg-background p-6 text-sm text-muted-foreground">
-          <p>
-            <strong className="text-foreground">How accurate are these?</strong> Each calculator uses the
-            country's 2024/25 income-tax bands and standard employee social-security rates, sourced from
-            HMRC and Revenue.ie. Results are estimates for a single person with no children — your
-            actual deductions may vary based on regional rates, marital status, and benefits in kind.
-          </p>
-        </div>
+        <Card className="border-0 shadow-sm">
+          <CardContent className="p-6 md:p-8">
+            <div className="flex items-start gap-3">
+              <FileCheck2 className="mt-0.5 h-6 w-6 shrink-0 text-primary" aria-hidden="true" />
+              <div>
+                <h2 className="text-xl font-bold text-foreground">Build your plan from confirmed figures</h2>
+                <p className="mt-2 text-muted-foreground leading-relaxed">
+                  Payslip Insights is still ready to help you review a payslip, track your confirmed pay, compare pay periods, and spot changes worth checking with payroll.
+                </p>
+                <Button asChild size="lg" className="mt-5 gap-2">
+                  <Link to="/sign-up">
+                    Start tracking free <ArrowRight className="h-4 w-4" aria-hidden="true" />
+                  </Link>
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <section>
+          <h2 className="text-xl font-bold text-foreground">Calculator pages</h2>
+          <p className="mt-2 text-sm text-muted-foreground">Each page explains when its updated tax table is ready to use.</p>
+          <div className="mt-4 grid gap-3 sm:grid-cols-2">
+            {LAUNCH_COUNTRY_LIST.map((countryConfig) => (
+              <Link
+                key={countryConfig.code}
+                to={`/calculator/${countryConfig.code.toLowerCase()}`}
+                className="flex min-h-11 items-center gap-3 rounded-lg border border-border bg-card p-4 transition-colors hover:border-primary/40 hover:text-primary"
+              >
+                <span className="text-2xl" aria-hidden="true">{countryConfig.flag}</span>
+                <span className="font-medium">{countryConfig.name}</span>
+              </Link>
+            ))}
+          </div>
+        </section>
       </main>
 
       <MarketingFooter />

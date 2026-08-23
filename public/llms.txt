@@ -1,0 +1,34 @@
+# Payslip Insights
+
+> Payslip Insights helps employees in the United Kingdom and Ireland understand a payslip, review what changed, and make a simple plan to their next payday.
+
+Payslip Insights is a personal payslip review, history, comparison, and payday-planning product. A person can upload a payslip they are entitled to use, review extracted figures before confirming them, see changes over time, and make a plan from confirmed net pay.
+
+## Product scope
+
+- Payslip review, explanation, comparison, and history
+- Payday planning from confirmed payslip figures
+- UK and Ireland employee-focused guidance
+- A read-only product demo for visitors who want to explore the experience
+
+## Important limitations
+
+- Payslip Insights is not an employer, payroll provider, tax adviser, legal adviser, financial adviser, bank, or official payroll record.
+- Automated extraction can be incomplete or incorrect. Customers should review their figures and contact payroll or a qualified professional when needed.
+- The product does not link bank accounts, move money, manage investments, file taxes, or provide a verdict that a payslip is wrong.
+
+## Key pages
+
+- https://payslipinsights.com/
+- https://payslipinsights.com/pricing
+- https://payslipinsights.com/guides
+- https://payslipinsights.com/guides/how-to-check-your-payslip
+- https://payslipinsights.com/guides/uk-payslip-guide
+- https://payslipinsights.com/guides/ireland-payslip-guide
+- https://payslipinsights.com/privacy
+- https://payslipinsights.com/terms
+
+## Contact
+
+- Privacy: privacy@payslipinsights.com
+- Support: support@payslipinsights.com

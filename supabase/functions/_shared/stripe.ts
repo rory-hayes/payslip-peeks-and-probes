@@ -3,6 +3,7 @@ import Stripe from "https://esm.sh/stripe@18.5.0";
 import {
   getPriceCatalogEntry,
   isAllowedPriceLookupKey,
+  matchesCatalogStripePrice,
   PRICE_CATALOG,
   type PriceCatalogEntry,
   type PriceLookupKey,
@@ -13,12 +14,14 @@ export type StripeEnv = "sandbox" | "live";
 export {
   getPriceCatalogEntry,
   isAllowedPriceLookupKey,
+  matchesCatalogStripePrice,
   PRICE_CATALOG,
   type PriceCatalogEntry,
   type PriceLookupKey,
 };
 
 export interface StripeWebhookEvent {
+  id: string;
   type: string;
   data: { object: Record<string, unknown> };
 }
@@ -82,7 +85,13 @@ export function getCheckoutIntentId(metadata: Record<string, unknown> | null | u
 function isWebhookEvent(value: unknown): value is StripeWebhookEvent {
   if (!value || typeof value !== "object") return false;
   const event = value as Record<string, unknown>;
-  if (typeof event.type !== "string" || !event.data || typeof event.data !== "object") return false;
+  if (
+    typeof event.id !== "string"
+    || event.id.length === 0
+    || typeof event.type !== "string"
+    || !event.data
+    || typeof event.data !== "object"
+  ) return false;
   const data = event.data as Record<string, unknown>;
   return Boolean(data.object && typeof data.object === "object");
 }

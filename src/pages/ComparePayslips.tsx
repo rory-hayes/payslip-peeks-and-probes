@@ -1,25 +1,86 @@
-import { Link, useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import AppLayout from '@/components/layout/AppLayout';
 import { usePayslips } from '@/hooks/use-payslip-data';
-import { useCurrency } from '@/hooks/use-profile';
 import { formatDate } from '@/lib/date-utils';
+import {
+  comparisonRowsFor,
+  deductionChangesFor,
+  formatComparisonCurrency,
+  selectPayslipComparison,
+  type ComparisonRow,
+  type ComparisonSelectionIssue,
+} from '@/lib/payslip-comparison';
+import type { Payslip } from '@/lib/types';
 import { ArrowLeft, TrendingUp, TrendingDown, Minus, ArrowRight } from 'lucide-react';
+
+const unavailableCopy: Record<ComparisonSelectionIssue, { title: string; description: string }> = {
+  needs_review: {
+    title: 'Review a payslip before comparing',
+    description: 'Only confirmed payslips can be compared. Review the selected payslip in your vault, then return here.',
+  },
+  not_found: {
+    title: 'That comparison is unavailable',
+    description: 'One of the selected payslips is no longer available. Choose two confirmed payslips from your vault.',
+  },
+  same_payslip: {
+    title: 'Choose two different confirmed payslips',
+    description: 'Select an earlier confirmed payslip to make a side-by-side comparison.',
+  },
+  country_mismatch: {
+    title: 'Choose confirmed payslips from the same country',
+    description: 'Country-specific payroll terms and currencies can differ, so this view does not compare them together.',
+  },
+  invalid_pay_date: {
+    title: 'Review the pay date before comparing',
+    description: 'A selected confirmed payslip does not have a usable pay date yet. Check it in your vault before comparing.',
+  },
+  invalid_order: {
+    title: 'Choose an earlier payslip to compare',
+    description: 'The previous payslip needs to be earlier than the current payslip.',
+  },
+  needs_confirmed_history: {
+    title: 'Need two confirmed payslips to compare',
+    description: 'Upload or review another payslip from the same country to unlock a side-by-side comparison.',
+  },
+};
+
+function formatKnownAmount(value: number | null, country: Payslip['country']): string {
+  return value === null ? 'Not listed' : formatComparisonCurrency(value, country);
+}
+
+function changeFor(row: ComparisonRow): number | null {
+  return row.current === null || row.previous === null ? null : row.current - row.previous;
+}
+
+function ComparisonUnavailable({ issue }: { issue: ComparisonSelectionIssue }) {
+  const copy = unavailableCopy[issue];
+
+  return (
+    <AppLayout>
+      <div className="flex flex-col items-center justify-center py-20 text-center" role="status">
+        <h2 className="text-lg font-semibold text-foreground">{copy.title}</h2>
+        <p className="mt-2 max-w-md text-sm text-muted-foreground">{copy.description}</p>
+        <Button asChild variant="outline" className="mt-4 gap-2">
+          <Link to="/vault"><ArrowLeft className="h-4 w-4" /> Back to vault</Link>
+        </Button>
+      </div>
+    </AppLayout>
+  );
+}
 
 const ComparePayslips = () => {
   const [searchParams] = useSearchParams();
-  const { data: realPayslips, isLoading } = usePayslips();
-  const { format: formatCurrency } = useCurrency();
+  const { data: realPayslips, isLoading, isError, refetch } = usePayslips();
 
   const payslips = realPayslips || [];
-
-  const currentId = searchParams.get('current');
-  const previousId = searchParams.get('previous');
-
-  const current = payslips.find((s) => s.id === currentId) || (payslips.length > 0 ? payslips[payslips.length - 1] : null);
-  const previous = payslips.find((s) => s.id === previousId) || (payslips.length > 1 ? payslips[payslips.length - 2] : null);
+  const { comparison, issue } = selectPayslipComparison(
+    payslips,
+    searchParams.get('current'),
+    searchParams.get('previous'),
+  );
 
   if (isLoading) {
     return (
@@ -34,72 +95,80 @@ const ComparePayslips = () => {
     );
   }
 
-  if (!current || !previous) {
+  if (isError) {
     return (
       <AppLayout>
-        <div className="flex flex-col items-center justify-center py-20 text-center">
-          <h2 className="text-lg font-semibold text-foreground">Need at least 2 payslips to compare</h2>
-          <p className="mt-2 text-sm text-muted-foreground">Upload more payslips to unlock comparison.</p>
-          <Link to="/vault"><Button variant="outline" className="mt-4 gap-2"><ArrowLeft className="h-4 w-4" /> Back to vault</Button></Link>
+        <div className="flex flex-col items-center justify-center py-20 text-center" role="alert">
+          <h2 className="text-lg font-semibold text-foreground">We couldn’t load the payslips for this comparison.</h2>
+          <p className="mt-2 max-w-md text-sm text-muted-foreground">Your saved payslips have not been changed. Check your connection and try again before comparing them.</p>
+          <div className="mt-4 flex flex-wrap justify-center gap-2">
+            <Button className="min-h-11" onClick={() => void refetch()}>Try again</Button>
+            <Button asChild variant="outline" className="min-h-11 gap-2">
+              <Link to="/vault"><ArrowLeft className="h-4 w-4" /> Back to vault</Link>
+            </Button>
+          </div>
         </div>
       </AppLayout>
     );
   }
 
-  const diffs = [
-    { label: 'Gross pay', curr: current.gross_pay, prev: previous.gross_pay },
-    { label: 'Tax', curr: current.tax_amount, prev: previous.tax_amount },
-    { label: 'National Insurance', curr: current.ni_amount || 0, prev: previous.ni_amount || 0 },
-    { label: 'Pension', curr: current.pension_amount || 0, prev: previous.pension_amount || 0 },
-    { label: 'Student loan', curr: current.student_loan_amount || 0, prev: previous.student_loan_amount || 0 },
-    { label: 'Total deductions', curr: current.total_deductions, prev: previous.total_deductions },
-    { label: 'Net pay', curr: current.net_pay, prev: previous.net_pay },
-  ];
+  if (!comparison || issue) return <ComparisonUnavailable issue={issue ?? 'needs_confirmed_history'} />;
+
+  const { current, previous } = comparison;
+  const rows = comparisonRowsFor(current, previous);
+  const changedDeductions = deductionChangesFor(current, previous).slice(0, 2);
+  const netPayChange = current.net_pay - previous.net_pay;
 
   return (
     <AppLayout>
       <div className="space-y-6 max-w-3xl">
         <div className="flex items-center gap-4">
-          <Link to="/vault"><Button variant="ghost" size="icon"><ArrowLeft className="h-4 w-4" /></Button></Link>
+          <Button asChild variant="ghost" size="icon" className="min-h-11 min-w-11">
+            <Link to="/vault" aria-label="Back to saved payslips"><ArrowLeft aria-hidden="true" className="h-4 w-4" /></Link>
+          </Button>
           <div>
             <h1 className="text-xl font-bold text-foreground">Compare payslips</h1>
-            <p className="text-sm text-muted-foreground">{formatDate(previous.pay_date)} → {formatDate(current.pay_date)}</p>
+            <p className="text-sm text-muted-foreground">{formatDate(previous.pay_date)} → {formatDate(current.pay_date)} · confirmed {current.country} payslips</p>
           </div>
         </div>
 
-        <Card className="border-0 shadow-sm overflow-hidden">
+        <Card className="overflow-hidden border-0 shadow-sm">
           <CardContent className="p-0">
-            <div className="grid grid-cols-4 gap-0 text-sm">
-              <div className="border-b border-border bg-muted/50 p-4 font-medium text-muted-foreground"></div>
-              <div className="border-b border-border bg-muted/50 p-4 text-center font-medium text-muted-foreground">{formatDate(previous.pay_date).split(' ').slice(1).join(' ')}</div>
-              <div className="border-b border-border bg-muted/50 p-4 text-center font-medium text-muted-foreground">{formatDate(current.pay_date).split(' ').slice(1).join(' ')}</div>
-              <div className="border-b border-border bg-muted/50 p-4 text-center font-medium text-muted-foreground">Change</div>
+            <div className="overflow-x-auto">
+              <div className="grid min-w-[40rem] grid-cols-4 gap-0 text-sm">
+                <div className="border-b border-border bg-muted/50 p-4 font-medium text-muted-foreground"><span className="sr-only">Pay line</span></div>
+                <div className="border-b border-border bg-muted/50 p-4 text-center font-medium text-muted-foreground">{formatDate(previous.pay_date).split(' ').slice(1).join(' ')}</div>
+                <div className="border-b border-border bg-muted/50 p-4 text-center font-medium text-muted-foreground">{formatDate(current.pay_date).split(' ').slice(1).join(' ')}</div>
+                <div className="border-b border-border bg-muted/50 p-4 text-center font-medium text-muted-foreground">Change</div>
 
-              {diffs.map((row, i) => {
-                const change = row.curr - row.prev;
-                const isLast = row.label === 'Net pay';
+                {rows.map((row) => {
+                const change = changeFor(row);
+                const isLast = row.isNetPay === true;
                 return (
-                  <div key={i} className={`contents ${isLast ? 'font-semibold' : ''}`}>
+                  <div key={row.label} className={`contents ${isLast ? 'font-semibold' : ''}`}>
                     <div className={`border-b border-border p-4 ${isLast ? 'bg-primary/5 font-bold text-foreground' : 'text-muted-foreground'}`}>{row.label}</div>
-                    <div className={`border-b border-border p-4 text-center text-foreground ${isLast ? 'bg-primary/5' : ''}`}>{formatCurrency(row.prev)}</div>
-                    <div className={`border-b border-border p-4 text-center text-foreground ${isLast ? 'bg-primary/5' : ''}`}>{formatCurrency(row.curr)}</div>
+                    <div className={`border-b border-border p-4 text-center text-foreground ${isLast ? 'bg-primary/5' : ''}`}>{formatKnownAmount(row.previous, current.country)}</div>
+                    <div className={`border-b border-border p-4 text-center text-foreground ${isLast ? 'bg-primary/5' : ''}`}>{formatKnownAmount(row.current, current.country)}</div>
                     <div className={`border-b border-border p-4 text-center ${isLast ? 'bg-primary/5' : ''}`}>
-                      {change === 0 ? (
+                      {change === null ? (
+                        <span className="text-muted-foreground">—</span>
+                      ) : change === 0 ? (
                         <span className="inline-flex items-center gap-1 text-muted-foreground"><Minus className="h-3 w-3" /> —</span>
                       ) : (
                         <span className={`inline-flex items-center gap-1 ${
-                          (row.label === 'Net pay' || row.label === 'Gross pay')
+                          row.kind === 'pay'
                             ? (change > 0 ? 'text-success' : 'text-destructive')
                             : (change > 0 ? 'text-destructive' : 'text-success')
                         }`}>
                           {change > 0 ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
-                          {change > 0 ? '+' : ''}{formatCurrency(change)}
+                          {change > 0 ? '+' : ''}{formatComparisonCurrency(change, current.country)}
                         </span>
                       )}
                     </div>
                   </div>
                 );
-              })}
+                })}
+              </div>
             </div>
           </CardContent>
         </Card>
@@ -109,23 +178,22 @@ const ComparePayslips = () => {
             <CardTitle className="text-base">What changed</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3 text-sm text-muted-foreground leading-relaxed">
-            {current.net_pay !== previous.net_pay && (
-              <p>Your net pay {current.net_pay > previous.net_pay ? 'increased' : 'decreased'} by <strong className="text-foreground">{formatCurrency(Math.abs(current.net_pay - previous.net_pay))}</strong>.</p>
+            {netPayChange === 0 ? (
+              <p>The confirmed net-pay figures match for these two payslips.</p>
+            ) : (
+              <p>Your net pay {netPayChange > 0 ? 'increased' : 'decreased'} by <strong className="text-foreground">{formatComparisonCurrency(Math.abs(netPayChange), current.country)}</strong>.</p>
             )}
-            {current.student_loan_amount && !previous.student_loan_amount && (
-              <p>A <strong className="text-foreground">student loan repayment</strong> of {formatCurrency(current.student_loan_amount)} appeared for the first time.</p>
-            )}
-            {current.ni_amount !== previous.ni_amount && (
-              <p>National Insurance changed to <strong className="text-foreground">{formatCurrency(current.ni_amount || 0)}</strong> (was {formatCurrency(previous.ni_amount || 0)}).</p>
-            )}
-            <p className="text-xs">This comparison is for guidance only. Please verify with your payroll team if anything looks incorrect.</p>
+            {changedDeductions.map((deduction) => (
+              <p key={deduction.label}>{deduction.label} changed to <strong className="text-foreground">{formatComparisonCurrency(deduction.current, current.country)}</strong> (was {formatComparisonCurrency(deduction.previous, current.country)}).</p>
+            ))}
+            <p className="text-xs">This view puts confirmed figures side by side for review; it cannot tell you whether payroll is correct. Check the original payslips and ask your payroll team if something looks wrong.</p>
           </CardContent>
         </Card>
 
         <div className="flex flex-wrap gap-3">
-          <Link to={`/draft/${current.id}`}>
-            <Button className="gap-2">Draft payroll query <ArrowRight className="h-4 w-4" /></Button>
-          </Link>
+          <Button asChild className="gap-2">
+            <Link to={`/draft/${current.id}`}>Draft payroll query <ArrowRight className="h-4 w-4" /></Link>
+          </Button>
         </div>
       </div>
     </AppLayout>

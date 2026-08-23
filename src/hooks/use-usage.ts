@@ -3,6 +3,19 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSubscription } from './use-subscription';
 
+// Mirrors the server-owned cap in
+// 20260804110000_cap_paid_payslip_checks.sql. The server remains authoritative.
+export const PAID_UPLOADS_PER_MONTH = 6;
+export const PAID_DRAFTS_PER_MONTH = 12;
+
+export function automaticCheckLimit(isPremium: boolean, freeLimit: number): number {
+  return isPremium ? PAID_UPLOADS_PER_MONTH : freeLimit;
+}
+
+export function payrollMessageDraftLimit(isPremium: boolean, freeLimit: number): number {
+  return isPremium ? PAID_DRAFTS_PER_MONTH : freeLimit;
+}
+
 export interface Usage {
   automaticChecksThisMonth: number;
   draftsThisMonth: number;
@@ -71,15 +84,13 @@ export function useUsage() {
   const accessError = Boolean(user) && (query.isError || subscriptionQuery.isError);
   const accessPending = Boolean(user) && !accessReady && !accessError;
 
-  const canUpload = accessReady && (subscription.isPremium || usage.automaticChecksThisMonth < limits.uploads_per_month);
-  const canDraft = accessReady && (subscription.isPremium || usage.draftsThisMonth < limits.drafts_per_month);
+  const uploadLimit = automaticCheckLimit(subscription.isPremium, limits.uploads_per_month);
+  const draftLimit = payrollMessageDraftLimit(subscription.isPremium, limits.drafts_per_month);
+  const canUpload = accessReady && usage.automaticChecksThisMonth < uploadLimit;
+  const canDraft = accessReady && usage.draftsThisMonth < draftLimit;
 
-  const uploadsRemaining = subscription.isPremium
-    ? Infinity
-    : Math.max(0, limits.uploads_per_month - usage.automaticChecksThisMonth);
-  const draftsRemaining = subscription.isPremium
-    ? Infinity
-    : Math.max(0, limits.drafts_per_month - usage.draftsThisMonth);
+  const uploadsRemaining = Math.max(0, uploadLimit - usage.automaticChecksThisMonth);
+  const draftsRemaining = Math.max(0, draftLimit - usage.draftsThisMonth);
 
   return {
     ...query,
@@ -90,7 +101,9 @@ export function useUsage() {
     canUpload,
     canDraft,
     uploadsRemaining,
+    uploadLimit,
     draftsRemaining,
+    draftLimit,
     isPremium: subscription.isPremium,
     limits,
     refetchAccess: async () => {

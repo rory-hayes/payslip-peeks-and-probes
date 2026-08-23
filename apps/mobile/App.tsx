@@ -11,13 +11,18 @@ import { hasSupabaseConfig, manageSupabaseTokenRefresh, supabase } from './src/l
 import { AuthScreen } from './src/screens/auth-screen';
 import { HomeScreen } from './src/screens/home-screen';
 import { MeScreen } from './src/screens/me-screen';
+import { PayHistoryScreen } from './src/screens/pay-history-screen';
 import { PaycheckScreen } from './src/screens/paycheck-screen';
+import { PayslipHistoryDetailScreen } from './src/screens/payslip-history-detail-screen';
 import { PlanScreen } from './src/screens/plan-screen';
 import { ProfileSetupScreen } from './src/screens/profile-setup-screen';
 import { PasswordResetScreen } from './src/screens/password-reset-screen';
 import { ReviewScreen } from './src/screens/review-screen';
+import type { AccountDeletionResult } from './src/lib/delete-account';
 import { colors, spacing } from './src/theme';
 import type { MobileDashboardData } from './src/types/models';
+
+type PayHistoryRoute = { screen: 'list' } | { screen: 'detail'; payslipId: string };
 
 export default function App() {
   const [session, setSession] = useState<Session | null>(null);
@@ -28,7 +33,9 @@ export default function App() {
   const [refreshing, setRefreshing] = useState(false);
   const [activeTab, setActiveTab] = useState<MainTab>('home');
   const [reviewPayslipId, setReviewPayslipId] = useState<string | null>(null);
+  const [payHistoryRoute, setPayHistoryRoute] = useState<PayHistoryRoute | null>(null);
   const [passwordRecovery, setPasswordRecovery] = useState(false);
+  const [accountDeletionNotice, setAccountDeletionNotice] = useState<AccountDeletionResult | null>(null);
 
   const consumeAuthRedirect = useCallback(async (url: string) => {
     if (!supabase) return;
@@ -88,6 +95,7 @@ export default function App() {
     const { data: authState } = supabase.auth.onAuthStateChange((_event, nextSession) => {
       if (!mounted) return;
       setSession(nextSession);
+      if (nextSession) setAccountDeletionNotice(null);
       if (_event === 'PASSWORD_RECOVERY') setPasswordRecovery(true);
       setAuthReady(true);
     });
@@ -121,6 +129,7 @@ export default function App() {
       setDashboardError(null);
       setDashboardReady(false);
       setReviewPayslipId(null);
+      setPayHistoryRoute(null);
       setActiveTab('home');
       return;
     }
@@ -140,7 +149,12 @@ export default function App() {
 
   const changeTab = (nextTab: MainTab) => {
     setReviewPayslipId(null);
+    setPayHistoryRoute(null);
     setActiveTab(nextTab);
+  };
+
+  const openPayHistory = (payslipId?: string) => {
+    setPayHistoryRoute(payslipId ? { screen: 'detail', payslipId } : { screen: 'list' });
   };
 
   const handleSignOut = async () => {
@@ -149,10 +163,11 @@ export default function App() {
     if (error) throw error;
   };
 
-  const handleAccountDeleted = async () => {
+  const handleAccountDeleted = async (result: AccountDeletionResult) => {
     if (!supabase) return;
     const { error } = await supabase.auth.signOut({ scope: 'local' });
     if (error) throw error;
+    setAccountDeletionNotice(result);
   };
 
   const handlePasswordRecoveryCancelled = async () => {
@@ -171,7 +186,7 @@ export default function App() {
       <View style={styles.appViewport}>
         <View style={styles.appFrame}>
           {!hasSupabaseConfig || !supabase || !authReady ? <BootScreen /> : null}
-          {hasSupabaseConfig && supabase && authReady && !session ? <AuthScreen /> : null}
+          {hasSupabaseConfig && supabase && authReady && !session ? <AuthScreen accountDeletionNotice={accountDeletionNotice} /> : null}
           {hasSupabaseConfig && supabase && authReady && session && passwordRecovery ? (
             <PasswordResetScreen
               onCancel={handlePasswordRecoveryCancelled}
@@ -186,12 +201,15 @@ export default function App() {
               dashboardReady={dashboardReady}
               onAccountDeleted={handleAccountDeleted}
               onDashboardChanged={handleDashboardChanged}
+              onClosePayHistory={() => setPayHistoryRoute(null)}
+              onOpenPayHistory={openPayHistory}
               onOpenReview={setReviewPayslipId}
               onRefresh={() => refreshDashboard(session.user.id, true)}
               onSignOut={handleSignOut}
               onTabChange={changeTab}
               refreshing={refreshing}
               reviewPayslipId={reviewPayslipId}
+              payHistoryRoute={payHistoryRoute}
               userId={session.user.id}
               user={session.user}
             />
@@ -209,12 +227,15 @@ function AuthenticatedApp({
   dashboardReady,
   onAccountDeleted,
   onDashboardChanged,
+  onClosePayHistory,
+  onOpenPayHistory,
   onOpenReview,
   onRefresh,
   onSignOut,
   onTabChange,
   refreshing,
   reviewPayslipId,
+  payHistoryRoute,
   user,
   userId,
 }: {
@@ -222,14 +243,17 @@ function AuthenticatedApp({
   dashboard: MobileDashboardData | null;
   dashboardError: string | null;
   dashboardReady: boolean;
-  onAccountDeleted: () => Promise<void>;
+  onAccountDeleted: (result: AccountDeletionResult) => Promise<void>;
   onDashboardChanged: () => Promise<void>;
+  onClosePayHistory: () => void;
+  onOpenPayHistory: (payslipId?: string) => void;
   onOpenReview: (payslipId: string) => void;
   onRefresh: () => Promise<void>;
   onSignOut: () => Promise<void>;
   onTabChange: (tab: MainTab) => void;
   refreshing: boolean;
   reviewPayslipId: string | null;
+  payHistoryRoute: PayHistoryRoute | null;
   user: NonNullable<Session['user']>;
   userId: string;
 }) {
@@ -270,11 +294,37 @@ function AuthenticatedApp({
     );
   }
 
+  if (payHistoryRoute) {
+    const selectedPayslip = payHistoryRoute.screen === 'detail'
+      ? dashboard.confirmedPayslips.find((payslip) => payslip.id === payHistoryRoute.payslipId)
+      : null;
+
+    return (
+      <SafeAreaView edges={['top', 'bottom']} style={styles.root}>
+        {selectedPayslip ? (
+          <PayslipHistoryDetailScreen
+            currency={currency}
+            onClose={() => onOpenPayHistory()}
+            payslip={selectedPayslip}
+            payslips={dashboard.confirmedPayslips}
+          />
+        ) : (
+          <PayHistoryScreen
+            currency={currency}
+            onClose={onClosePayHistory}
+            onOpenPayslip={onOpenPayHistory}
+            payslips={dashboard.confirmedPayslips}
+          />
+        )}
+      </SafeAreaView>
+    );
+  }
+
   return (
     <View style={styles.root}>
       <SafeAreaView edges={['top']} style={styles.content}>
         {activeTab === 'home' ? (
-          <HomeScreen data={dashboard} onOpenReview={onOpenReview} onRefresh={onRefresh} onTabChange={onTabChange} refreshing={refreshing} />
+          <HomeScreen data={dashboard} onOpenPayHistory={onOpenPayHistory} onOpenReview={onOpenReview} onRefresh={onRefresh} onTabChange={onTabChange} refreshing={refreshing} />
         ) : null}
         {activeTab === 'paycheck' ? (
           <PaycheckScreen

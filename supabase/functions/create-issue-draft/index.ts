@@ -14,7 +14,9 @@ type Draft = { id: string; subject: string | null; body: string | null };
 function jsonResponse(body: Record<string, unknown>, status = 200) {
   return new Response(JSON.stringify(body), {
     status,
-    headers: { ...corsHeaders, "Content-Type": "application/json" },
+    // A saved payroll message can contain a person's pay details. Do not let a
+    // browser or intermediary reuse it after the authenticated request ends.
+    headers: { ...corsHeaders, "Cache-Control": "no-store", "Content-Type": "application/json" },
   });
 }
 

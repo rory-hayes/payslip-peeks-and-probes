@@ -1,8 +1,8 @@
 import type { ReactNode } from 'react';
 import { Image, ImageBackground, Pressable, StyleSheet, Text, View, type ImageStyle, type StyleProp, type ViewStyle } from 'react-native';
-import aquaCorner from '../../assets/option-one-aqua-corner-v2.png';
-import brandMark from '../../assets/payslip-insights-mark.png';
-import payslipHero from '../../assets/option-one-payslip-check-hero-v1.png';
+import aquaCorner from '../../assets/option-one-aqua-corner-v2.webp';
+import brandMark from '../../assets/payslip-insights-mark.webp';
+import payslipHero from '../../assets/option-one-payslip-check-hero-v1.webp';
 import { colors, radius, spacing } from '../theme';
 
 export function AquaCorner() {

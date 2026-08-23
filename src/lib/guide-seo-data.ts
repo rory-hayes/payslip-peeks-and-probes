@@ -41,7 +41,7 @@ const ALL_GUIDES_SEO: GuideSeo[] = [
     path: '/guides/common-payslip-mistakes',
     title: 'Common Payslip Mistakes to Watch For',
     description:
-      'The most common payslip issues we see across UK and Ireland employees, with what to check for each one before contacting payroll.',
+      'Common payslip issues to check across UK and Ireland employees, with what to review before contacting payroll.',
     datePublished: '2025-01-14',
   },
   {
@@ -62,7 +62,7 @@ const ALL_GUIDES_SEO: GuideSeo[] = [
     path: '/guides/ireland-payslip-guide',
     title: 'Ireland Payslip Guide',
     description:
-      'PAYE, PRSI and USC explained in plain English for Ireland-based employees, with the issues most often worth checking.',
+      'PAYE, PRSI and USC explained in plain English for Ireland-based employees, with key payslip details to review.',
     datePublished: '2025-02-08',
   },
   {

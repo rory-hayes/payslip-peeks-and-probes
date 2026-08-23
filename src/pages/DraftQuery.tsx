@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useParams, Link } from 'react-router';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -10,7 +10,7 @@ import AppLayout from '@/components/layout/AppLayout';
 import UpgradePrompt from '@/components/UpgradePrompt';
 import { usePayslip, useAnomalies } from '@/hooks/use-payslip-data';
 import { useProfile } from '@/hooks/use-profile';
-import { useUsage } from '@/hooks/use-usage';
+import { PAID_DRAFTS_PER_MONTH, useUsage } from '@/hooks/use-usage';
 import { formatDate } from '@/lib/date-utils';
 import { ArrowLeft, Copy, Mail, CheckCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
@@ -94,13 +94,19 @@ const DraftQuery = () => {
   const { id } = useParams();
   const { toast } = useToast();
   const { user } = useAuth();
-  const { data: slip, isLoading } = usePayslip(id);
-  const { data: allAnomalies } = useAnomalies();
+  const { data: slip, isLoading, error: payslipError, refetch: refetchPayslip } = usePayslip(id);
+  const {
+    data: allAnomalies,
+    isLoading: anomaliesLoading,
+    isError: anomaliesError,
+    refetch: refetchAnomalies,
+  } = useAnomalies();
   const { data: profile } = useProfile();
   const {
     accessError,
     accessReady,
     canDraft,
+    draftLimit,
     draftsRemaining,
     isPremium,
     refetchAccess,
@@ -117,18 +123,108 @@ const DraftQuery = () => {
   const [initialized, setInitialized] = useState(false);
   const [draftId, setDraftId] = useState<string | null>(null);
   const [draftLimitReached, setDraftLimitReached] = useState(false);
+  const [isCreatingDraft, setIsCreatingDraft] = useState(false);
+  const [isSavingEdits, setIsSavingEdits] = useState(false);
+  const [draftPersistenceError, setDraftPersistenceError] = useState<'create' | 'update' | null>(null);
   const saveTimeoutRef = useRef<number | null>(null);
+  const saveVersionRef = useRef(0);
+  const lastPersistedDraftRef = useRef<{ id: string; subject: string; body: string } | null>(null);
   const canUseDraft = accessReady && canDraft && !draftLimitReached;
 
+  const saveExistingDraft = useCallback(async (
+    draftSnapshot: { id: string; subject: string; body: string },
+    saveVersion: number,
+  ) => {
+    setIsSavingEdits(true);
+    setDraftPersistenceError(null);
+
+    try {
+      const { error } = await supabase
+        .from('issue_drafts')
+        .update({ subject: draftSnapshot.subject, body: draftSnapshot.body, status: 'draft' })
+        .eq('id', draftSnapshot.id);
+
+      if (saveVersion !== saveVersionRef.current) return;
+
+      if (error) {
+        setDraftPersistenceError('update');
+        return;
+      }
+
+      lastPersistedDraftRef.current = draftSnapshot;
+    } catch {
+      if (saveVersion === saveVersionRef.current) {
+        setDraftPersistenceError('update');
+      }
+    } finally {
+      if (saveVersion === saveVersionRef.current) {
+        setIsSavingEdits(false);
+      }
+    }
+  }, []);
+
+  const createOrRestoreDraft = useCallback(async (
+    nextSubject: string,
+    nextBody: string,
+    preserveLocalEdits = false,
+  ) => {
+    if (!slip || !canUseDraft) return;
+
+    setIsCreatingDraft(true);
+    setDraftPersistenceError(null);
+
+    try {
+      const { data, error: createError } = await supabase.functions.invoke('create-issue-draft', {
+        body: {
+          payslipId: slip.id,
+          subject: nextSubject,
+          body: nextBody,
+        },
+      });
+      const response = createDraftResponse(data);
+
+      if (response?.code === 'draft_limit_reached') {
+        setDraftLimitReached(true);
+        toast({
+          title: 'Draft allowance used',
+          description: isPremium
+            ? `You have used your ${draftLimit} payroll-message drafts for this calendar month.`
+            : `You have used your ${draftLimit} Free drafts for this calendar month. See Plus options for more.`,
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      if (createError || !response?.draft) {
+        setDraftPersistenceError('create');
+        return;
+      }
+
+      const savedSubject = response.draft.subject || nextSubject;
+      const savedBody = response.draft.body || nextBody;
+      lastPersistedDraftRef.current = { id: response.draft.id, subject: savedSubject, body: savedBody };
+      setDraftId(response.draft.id);
+      // A timed-out create may already have succeeded server-side. On an
+      // explicit retry, keep any edits the person made after the error and let
+      // the normal autosave update that idempotently recovered draft.
+      setSubject(preserveLocalEdits ? nextSubject : savedSubject);
+      setBody(preserveLocalEdits ? nextBody : savedBody);
+    } catch {
+      setDraftPersistenceError('create');
+    } finally {
+      setIsCreatingDraft(false);
+    }
+  }, [canUseDraft, draftLimit, isPremium, slip, toast]);
+
   useEffect(() => {
-    if (!slip || !user || initialized || !accessReady) return;
+    if (!slip || !user || initialized || !accessReady || anomaliesLoading) return;
 
     const dateLabel = safeDateLabel(slip.pay_date);
     const initialSubject = buildSubject(dateLabel, anomalies.length > 0);
     const initialBody = buildDraft(dateLabel, slip.employer_name, anomalies, profile?.first_name ?? null);
     const initialEmail = profile?.payroll_email ?? '';
 
-    const initialiseDraft = async () => {
+    const initialiseDraft = () => {
       setSubject(initialSubject);
       setBody(initialBody);
       setToEmail(initialEmail);
@@ -136,63 +232,65 @@ const DraftQuery = () => {
 
       if (!canUseDraft) return;
 
-      const { data, error: createError } = await supabase.functions.invoke('create-issue-draft', {
-        body: {
-          payslipId: slip.id,
-          subject: initialSubject,
-          body: initialBody,
-        },
-      });
-      const response = createDraftResponse(data);
-
-      if (response?.code === 'draft_limit_reached') {
-          setDraftLimitReached(true);
-          toast({
-            title: 'Draft limit reached',
-            description: 'You have used your two free drafts this Dublin calendar month. See Plus options for more drafts.',
-            variant: 'destructive',
-          });
-        return;
-      }
-
-      if (createError || !response?.draft) {
-        toast({
-          title: 'Could not save draft',
-          description: 'Please try again.',
-          variant: 'destructive',
-        });
-        return;
-      }
-
-      setDraftId(response.draft.id);
-      setSubject(response.draft.subject || initialSubject);
-      setBody(response.draft.body || initialBody);
+      void createOrRestoreDraft(initialSubject, initialBody);
     };
 
-    void initialiseDraft();
-  }, [accessReady, anomalies, canUseDraft, initialized, profile?.first_name, profile?.payroll_email, slip, toast, user]);
+    initialiseDraft();
+  }, [accessReady, anomalies, anomaliesLoading, canUseDraft, createOrRestoreDraft, initialized, profile?.first_name, profile?.payroll_email, slip, user]);
 
   useEffect(() => {
     if (!draftId || !initialized) return;
     if (saveTimeoutRef.current) window.clearTimeout(saveTimeoutRef.current);
 
+    const currentDraft = { id: draftId, subject, body };
+    const lastPersistedDraft = lastPersistedDraftRef.current;
+    if (
+      lastPersistedDraft
+      && lastPersistedDraft.id === currentDraft.id
+      && lastPersistedDraft.subject === currentDraft.subject
+      && lastPersistedDraft.body === currentDraft.body
+    ) {
+      return;
+    }
+
+    const saveVersion = ++saveVersionRef.current;
+    setIsSavingEdits(true);
+    setDraftPersistenceError(null);
+
     saveTimeoutRef.current = window.setTimeout(() => {
-      void supabase
-        .from('issue_drafts')
-        .update({ subject, body, status: 'draft' })
-        .eq('id', draftId);
+      void saveExistingDraft(currentDraft, saveVersion);
     }, 300);
 
     return () => {
       if (saveTimeoutRef.current) window.clearTimeout(saveTimeoutRef.current);
     };
-  }, [body, draftId, initialized, subject]);
+  }, [body, draftId, initialized, saveExistingDraft, subject]);
 
-  const handleCopy = () => {
-    navigator.clipboard.writeText(`Subject: ${subject}\n\n${body}`);
-    setCopied(true);
-    toast({ title: 'Copied to clipboard', description: 'Paste this into your email client.' });
-    setTimeout(() => setCopied(false), 2000);
+  const handleRetryDraftSave = () => {
+    if (!draftId) {
+      void createOrRestoreDraft(subject, body, true);
+      return;
+    }
+
+    if (saveTimeoutRef.current) window.clearTimeout(saveTimeoutRef.current);
+    const saveVersion = ++saveVersionRef.current;
+    void saveExistingDraft({ id: draftId, subject, body }, saveVersion);
+  };
+
+  const handleCopy = async () => {
+    try {
+      if (!navigator.clipboard?.writeText) throw new Error('Clipboard unavailable');
+      await navigator.clipboard.writeText(`Subject: ${subject}\n\n${body}`);
+      setCopied(true);
+      toast({ title: 'Copied to clipboard', description: 'Paste this into your email client.' });
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      toast({
+        title: 'Couldn’t copy the draft',
+        description: 'Select the text and copy it manually before you leave this page.',
+        variant: 'destructive',
+      });
+    }
   };
 
   const mailtoLink = `mailto:${encodeURIComponent(toEmail)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
@@ -211,12 +309,29 @@ const DraftQuery = () => {
     );
   }
 
+  if (payslipError) {
+    return (
+      <AppLayout>
+        <div className="flex flex-col items-center justify-center py-20 text-center" role="alert">
+          <h2 className="text-lg font-semibold text-foreground">We couldn’t load this payslip.</h2>
+          <p className="mt-2 max-w-md text-sm text-muted-foreground">Your saved draft has not been changed. Check your connection and try again before creating a payroll message.</p>
+          <div className="mt-4 flex flex-wrap justify-center gap-2">
+            <Button className="min-h-11" onClick={() => void refetchPayslip()}>Try again</Button>
+            <Button asChild variant="outline" className="min-h-11"><Link to="/vault">Back to vault</Link></Button>
+          </div>
+        </div>
+      </AppLayout>
+    );
+  }
+
   if (!slip) {
     return (
       <AppLayout>
         <div className="flex flex-col items-center justify-center py-20">
           <p className="text-muted-foreground">Payslip not found.</p>
-          <Link to="/vault"><Button variant="outline" className="mt-4">Back to vault</Button></Link>
+          <Button asChild variant="outline" className="mt-4">
+            <Link to="/vault">Back to vault</Link>
+          </Button>
         </div>
       </AppLayout>
     );
@@ -226,7 +341,9 @@ const DraftQuery = () => {
     <AppLayout>
       <div className="space-y-6 max-w-2xl">
         <div className="flex items-center gap-4">
-          <Link to={`/payslip/${id}`}><Button variant="ghost" size="icon"><ArrowLeft className="h-4 w-4" /></Button></Link>
+          <Button asChild variant="ghost" size="icon" className="min-h-11 min-w-11">
+            <Link to={`/payslip/${id}`} aria-label="Back to payslip"><ArrowLeft aria-hidden="true" className="h-4 w-4" /></Link>
+          </Button>
           <div>
             <h1 className="text-xl font-bold text-foreground">Draft payroll query</h1>
             <p className="text-sm text-muted-foreground">
@@ -235,6 +352,15 @@ const DraftQuery = () => {
             </p>
           </div>
         </div>
+
+        {anomaliesError && (
+          <Card className="border-warning/30 bg-warning/10 shadow-sm" role="alert">
+            <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
+              <p className="text-sm text-foreground">We couldn’t load flagged items for this payslip. This draft uses general wording until those items are available.</p>
+              <Button variant="outline" size="sm" className="min-h-11 shrink-0" onClick={() => void refetchAnomalies()}>Try again</Button>
+            </CardContent>
+          </Card>
+        )}
 
         {!accessReady ? (
           <Card className="border-0 shadow-sm">
@@ -250,28 +376,78 @@ const DraftQuery = () => {
               {accessError ? <Button className="mt-4" onClick={() => void refetchAccess()}>Try again</Button> : null}
             </CardContent>
           </Card>
+        ) : anomaliesLoading ? (
+          <Card className="border-0 shadow-sm" role="status" aria-live="polite">
+            <CardContent className="py-8 text-center">
+              <h2 className="text-base font-semibold text-foreground">Loading flagged items</h2>
+              <p className="mt-2 text-sm text-muted-foreground">We’re checking this payslip before preparing your message.</p>
+            </CardContent>
+          </Card>
         ) : !canUseDraft ? (
-          <UpgradePrompt
-            title="Draft limit reached"
-            description={`You've used your ${2} free drafts this Dublin calendar month. See Plus options for more drafts.`}
-          />
+          isPremium ? (
+            <Card className="border-border bg-muted/30">
+              <CardContent className="p-6 text-center">
+                <h2 className="font-semibold text-foreground">Draft allowance used</h2>
+                <p className="mt-2 text-sm text-muted-foreground">
+                  Your plan includes up to {draftLimit} payroll-message drafts per calendar month. You can create another when the next month begins.
+                </p>
+              </CardContent>
+            </Card>
+          ) : (
+            <UpgradePrompt
+              title="Draft allowance used"
+              description={`You've used your ${draftLimit} Free drafts this calendar month. See Plus options for up to ${PAID_DRAFTS_PER_MONTH} drafts per month.`}
+            />
+          )
         ) : (
           <>
-            {!isPremium && (
-              <p className="text-xs text-muted-foreground">
-                {draftsRemaining} draft{draftsRemaining !== 1 ? 's' : ''} remaining this month
+            <p className="text-xs text-muted-foreground">
+              {draftsRemaining} of {draftLimit} payroll-message draft{draftLimit !== 1 ? 's' : ''} remaining this month
+            </p>
+            {isCreatingDraft && (
+              <p className="text-sm text-muted-foreground" role="status" aria-live="polite">
+                Saving your draft securely…
               </p>
+            )}
+            {draftPersistenceError && (
+              <Card className="border-warning/30 bg-warning/10 shadow-sm" role="alert">
+                <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
+                  <p className="text-sm text-foreground">
+                    {draftPersistenceError === 'create'
+                      ? 'We couldn’t save this draft yet. Copy it into your email or try again.'
+                      : 'Your latest edits could not be saved. Copy the message before leaving, then try saving again.'}
+                  </p>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="min-h-11 shrink-0"
+                    onClick={handleRetryDraftSave}
+                    disabled={isCreatingDraft || isSavingEdits}
+                  >
+                    Try saving again
+                  </Button>
+                </CardContent>
+              </Card>
+            )}
+            {!draftPersistenceError && isSavingEdits && !isCreatingDraft && (
+              <p className="text-xs text-muted-foreground" role="status" aria-live="polite">Saving your latest edits…</p>
+            )}
+            {!draftPersistenceError && draftId && !isSavingEdits && !isCreatingDraft && (
+              <p className="text-xs text-muted-foreground" role="status">Draft saved</p>
             )}
             <Card className="border-0 shadow-sm">
               <CardHeader className="pb-2"><CardTitle className="text-base">Your message</CardTitle></CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-2">
-                  <Label>To</Label>
+                  <Label htmlFor="draft-to">To</Label>
                   <Input
+                    id="draft-to"
                     type="email"
                     placeholder="payroll@company.com"
                     value={toEmail}
                     onChange={(e) => setToEmail(e.target.value)}
+                    disabled={isCreatingDraft}
                   />
                   {!toEmail && (
                     <p className="text-xs text-muted-foreground">
@@ -280,12 +456,12 @@ const DraftQuery = () => {
                   )}
                 </div>
                 <div className="space-y-2">
-                  <Label>Subject</Label>
-                  <Input value={subject} onChange={(e) => setSubject(e.target.value)} />
+                  <Label htmlFor="draft-subject">Subject</Label>
+                  <Input id="draft-subject" value={subject} onChange={(e) => setSubject(e.target.value)} disabled={isCreatingDraft} />
                 </div>
                 <div className="space-y-2">
-                  <Label>Message</Label>
-                  <Textarea value={body} onChange={(e) => setBody(e.target.value)} rows={14} className="resize-y" />
+                  <Label htmlFor="draft-message">Message</Label>
+                  <Textarea id="draft-message" value={body} onChange={(e) => setBody(e.target.value)} rows={14} className="resize-y" disabled={isCreatingDraft} />
                 </div>
                 <p className="text-xs text-muted-foreground">
                   Edit this message before sending. {anomalies.length > 0
@@ -300,13 +476,13 @@ const DraftQuery = () => {
         {canUseDraft && (
           <>
             <div className="flex flex-wrap gap-3">
-              <Button onClick={handleCopy} className="gap-2">
+              <Button onClick={() => void handleCopy()} className="gap-2">
                 {copied ? <CheckCircle className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
                 {copied ? 'Copied!' : 'Copy to clipboard'}
               </Button>
-              <a href={mailtoLink}>
-                <Button variant="outline" className="gap-2"><Mail className="h-4 w-4" /> Open in email</Button>
-              </a>
+              <Button asChild variant="outline" className="gap-2">
+                <a href={mailtoLink}><Mail className="h-4 w-4" /> Open in email</a>
+              </Button>
             </div>
 
             <p className="text-xs text-muted-foreground">

@@ -3,6 +3,8 @@ import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'r
 import { AquaCorner, Brand, HeroIllustration, Notice, PrimaryButton, SectionHeading } from '../components/chrome';
 import type { MainTab } from '../components/bottom-tabs';
 import { asNumber, formatDate, formatMoney, formatShortMoney } from '../lib/format';
+import { confirmedPayslipAmount, currencyForPayslip } from '../lib/pay-history';
+import { deriveUsualPayBaseline } from '../lib/usual-pay';
 import type { MobileDashboardData, Payslip } from '../types/models';
 import { colors, radius, spacing } from '../theme';
 
@@ -12,12 +14,14 @@ export function HomeScreen({
   onRefresh,
   onTabChange,
   onOpenReview,
+  onOpenPayHistory,
 }: {
   data: MobileDashboardData | null;
   refreshing: boolean;
   onRefresh: () => void;
   onTabChange: (tab: MainTab) => void;
   onOpenReview: (payslipId: string) => void;
+  onOpenPayHistory: (payslipId?: string) => void;
 }) {
   const profile = data?.profile;
   const currency = profile?.currency ?? (profile?.country === 'Ireland' ? 'EUR' : 'GBP');
@@ -62,6 +66,9 @@ export function HomeScreen({
   const netPay = asNumber(latestExtraction.net_pay);
   const previousNet = previousExtraction ? asNumber(previousExtraction.net_pay) : null;
   const netDifference = previousNet === null ? null : netPay - previousNet;
+  const usualPay = deriveUsualPayBaseline(data?.confirmedPayslips ?? []);
+  const hasUsualPay = usualPay.status === 'ready' && usualPay.currentPayslipId === latest.id;
+  const payDifference = hasUsualPay ? usualPay.netDifference : netDifference;
   const plan = data?.activePlan;
   const essentialBills = allocation(data?.allocations ?? [], 'essential_bills');
   const buffer = allocation(data?.allocations ?? [], 'buffer');
@@ -86,18 +93,36 @@ export function HomeScreen({
           <Ionicons color={colors.violet} name="calendar-outline" size={21} />
           <Text style={styles.payDate}>Paid {formatDate(latest.pay_date)}</Text>
         </View>
-        {netDifference !== null ? (
+        {payDifference !== null ? (
           <View style={styles.difference}>
-            <View style={[styles.differenceIcon, netDifference >= 0 ? styles.differenceGood : styles.differenceWatch]}>
-              <Ionicons color={netDifference >= 0 ? colors.green : colors.coral} name={netDifference >= 0 ? 'arrow-up' : 'arrow-down'} size={17} />
+            <View style={[styles.differenceIcon, payDifference >= 0 ? styles.differenceGood : styles.differenceWatch]}>
+              <Ionicons color={payDifference >= 0 ? colors.green : colors.coral} name={payDifference >= 0 ? 'arrow-up' : 'arrow-down'} size={17} />
             </View>
             <Text style={styles.differenceText}>
-              <Text style={{ color: netDifference >= 0 ? colors.green : colors.coral, fontWeight: '800' }}>{formatShortMoney(Math.abs(netDifference), currency)}</Text>
-              {netDifference >= 0 ? ' more than last time' : ' less than last time'}
+              <Text style={{ color: payDifference >= 0 ? colors.green : colors.coral, fontWeight: '800' }}>{formatShortMoney(Math.abs(payDifference), currency)}</Text>
+              {hasUsualPay
+                ? (payDifference >= 0 ? ' more than your usual pay' : ' less than your usual pay')
+                : (payDifference >= 0 ? ' more than last time' : ' less than last time')}
             </Text>
           </View>
         ) : <Text style={styles.firstPay}>Your first confirmed payslip</Text>}
       </View>
+
+      <Notice tone="aqua">
+        <View style={styles.insightRow}>
+          <View style={styles.insightCopy}>
+            <Text style={styles.insightTitle}>{hasUsualPay ? 'Your usual pay' : 'Build your usual pay'}</Text>
+            <Text style={styles.insightBody}>
+              {hasUsualPay && usualPay.usualNetPay !== null
+                ? `Your usual take-home is ${formatShortMoney(usualPay.usualNetPay, currency)}, based on the middle of your last ${usualPay.sampleSize} comparable confirmed payslips.`
+                : usualPay.sampleSize === 1
+                  ? 'One more comparable confirmed payslip will build a personal take-home reference.'
+                  : 'We’ll build a personal take-home reference after two comparable confirmed payslips.'}
+            </Text>
+          </View>
+          <Ionicons color="#0989A5" name={hasUsualPay ? 'analytics-outline' : 'time-outline'} size={27} />
+        </View>
+      </Notice>
 
       <Notice tone={insight.tone}>
         <View style={styles.insightRow}>
@@ -146,10 +171,30 @@ export function HomeScreen({
 
       {data?.confirmedPayslips.length ? (
         <View style={styles.section}>
-          <SectionHeading title="Your pay history" />
+          <SectionHeading
+            title="Your pay history"
+            action={(
+              <Pressable
+                accessibilityHint="Opens all of your confirmed payslips"
+                accessibilityLabel="See all pay history"
+                accessibilityRole="button"
+                onPress={() => onOpenPayHistory()}
+                style={({ pressed }) => [styles.historyAction, pressed && styles.historyActionPressed]}
+              >
+                <Text style={styles.historyActionText}>See all</Text>
+                <Ionicons color={colors.violet} name="chevron-forward" size={18} />
+              </Pressable>
+            )}
+          />
           <View style={styles.historyCard}>
             {data.confirmedPayslips.slice(0, 3).map((payslip, index) => (
-              <PayHistoryRow currency={currency} isLast={index === Math.min(data.confirmedPayslips.length, 3) - 1} key={payslip.id} payslip={payslip} />
+              <PayHistoryRow
+                currency={currencyForPayslip(payslip.country, currency)}
+                isLast={index === Math.min(data.confirmedPayslips.length, 3) - 1}
+                key={payslip.id}
+                onPress={() => onOpenPayHistory(payslip.id)}
+                payslip={payslip}
+              />
             ))}
           </View>
         </View>
@@ -199,17 +244,36 @@ function PendingPayslipState({
   );
 }
 
-function PayHistoryRow({ payslip, currency, isLast }: { payslip: MobileDashboardData['confirmedPayslips'][number]; currency: 'GBP' | 'EUR'; isLast: boolean }) {
-  const netPay = payslip.extraction ? asNumber(payslip.extraction.net_pay) : null;
+function PayHistoryRow({
+  payslip,
+  currency,
+  isLast,
+  onPress,
+}: {
+  payslip: MobileDashboardData['confirmedPayslips'][number];
+  currency: 'GBP' | 'EUR';
+  isLast: boolean;
+  onPress: () => void;
+}) {
+  const netPay = confirmedPayslipAmount(payslip, 'net_pay');
   return (
-    <View style={[styles.historyRow, !isLast && styles.historyRowBorder]}>
+    <Pressable
+      accessibilityHint={`Opens the confirmed payslip from ${formatDate(payslip.pay_date)}`}
+      accessibilityLabel={`Confirmed payslip, ${formatDate(payslip.pay_date)}`}
+      accessibilityRole="button"
+      onPress={onPress}
+      style={({ pressed }) => [styles.historyRow, !isLast && styles.historyRowBorder, pressed && styles.historyRowPressed]}
+    >
       <View style={styles.historyIcon}><Ionicons color={colors.green} name="checkmark" size={18} /></View>
       <View style={styles.historyCopy}>
         <Text style={styles.historyDate}>{formatDate(payslip.pay_date)}</Text>
         <Text style={styles.historyStatus}>Confirmed payslip</Text>
       </View>
-      {netPay !== null ? <Text style={styles.historyAmount}>{formatShortMoney(netPay, currency)}</Text> : null}
-    </View>
+      <View style={styles.historyRowEnd}>
+        {netPay !== null ? <Text style={styles.historyAmount}>{formatShortMoney(netPay, currency)}</Text> : null}
+        <Ionicons color={colors.muted} name="chevron-forward" size={19} />
+      </View>
+    </Pressable>
   );
 }
 
@@ -297,11 +361,16 @@ const styles = StyleSheet.create({
   historyCard: { backgroundColor: colors.white, borderColor: colors.lavenderLine, borderRadius: radius.large, borderWidth: 1, overflow: 'hidden', paddingHorizontal: spacing.md },
   historyRow: { alignItems: 'center', flexDirection: 'row', gap: spacing.sm, minHeight: 70 },
   historyRowBorder: { borderBottomColor: colors.lavenderLine, borderBottomWidth: StyleSheet.hairlineWidth },
+  historyRowPressed: { backgroundColor: colors.lavender },
   historyIcon: { alignItems: 'center', backgroundColor: colors.greenSoft, borderRadius: 999, height: 36, justifyContent: 'center', width: 36 },
   historyCopy: { flex: 1 },
   historyDate: { color: colors.navy, fontSize: 15, fontWeight: '800' },
   historyStatus: { color: colors.muted, fontSize: 12, marginTop: 2 },
+  historyRowEnd: { alignItems: 'center', flexDirection: 'row', gap: spacing.xxs },
   historyAmount: { color: colors.navy, fontSize: 17, fontWeight: '900', letterSpacing: -0.5 },
+  historyAction: { alignItems: 'center', flexDirection: 'row', minHeight: 36, paddingLeft: spacing.sm },
+  historyActionPressed: { opacity: 0.62 },
+  historyActionText: { color: colors.violet, fontSize: 14, fontWeight: '800' },
   disclaimer: { color: colors.muted, fontSize: 11, lineHeight: 16, marginHorizontal: spacing.lg, marginTop: spacing.xl, textAlign: 'center' },
   emptyTop: { alignItems: 'center', paddingHorizontal: spacing.lg, paddingTop: 64 },
   emptyTitle: { alignSelf: 'flex-start', color: colors.navy, fontSize: 48, fontWeight: '900', letterSpacing: -2.4, lineHeight: 50, marginTop: 54 },

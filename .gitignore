@@ -11,6 +11,8 @@ node_modules
 dist
 dist-ssr
 *.local
+supabase/.temp/
+work/
 
 # Local environment configuration. Store deploy-time secrets in the provider's
 # secret manager; commit only the key-only template below.

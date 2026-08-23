@@ -1,9 +1,10 @@
-import { useCallback, useState } from "react";
-import { Link } from "react-router-dom";
+import { useCallback, useEffect, useState } from "react";
+import { Link } from "react-router";
 import { EmbeddedCheckoutProvider, EmbeddedCheckout } from "@stripe/react-stripe-js";
-import { getStripe } from "@/lib/stripe";
+import { getStripe, getStripeEnvironment, isPaymentsClientConfigured } from "@/lib/stripe";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
+import { parseEmbeddedCheckoutResponse } from '@/lib/embedded-checkout-response';
 
 interface StripeEmbeddedCheckoutProps {
   priceId: string;
@@ -46,6 +47,7 @@ function CheckoutProblem({ error }: { error: CheckoutErrorState }) {
   const isExistingPlan = error.code === "billing_already_active";
   const isPending = error.code === "checkout_pending";
   const isReview = error.code === "billing_needs_review";
+  const isEnvironmentMismatch = error.code === "billing_environment_mismatch";
 
   const heading = isExistingPlan
     ? "You already have access"
@@ -53,6 +55,8 @@ function CheckoutProblem({ error }: { error: CheckoutErrorState }) {
       ? "Your payment is being confirmed"
       : isReview
         ? "We need to check your billing record"
+        : isEnvironmentMismatch
+          ? "Checkout needs attention"
         : "Checkout is unavailable";
   const action = isExistingPlan || isReview
     ? { to: "/settings", label: "Go to Settings" }
@@ -71,32 +75,118 @@ function CheckoutProblem({ error }: { error: CheckoutErrorState }) {
           Don&apos;t submit another payment. Your access will update as soon as Stripe confirms it.
         </p>
       )}
-      <Link to={action.to} className="mt-6 inline-block">
-        <Button>{action.label}</Button>
-      </Link>
+      <Button asChild className="mt-6">
+        <Link to={action.to}>{action.label}</Link>
+      </Button>
     </div>
   );
 }
 
 export function StripeEmbeddedCheckout({ priceId }: StripeEmbeddedCheckoutProps) {
   const [checkoutError, setCheckoutError] = useState<CheckoutErrorState | null>(null);
+  const [stripeReady, setStripeReady] = useState(false);
 
   const fetchClientSecret = useCallback(async (): Promise<string> => {
-    const { data, error } = await supabase.functions.invoke("create-checkout", {
-      // The server owns quantity, return URL, billing environment, and the
-      // catalogue. The browser may only request a named plan.
-      body: { priceId },
-    });
-    if (error || !data?.clientSecret) {
+    const browserEnvironment = getStripeEnvironment();
+    if (!browserEnvironment) {
+      const detail = {
+        code: "payments_unconfigured",
+        message: "Online checkout is unavailable right now. You have not been charged.",
+      };
+      setCheckoutError(detail);
+      throw new Error(detail.message);
+    }
+
+    let data: unknown;
+    let error: unknown = null;
+    try {
+      const response = await supabase.functions.invoke("create-checkout", {
+        // The server independently owns the catalogue and Stripe environment.
+        // This declared mode is only a fail-closed compatibility handshake: it
+        // prevents a stale browser bundle from receiving a session secret for a
+        // different Stripe mode.
+        body: { environment: browserEnvironment, priceId },
+      });
+      data = response.data;
+      error = response.error;
+    } catch {
+      const detail = {
+        code: "payments_unavailable",
+        message: "Online checkout is unavailable right now. You have not been charged.",
+      };
+      setCheckoutError(detail);
+      throw new Error(detail.message);
+    }
+    if (error) {
       const detail = await readCheckoutError(error);
       setCheckoutError(detail);
       throw new Error(detail.message);
     }
 
-    return data.clientSecret;
+    const checkout = parseEmbeddedCheckoutResponse(data);
+    if (!checkout || checkout.priceId !== priceId) {
+      const detail = {
+        code: "checkout_response_invalid",
+        message: "We couldn't verify this checkout session. You have not been charged.",
+      };
+      setCheckoutError(detail);
+      throw new Error(detail.message);
+    }
+
+    if (checkout.environment !== browserEnvironment) {
+      const detail = {
+        code: "billing_environment_mismatch",
+        message: "Online checkout is temporarily unavailable while we verify its configuration. You have not been charged.",
+      };
+      setCheckoutError(detail);
+      throw new Error(detail.message);
+    }
+
+    return checkout.clientSecret;
   }, [priceId]);
 
+  useEffect(() => {
+    if (!isPaymentsClientConfigured()) return;
+
+    let active = true;
+    void getStripe()
+      .then((stripe) => {
+        if (!stripe) throw new Error("Stripe did not load");
+        if (active) setStripeReady(true);
+      })
+      .catch(() => {
+        if (!active) return;
+        setCheckoutError({
+          code: "payments_unavailable",
+          message: "Online checkout is unavailable right now. You have not been charged.",
+        });
+      });
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
   if (checkoutError) return <CheckoutProblem error={checkoutError} />;
+
+  if (!isPaymentsClientConfigured()) {
+    return (
+      <CheckoutProblem
+        error={{
+          code: "payments_unconfigured",
+          message: "Online checkout is unavailable right now. You have not been charged.",
+        }}
+      />
+    );
+  }
+
+  if (!stripeReady) {
+    return (
+      <div className="rounded-2xl border border-border bg-card p-8 text-center shadow-sm" role="status">
+        <p className="text-sm text-muted-foreground">Preparing secure checkout…</p>
+      </div>
+    );
+  }
 
   return (
     <div id="checkout">

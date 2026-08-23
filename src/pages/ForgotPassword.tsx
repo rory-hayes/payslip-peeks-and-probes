@@ -1,12 +1,14 @@
-import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { Link } from 'react-router';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader } from '@/components/ui/card';
 import { CheckCircle, ArrowLeft } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
+import { BrandLockup } from '@/components/BrandLockup';
+import { applySeo } from '@/lib/seo';
 
 const ForgotPassword = () => {
   const { resetPassword } = useAuth();
@@ -15,32 +17,47 @@ const ForgotPassword = () => {
   const [sent, setSent] = useState(false);
   const [loading, setLoading] = useState(false);
 
+  useEffect(() => {
+    applySeo({
+      title: 'Reset your password | Payslip Insights',
+      description: 'Request a secure Payslip Insights password reset link.',
+      canonicalPath: null,
+      noIndex: true,
+    });
+  }, []);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    const { error } = await resetPassword(email);
-    setLoading(false);
-    if (error) {
-      toast({ title: 'Error', description: error.message, variant: 'destructive' });
-    } else {
+    try {
+      const { error } = await resetPassword(email);
+      if (error) {
+        toast({ title: 'Error', description: error.message, variant: 'destructive' });
+        return;
+      }
       setSent(true);
+    } catch {
+      toast({
+        title: 'Reset link unavailable',
+        description: 'We could not send a reset link. Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background px-4">
+    <main className="flex min-h-screen items-center justify-center bg-background px-4">
       <div className="w-full max-w-md">
         <div className="mb-8 text-center">
           <Link to="/" className="inline-flex items-center gap-2 mb-6">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
-              <CheckCircle className="h-5 w-5 text-primary-foreground" />
-            </div>
-            <span className="text-xl font-bold text-foreground">Payslip Insights</span>
+            <BrandLockup />
           </Link>
         </div>
         <Card className="border-0 shadow-lg">
           <CardHeader className="text-center">
-            <CardTitle className="text-2xl">{sent ? 'Check your email' : 'Reset your password'}</CardTitle>
+            <h1 className="text-2xl font-semibold leading-none tracking-tight">{sent ? 'Check your email' : 'Reset your password'}</h1>
             <CardDescription>{sent ? "We've sent you a password reset link." : "Enter your email and we'll send you a reset link."}</CardDescription>
           </CardHeader>
           <CardContent>
@@ -56,7 +73,7 @@ const ForgotPassword = () => {
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="email">Email</Label>
-                  <Input id="email" type="email" placeholder="you@example.com" value={email} onChange={(e) => setEmail(e.target.value)} required />
+                  <Input id="email" type="email" autoComplete="email" placeholder="you@example.com" value={email} onChange={(e) => setEmail(e.target.value)} required />
                 </div>
                 <Button type="submit" className="w-full" disabled={loading}>
                   {loading ? 'Sending…' : 'Send reset link'}
@@ -71,7 +88,7 @@ const ForgotPassword = () => {
           </CardContent>
         </Card>
       </div>
-    </div>
+    </main>
   );
 };
 

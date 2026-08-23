@@ -6,10 +6,6 @@
   <url><loc>https://payslipinsights.com/privacy</loc><changefreq>yearly</changefreq><priority>0.3</priority></url>
   <url><loc>https://payslipinsights.com/terms</loc><changefreq>yearly</changefreq><priority>0.3</priority></url>
 
-  <!-- Auth entry points (useful for branded queries) -->
-  <url><loc>https://payslipinsights.com/sign-in</loc><changefreq>yearly</changefreq><priority>0.4</priority></url>
-  <url><loc>https://payslipinsights.com/sign-up</loc><changefreq>yearly</changefreq><priority>0.5</priority></url>
-
   <!-- Guides hub -->
   <url><loc>https://payslipinsights.com/guides</loc><changefreq>weekly</changefreq><priority>0.9</priority></url>
 
@@ -20,13 +16,6 @@
   <url><loc>https://payslipinsights.com/guides/compare-two-payslips</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>
 
   <!-- Country payslip guides -->
-  <url><loc>https://payslipinsights.com/guides/uk-payslip-guide</loc><lastmod>2025-02-01</lastmod><changefreq>monthly</changefreq><priority>0.9</priority></url>
-  <url><loc>https://payslipinsights.com/guides/ireland-payslip-guide</loc><lastmod>2025-02-08</lastmod><changefreq>monthly</changefreq><priority>0.9</priority></url>
-
-  <!-- Calculator hub -->
-  <url><loc>https://payslipinsights.com/calculator</loc><changefreq>monthly</changefreq><priority>0.9</priority></url>
-
-  <!-- Per-country calculators -->
-  <url><loc>https://payslipinsights.com/calculator/uk</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>
-  <url><loc>https://payslipinsights.com/calculator/ireland</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://payslipinsights.com/guides/uk-payslip-guide</loc><changefreq>monthly</changefreq><priority>0.9</priority></url>
+  <url><loc>https://payslipinsights.com/guides/ireland-payslip-guide</loc><changefreq>monthly</changefreq><priority>0.9</priority></url>
 </urlset>

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link } from 'react-router';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -22,7 +22,7 @@ const statusLabels: Record<AnomalyStatus, string> = {
 const Anomalies = () => {
   const [filter, setFilter] = useState<AnomalyStatus | 'all'>('all');
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
-  const { data: realAnomalies, isLoading } = useAnomalies();
+  const { data: realAnomalies, isLoading, isError, refetch } = useAnomalies();
   const updateStatus = useUpdateAnomalyStatus();
 
   const all = realAnomalies || [];
@@ -34,7 +34,9 @@ const Anomalies = () => {
       <div className="space-y-6 max-w-4xl">
         <div>
           <h1 className="text-2xl font-bold text-foreground">Anomalies</h1>
-          <p className="text-sm text-muted-foreground">{all.length} flagged items across your payslips</p>
+          <p className="text-sm text-muted-foreground">
+            {isError ? 'Your flagged items could not be loaded.' : `${all.length} flagged items across your payslips`}
+          </p>
         </div>
 
         {highCount > 0 && (
@@ -49,9 +51,9 @@ const Anomalies = () => {
           </Card>
         )}
 
-        <div className="flex gap-2 flex-wrap">
+        <div className="flex gap-2 flex-wrap" role="group" aria-label="Filter flagged items">
           {(['all', 'new', 'reviewed', 'raised', 'resolved'] as const).map((s) => (
-            <Button key={s} variant={filter === s ? 'default' : 'outline'} size="sm" onClick={() => setFilter(s)} className="capitalize text-xs">
+            <Button key={s} variant={filter === s ? 'default' : 'outline'} size="sm" aria-pressed={filter === s} onClick={() => setFilter(s)} className="capitalize text-xs">
               {s === 'all' ? `All (${all.length})` : `${statusLabels[s]} (${all.filter((a) => a.status === s).length})`}
             </Button>
           ))}
@@ -67,6 +69,15 @@ const Anomalies = () => {
               </CardContent></Card>
             ))}
           </div>
+        ) : isError ? (
+          <Card className="border-destructive/20 bg-destructive/5 shadow-sm" role="alert">
+            <CardContent className="flex flex-col items-center justify-center py-12 text-center">
+              <AlertTriangle className="h-10 w-10 text-destructive/70" aria-hidden="true" />
+              <h3 className="mt-4 text-lg font-semibold text-foreground">We couldn’t load your flagged items.</h3>
+              <p className="mt-2 max-w-md text-sm text-muted-foreground">Your records have not been changed. Check your connection and try again before relying on this list.</p>
+              <Button className="mt-5 min-h-11" onClick={() => void refetch()}>Try again</Button>
+            </CardContent>
+          </Card>
         ) : filtered.length === 0 ? (
           <Card className="border-0 shadow-sm">
             <CardContent className="flex flex-col items-center justify-center py-16">
@@ -103,44 +114,44 @@ const Anomalies = () => {
                       <p className="mt-1 text-xs text-muted-foreground">{anomaly.employer_name} · {formatDate(anomaly.payslip_date)}</p>
                       
                       {!expanded[anomaly.id] ? (
-                        <div className="mt-2">
+                        <div id={`anomaly-detail-${anomaly.id}`} className="mt-2">
                           <AnomalyExplanation description={anomaly.description} suggestedAction={anomaly.suggested_action} compact />
                         </div>
                       ) : (
-                        <div className="mt-3">
+                        <div id={`anomaly-detail-${anomaly.id}`} className="mt-3">
                           <AnomalyExplanation description={anomaly.description} suggestedAction={anomaly.suggested_action} />
                         </div>
                       )}
                       
                       <div className="mt-3 flex flex-wrap gap-2">
-                        <Button variant="ghost" size="sm" className="gap-1 text-xs h-7" onClick={() => setExpanded(prev => ({ ...prev, [anomaly.id]: !prev[anomaly.id] }))}>
+                        <Button variant="ghost" size="sm" className="min-h-11 gap-1 text-xs" aria-controls={`anomaly-detail-${anomaly.id}`} aria-expanded={Boolean(expanded[anomaly.id])} onClick={() => setExpanded(prev => ({ ...prev, [anomaly.id]: !prev[anomaly.id] }))}>
                           {expanded[anomaly.id] ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
                           {expanded[anomaly.id] ? 'Less detail' : 'More detail'}
                         </Button>
-                        <Link to={`/payslip/${anomaly.payslip_id}`}>
-                          <Button variant="ghost" size="sm" className="gap-1 text-xs h-7"><Eye className="h-3 w-3" /> View payslip</Button>
-                        </Link>
-                        <Link to={`/draft/${anomaly.payslip_id}`}>
-                          <Button variant="ghost" size="sm" className="gap-1 text-xs h-7"><MessageSquare className="h-3 w-3" /> Draft query</Button>
-                        </Link>
+                        <Button asChild variant="ghost" size="sm" className="min-h-11 gap-1 text-xs">
+                          <Link to={`/payslip/${anomaly.payslip_id}`}><Eye className="h-3 w-3" /> View payslip</Link>
+                        </Button>
+                        <Button asChild variant="ghost" size="sm" className="min-h-11 gap-1 text-xs">
+                          <Link to={`/draft/${anomaly.payslip_id}`}><MessageSquare className="h-3 w-3" /> Draft query</Link>
+                        </Button>
                         <div className="ml-auto flex flex-wrap gap-2">
                           {anomaly.status !== 'reviewed' && anomaly.status !== 'resolved' && anomaly.status !== 'raised' && (
-                            <Button variant="outline" size="sm" className="gap-1 text-xs h-7" onClick={() => updateStatus.mutate({ id: anomaly.id, status: 'reviewed' })} disabled={updateStatus.isPending}>
+                            <Button variant="outline" size="sm" className="min-h-11 gap-1 text-xs" onClick={() => updateStatus.mutate({ id: anomaly.id, status: 'reviewed' })} disabled={updateStatus.isPending}>
                               <Eye className="h-3 w-3" /> Mark reviewed
                             </Button>
                           )}
                           {anomaly.status !== 'raised' && anomaly.status !== 'resolved' && (
-                            <Button variant="outline" size="sm" className="gap-1 text-xs h-7" onClick={() => updateStatus.mutate({ id: anomaly.id, status: 'raised' })} disabled={updateStatus.isPending}>
+                            <Button variant="outline" size="sm" className="min-h-11 gap-1 text-xs" onClick={() => updateStatus.mutate({ id: anomaly.id, status: 'raised' })} disabled={updateStatus.isPending}>
                               <Send className="h-3 w-3" /> Raised with payroll
                             </Button>
                           )}
                           {anomaly.status !== 'resolved' && (
-                            <Button size="sm" className="gap-1 text-xs h-7" onClick={() => updateStatus.mutate({ id: anomaly.id, status: 'resolved' })} disabled={updateStatus.isPending}>
+                            <Button size="sm" className="min-h-11 gap-1 text-xs" onClick={() => updateStatus.mutate({ id: anomaly.id, status: 'resolved' })} disabled={updateStatus.isPending}>
                               <CheckCircle className="h-3 w-3" /> Resolve
                             </Button>
                           )}
                           {anomaly.status !== 'new' && (
-                            <Button variant="ghost" size="sm" className="gap-1 text-xs h-7 text-muted-foreground" onClick={() => updateStatus.mutate({ id: anomaly.id, status: 'new' })} disabled={updateStatus.isPending}>
+                            <Button variant="ghost" size="sm" className="min-h-11 gap-1 text-xs text-muted-foreground" onClick={() => updateStatus.mutate({ id: anomaly.id, status: 'new' })} disabled={updateStatus.isPending}>
                               <RotateCcw className="h-3 w-3" /> Reopen
                             </Button>
                           )}

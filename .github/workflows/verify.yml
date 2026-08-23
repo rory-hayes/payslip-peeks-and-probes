@@ -1,0 +1,73 @@
+name: Verify web app
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+concurrency:
+  group: verify-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: Typecheck, test, lint, and build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      # These are intentionally non-secret placeholders. The production build
+      # refuses an empty public Supabase configuration, and CI should exercise
+      # that same build path without receiving any customer environment values.
+      VITE_SUPABASE_URL: https://ci-placeholder.supabase.co
+      VITE_SUPABASE_PUBLISHABLE_KEY: ci-placeholder-publishable-key
+
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install locked dependencies
+        run: npm ci
+
+      - name: Check production dependencies for known vulnerabilities
+        run: npm audit --omit=dev --audit-level=high
+
+      - name: Verify the web release artifact
+        run: npm run verify
+
+  verify-mobile:
+    name: Verify mobile app
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: apps/mobile
+
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: apps/mobile/package-lock.json
+
+      - name: Install locked dependencies
+        run: npm ci
+
+      - name: Check production dependencies for known vulnerabilities
+        run: npm audit --omit=dev --audit-level=high
+
+      - name: Verify the mobile web artifact
+        run: npm run verify

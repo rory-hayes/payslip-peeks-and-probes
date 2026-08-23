@@ -416,6 +416,27 @@
   color: var(--pi-muted);
 }
 
+.pi-dashboard button.pi-dashboard__payslip-link,
+.pi-dashboard button.pi-dashboard__anomaly-row,
+.pi-dashboard button.pi-dashboard__history-row {
+  appearance: none;
+  background: transparent;
+  border: 0;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+  width: 100%;
+}
+
+.pi-dashboard button.pi-dashboard__payslip-link:focus-visible,
+.pi-dashboard button.pi-dashboard__anomaly-row:focus-visible,
+.pi-dashboard button.pi-dashboard__history-row:focus-visible {
+  border-radius: 0.6rem;
+  outline: 3px solid rgba(112, 75, 255, 0.42);
+  outline-offset: 3px;
+}
+
 .pi-dashboard__payslip-link:not([aria-disabled='true']):hover,
 .pi-dashboard__inline-link:hover {
   color: #4f30ca;
@@ -518,6 +539,23 @@
   margin-top: 0.65rem;
 }
 
+.pi-dashboard__check-actions {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem 1rem;
+  margin-top: 0.65rem;
+}
+
+.pi-dashboard__check-actions .pi-dashboard__inline-link,
+.pi-dashboard__check-actions .pi-dashboard__demo-note {
+  margin-top: 0;
+}
+
+.pi-dashboard__inline-link--secondary {
+  color: var(--pi-ink);
+}
+
 .pi-dashboard__demo-note {
   color: var(--pi-muted);
   font-size: 0.76rem;
@@ -548,11 +586,11 @@
   padding: clamp(1.3rem, 3vw, 1.8rem);
 }
 
-.pi-dashboard__plan > div:first-child {
+.pi-dashboard__plan-copy {
   max-width: 38rem;
 }
 
-.pi-dashboard__plan > div:first-child p,
+.pi-dashboard__plan-copy p,
 .pi-dashboard__section-heading p,
 .pi-dashboard__panel-heading p,
 .pi-dashboard__usage-heading p {
@@ -560,6 +598,51 @@
   font-size: 0.88rem;
   line-height: 1.48;
   margin-top: 0.4rem;
+}
+
+.pi-dashboard__plan-saved {
+  align-items: center;
+  display: flex;
+  flex: 0 1 auto;
+  gap: 1.35rem;
+  justify-content: flex-end;
+}
+
+.pi-dashboard__plan-summary {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin: 0;
+}
+
+.pi-dashboard__plan-summary > div {
+  min-width: 8.5rem;
+}
+
+.pi-dashboard__plan-summary > div + div {
+  border-left: 1px solid rgba(112, 75, 255, 0.22);
+  padding-left: 1rem;
+}
+
+.pi-dashboard__plan-summary dt,
+.pi-dashboard__plan-summary span {
+  color: var(--pi-muted);
+  display: block;
+  font-size: 0.68rem;
+  line-height: 1.35;
+}
+
+.pi-dashboard__plan-summary dt {
+  font-weight: 750;
+}
+
+.pi-dashboard__plan-summary dd {
+  color: var(--pi-ink);
+  font-size: 1.15rem;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1.1;
+  margin: 0.35rem 0 0.25rem;
 }
 
 .pi-dashboard__plan-action {
@@ -576,6 +659,88 @@
   line-height: 1.3;
   max-width: 15rem;
   text-align: right;
+}
+
+.pi-dashboard__pulse {
+  align-items: center;
+  background: #f3fbfc;
+  border: 1px solid #bdeef6;
+  border-radius: 1.4rem;
+  display: flex;
+  gap: 1rem;
+  justify-content: space-between;
+  margin-top: 1rem;
+  padding: 1.15rem clamp(1.15rem, 2.5vw, 1.5rem);
+}
+
+.pi-dashboard__pulse-copy {
+  align-items: flex-start;
+  display: flex;
+  flex: 1 1 auto;
+  gap: 0.8rem;
+  max-width: 32rem;
+}
+
+.pi-dashboard__pulse-icon {
+  align-items: center;
+  background: #fff;
+  border-radius: 999px;
+  color: var(--pi-aqua);
+  display: flex;
+  flex: 0 0 auto;
+  height: 2.4rem;
+  justify-content: center;
+  width: 2.4rem;
+}
+
+.pi-dashboard__pulse-icon svg {
+  height: 1.1rem;
+  width: 1.1rem;
+}
+
+.pi-dashboard__pulse h2 {
+  color: var(--pi-ink);
+  font-size: 1rem;
+  font-weight: 850;
+  letter-spacing: -0.02em;
+  line-height: 1.25;
+}
+
+.pi-dashboard__pulse p {
+  color: var(--pi-muted);
+  font-size: 0.78rem;
+  line-height: 1.45;
+  margin-top: 0.28rem;
+}
+
+.pi-dashboard__pulse-note {
+  color: var(--pi-muted);
+  display: block;
+  font-size: 0.68rem;
+  font-weight: 700;
+  line-height: 1.4;
+  margin-top: 0.32rem;
+}
+
+.pi-dashboard__pulse-action {
+  align-items: center;
+  background: #fff;
+  border: 1px solid #cddff2;
+  border-radius: 0.9rem;
+  color: var(--pi-violet);
+  display: flex;
+  flex: 0 0 auto;
+  font-size: 0.76rem;
+  font-weight: 850;
+  gap: 0.35rem;
+  min-height: 2.65rem;
+  padding: 0.55rem 0.8rem;
+  text-decoration: none;
+}
+
+.pi-dashboard__pulse-action:hover {
+  border-color: var(--pi-violet);
+  color: var(--pi-ink);
 }
 
 .pi-dashboard__usage,
@@ -832,6 +997,263 @@
   text-align: center;
 }
 
+.pi-demo-preview-dialog {
+  border: 1px solid #e5e0fa;
+  border-radius: 1.5rem;
+  color: #17155d;
+  display: flex;
+  flex-direction: column;
+  max-height: calc(100svh - 1.5rem);
+  max-width: min(38rem, calc(100vw - 1.5rem));
+  overflow: hidden;
+  padding: 0;
+}
+
+.pi-demo-preview__header {
+  background: #ddf8fc;
+  border-bottom: 1px solid #b8ebf3;
+  gap: 0.35rem;
+  padding: 1.4rem 3.5rem 1.3rem 1.4rem;
+}
+
+.pi-demo-preview__eyebrow {
+  color: #0989a5;
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  line-height: 1.2;
+  margin: 0;
+  text-transform: uppercase;
+}
+
+.pi-demo-preview__header h2,
+.pi-demo-preview__section-heading h3,
+.pi-demo-preview__next h3 {
+  color: #17155d;
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  margin: 0;
+}
+
+.pi-demo-preview__header h2 {
+  font-size: clamp(1.55rem, 5vw, 2rem);
+  line-height: 1.05;
+}
+
+.pi-demo-preview__description {
+  color: #64658d;
+  font-size: 0.85rem;
+  line-height: 1.4;
+  margin: 0.2rem 0 0;
+}
+
+.pi-demo-preview__body {
+  display: grid;
+  flex: 1 1 auto;
+  gap: 1rem;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 1.3rem 1.4rem 0;
+  scrollbar-gutter: stable;
+}
+
+.pi-demo-preview__pay {
+  align-items: stretch;
+  background: #eeeafe;
+  border-radius: 1.1rem;
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr);
+  padding: 1rem;
+}
+
+.pi-demo-preview__pay > div,
+.pi-demo-preview__pay dl,
+.pi-demo-preview__pay dl div {
+  min-width: 0;
+}
+
+.pi-demo-preview__pay > div span,
+.pi-demo-preview__pay dt {
+  color: #64658d;
+  display: block;
+  font-size: 0.68rem;
+  font-weight: 750;
+  line-height: 1.3;
+}
+
+.pi-demo-preview__pay > div strong {
+  color: #17155d;
+  display: block;
+  font-size: clamp(1.5rem, 5.5vw, 2rem);
+  font-weight: 850;
+  letter-spacing: -0.06em;
+  line-height: 1;
+  margin-top: 0.35rem;
+}
+
+.pi-demo-preview__pay dl {
+  display: grid;
+  gap: 0.65rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin: 0;
+}
+
+.pi-demo-preview__pay dl div + div {
+  border-left: 1px solid rgba(112, 75, 255, 0.22);
+  padding-left: 0.65rem;
+}
+
+.pi-demo-preview__pay dd {
+  color: #17155d;
+  font-size: 0.89rem;
+  font-weight: 800;
+  letter-spacing: -0.025em;
+  line-height: 1.25;
+  margin: 0.25rem 0 0;
+}
+
+.pi-demo-preview__insight {
+  border: 1px solid #e5e0fa;
+  border-radius: 1.1rem;
+  padding: 1rem;
+}
+
+.pi-demo-preview__section-heading {
+  align-items: flex-start;
+  display: flex;
+  gap: 0.7rem;
+  margin-bottom: 0.85rem;
+}
+
+.pi-demo-preview__section-heading h3,
+.pi-demo-preview__next h3 {
+  font-size: 1rem;
+  line-height: 1.22;
+  margin-top: 0.12rem;
+}
+
+.pi-demo-preview__warning,
+.pi-demo-preview__check {
+  align-items: center;
+  border-radius: 999px;
+  display: flex;
+  flex: 0 0 auto;
+  height: 2.15rem;
+  justify-content: center;
+  width: 2.15rem;
+}
+
+.pi-demo-preview__warning {
+  background: #fff0ea;
+  color: #c4342c;
+}
+
+.pi-demo-preview__check {
+  background: #dcf9ec;
+  color: #087a4b;
+}
+
+.pi-demo-preview__warning svg,
+.pi-demo-preview__check svg,
+.pi-demo-preview__next > svg {
+  height: 1.05rem;
+  width: 1.05rem;
+}
+
+.pi-demo-preview__plain-copy {
+  color: #64658d;
+  font-size: 0.88rem;
+  line-height: 1.5;
+  margin: 0;
+}
+
+.pi-demo-preview__next {
+  align-items: flex-start;
+  background: #fff9f6;
+  border-radius: 1.1rem;
+  color: #c63f09;
+  display: flex;
+  gap: 0.7rem;
+  padding: 1rem;
+}
+
+.pi-demo-preview__next > svg {
+  flex: 0 0 auto;
+  margin-top: 0.1rem;
+}
+
+.pi-demo-preview__next h3 {
+  color: #17155d;
+}
+
+.pi-demo-preview__next p {
+  color: #64658d;
+  font-size: 0.82rem;
+  line-height: 1.45;
+  margin: 0.35rem 0 0;
+}
+
+.pi-demo-preview__actions {
+  align-items: center;
+  background: #fff;
+  border-top: 1px solid #eeeafe;
+  box-shadow: 0 -0.55rem 1.3rem rgba(23, 21, 93, 0.06);
+  display: flex;
+  flex: 0 0 auto;
+  gap: 0.65rem;
+  justify-content: flex-end;
+  padding: 1.1rem 1.4rem 1.4rem;
+}
+
+.pi-demo-preview__primary-action {
+  background: #c63f09;
+  border: 1px solid #c63f09;
+  border-radius: 0.85rem;
+  box-shadow: 0 9px 18px rgba(198, 63, 9, 0.17);
+  color: #fff;
+  font-weight: 800;
+  min-height: 2.8rem;
+}
+
+.pi-demo-preview__primary-action:hover {
+  background: #a93205;
+  border-color: #a93205;
+}
+
+.pi-demo-preview__secondary-action {
+  border-color: #e5e0fa;
+  border-radius: 0.85rem;
+  color: #17155d;
+  font-weight: 750;
+  min-height: 2.8rem;
+}
+
+@media (max-width: 480px) {
+  .pi-demo-preview__header {
+    padding: 1.25rem 3.25rem 1.15rem 1.15rem;
+  }
+
+  .pi-demo-preview__body {
+    padding: 1rem 1.15rem 0;
+  }
+
+  .pi-demo-preview__pay {
+    grid-template-columns: 1fr;
+  }
+
+  .pi-demo-preview__actions {
+    align-items: stretch;
+    flex-direction: column-reverse;
+    padding: 1rem 1.15rem 1.15rem;
+  }
+
+  .pi-demo-preview__actions button {
+    width: 100%;
+  }
+}
+
 @media (max-width: 767px) {
   .pi-dashboard__demo,
   .pi-dashboard__topline,
@@ -842,6 +1264,18 @@
 
   .pi-dashboard__demo {
     gap: 0.7rem;
+  }
+
+  .pi-dashboard .pi-dashboard__small-primary,
+  .pi-dashboard .pi-dashboard__icon-button,
+  .pi-dashboard .pi-dashboard__quiet-action {
+    height: 2.75rem;
+    min-height: 2.75rem;
+    width: auto;
+  }
+
+  .pi-dashboard .pi-dashboard__icon-button {
+    width: 2.75rem;
   }
 
   .pi-dashboard__demo-actions,
@@ -937,6 +1371,30 @@
 
   .pi-dashboard__plan-action {
     align-items: flex-start;
+    width: 100%;
+  }
+
+  .pi-dashboard__pulse {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .pi-dashboard__pulse-copy,
+  .pi-dashboard__pulse-action {
+    width: 100%;
+  }
+
+  .pi-dashboard__pulse-action {
+    justify-content: center;
+  }
+
+  .pi-dashboard__plan-saved {
+    align-items: flex-start;
+    flex-direction: column;
+    width: 100%;
+  }
+
+  .pi-dashboard__plan-summary {
     width: 100%;
   }
 

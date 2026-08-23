@@ -1,6 +1,6 @@
-import { render, screen } from "@testing-library/react";
-import { MemoryRouter } from "react-router-dom";
-import { describe, expect, it } from "vitest";
+import { fireEvent, render, screen } from "@testing-library/react";
+import { MemoryRouter } from "react-router";
+import { describe, expect, it, vi } from "vitest";
 import DemoReadOnlyLink from "./DemoReadOnlyLink";
 
 describe("DemoReadOnlyLink", () => {
@@ -23,5 +23,27 @@ describe("DemoReadOnlyLink", () => {
     );
 
     expect(screen.getByRole("link", { name: "Saved payslip" })).toHaveAttribute("href", "/payslip/payslip-1");
+  });
+
+  it("can open a dashboard-local sample preview without becoming a protected link", () => {
+    const onDemoActivate = vi.fn();
+
+    render(
+      <MemoryRouter>
+        <DemoReadOnlyLink
+          demoAriaLabel="Open sample payslip preview"
+          isDemo
+          onDemoActivate={onDemoActivate}
+          to="/payslip/demo-1"
+        >
+          Sample payslip
+        </DemoReadOnlyLink>
+      </MemoryRouter>,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Open sample payslip preview" }));
+
+    expect(onDemoActivate).toHaveBeenCalledTimes(1);
+    expect(screen.queryByRole("link", { name: "Sample payslip" })).not.toBeInTheDocument();
   });
 });

@@ -10,6 +10,7 @@
   --pi-orange: #c63f09;
   --pi-line: #e5e0fa;
   --pi-green: #087a4b;
+  --pi-green-soft: #e1f7ed;
   isolation: isolate;
   margin: 0 auto;
   max-width: 860px;
@@ -78,6 +79,46 @@
   width: 1.35rem;
 }
 
+.payday-plan__review-ready {
+  align-items: flex-start;
+  background: #f8f6ff;
+  border: 1px solid var(--pi-line);
+  border-radius: 1.1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  margin: 1.25rem clamp(1.25rem, 4vw, 2.5rem) 0;
+  padding: 1rem 1.1rem;
+}
+
+.payday-plan__review-ready strong {
+  color: var(--pi-navy);
+  font-size: 0.95rem;
+}
+
+.payday-plan__review-ready p {
+  color: var(--pi-muted);
+  font-size: 0.84rem;
+  line-height: 1.45;
+  margin: 0.25rem 0 0;
+}
+
+.payday-plan__review-ready a {
+  align-items: center;
+  color: var(--pi-violet);
+  display: inline-flex;
+  font-size: 0.88rem;
+  font-weight: 850;
+  gap: 0.35rem;
+  min-height: 2.25rem;
+  text-decoration: none;
+}
+
+.payday-plan__review-ready a svg {
+  height: 1rem;
+  width: 1rem;
+}
+
 .payday-plan__pay-summary {
   padding: 2rem clamp(1.25rem, 4vw, 2.5rem) 2.15rem;
 }
@@ -138,6 +179,7 @@
 
 .payday-plan__setup-button,
 .payday-plan__add-amount,
+.payday-plan__saved-amount,
 .payday-plan__clear-button {
   background: transparent;
   border: 0;
@@ -228,6 +270,22 @@
   white-space: nowrap;
 }
 
+.payday-plan__saved-amount {
+  align-items: center;
+  border-bottom: 2px solid var(--pi-violet);
+  display: inline-flex;
+  font-size: 1rem;
+  justify-self: end;
+  letter-spacing: -0.02em;
+  min-height: 2.75rem;
+  padding: 0.2rem 0;
+  white-space: nowrap;
+}
+
+.payday-plan__saved-amount:hover {
+  color: #4e2fd7;
+}
+
 .payday-plan__money-input {
   align-items: center;
   border-bottom: 2px solid var(--pi-violet);
@@ -236,7 +294,8 @@
   gap: 0.1rem;
   justify-self: end;
   max-width: 8.1rem;
-  padding: 0.2rem 0;
+  min-height: 2.75rem;
+  padding: 0;
 }
 
 .payday-plan__money-input > span {
@@ -253,9 +312,10 @@
   font-family: inherit;
   font-size: 1.05rem;
   font-weight: 850;
+  min-height: 2.75rem;
   min-width: 0;
   outline: 0;
-  padding: 0;
+  padding: 0.2rem 0;
   text-align: right;
   width: 6.1rem;
 }
@@ -305,6 +365,127 @@
   color: var(--pi-coral);
 }
 
+.payday-plan__daily-guide {
+  align-items: flex-start;
+  background: #f3fbfc;
+  border: 1px solid #bdeef6;
+  border-radius: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  margin-top: 1rem;
+  padding: 1.05rem 1.1rem;
+}
+
+.payday-plan__daily-guide > div {
+  align-items: baseline;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem 0.65rem;
+}
+
+.payday-plan__daily-guide p {
+  color: var(--pi-muted);
+  font-size: 0.82rem;
+  line-height: 1.45;
+  margin: 0;
+}
+
+.payday-plan__daily-guide strong {
+  color: var(--pi-navy);
+  font-size: clamp(1.45rem, 5vw, 2rem);
+  font-weight: 900;
+  letter-spacing: -0.055em;
+  line-height: 1;
+}
+
+.payday-plan__daily-guide strong span {
+  color: var(--pi-muted);
+  font-size: 0.8rem;
+  font-weight: 750;
+  letter-spacing: 0;
+}
+
+.payday-plan__date-field {
+  align-items: flex-end;
+  border-bottom: 1px solid var(--pi-line);
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  padding: 1.35rem 0;
+}
+
+.payday-plan__date-field > div {
+  width: 100%;
+}
+
+.payday-plan__date-field label {
+  color: var(--pi-navy);
+  display: block;
+  font-size: 1rem;
+  font-weight: 850;
+  letter-spacing: -0.02em;
+}
+
+.payday-plan__date-field p {
+  color: var(--pi-muted);
+  font-size: 0.8rem;
+  line-height: 1.45;
+  margin: 0.28rem 0 0;
+  max-width: 31rem;
+}
+
+.payday-plan__date-field input {
+  background: #fff;
+  border: 1px solid var(--pi-line);
+  border-radius: 0.8rem;
+  color: var(--pi-navy);
+  font: inherit;
+  font-size: 0.95rem;
+  font-weight: 750;
+  min-height: 2.75rem;
+  padding: 0.45rem 0.7rem;
+  width: 100%;
+}
+
+.payday-plan__form-alert {
+  background: var(--pi-coral-soft);
+  border: 1px solid #ffd8ce;
+  border-radius: 0.9rem;
+  color: #8f241f;
+  font-size: 0.86rem;
+  font-weight: 650;
+  line-height: 1.45;
+  margin: 1rem 0 0;
+  padding: 0.75rem 0.9rem;
+}
+
+.payday-plan__saved-status {
+  align-items: flex-start;
+  background: var(--pi-green-soft);
+  border: 1px solid #c3ebd8;
+  border-radius: 0.9rem;
+  color: var(--pi-green);
+  display: flex;
+  font-size: 0.86rem;
+  font-weight: 700;
+  gap: 0.55rem;
+  line-height: 1.45;
+  margin: 1rem 0 0;
+  padding: 0.75rem 0.9rem;
+}
+
+.payday-plan__saved-status p {
+  margin: 0;
+}
+
+.payday-plan__saved-status svg {
+  flex: 0 0 auto;
+  height: 1.15rem;
+  margin-top: 0.02rem;
+  width: 1.15rem;
+}
+
 .payday-plan__draft-note {
   align-items: flex-start;
   color: var(--pi-muted);
@@ -325,6 +506,249 @@
   height: 1.1rem;
   margin-top: 0.05rem;
   width: 1.1rem;
+}
+
+.payday-plan__check-in,
+.payday-plan__buffer-goal {
+  border-top: 1px solid var(--pi-line);
+  margin-top: 2rem;
+  padding: 2rem clamp(1.25rem, 4vw, 2.5rem) 0;
+}
+
+.payday-plan__check-in-summary,
+.payday-plan__check-in-empty,
+.payday-plan__check-in-form {
+  background: #f3fbfc;
+  border: 1px solid #bdeef6;
+  border-radius: 1.25rem;
+  margin-top: 1.3rem;
+  padding: 1.1rem;
+}
+
+.payday-plan__check-in-summary > div {
+  align-items: baseline;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem 0.65rem;
+}
+
+.payday-plan__check-in-summary > div > p {
+  color: var(--pi-muted);
+  font-size: 0.84rem;
+  font-weight: 750;
+  margin: 0;
+}
+
+.payday-plan__check-in-summary strong {
+  color: var(--pi-aqua);
+  font-size: clamp(1.45rem, 5vw, 2rem);
+  font-weight: 900;
+  letter-spacing: -0.055em;
+  line-height: 1;
+}
+
+.payday-plan__check-in-summary strong span {
+  color: var(--pi-muted);
+  font-size: 0.8rem;
+  font-weight: 750;
+  letter-spacing: 0;
+}
+
+.payday-plan__check-in-summary > p,
+.payday-plan__check-in-help {
+  color: var(--pi-muted);
+  font-size: 0.8rem;
+  line-height: 1.45;
+  margin: 0.7rem 0 0;
+}
+
+.payday-plan__check-in-empty {
+  align-items: flex-start;
+  color: var(--pi-aqua);
+  display: flex;
+  gap: 0.7rem;
+}
+
+.payday-plan__check-in-empty svg {
+  flex: 0 0 auto;
+  height: 1.35rem;
+  margin-top: 0.05rem;
+  width: 1.35rem;
+}
+
+.payday-plan__check-in-empty p {
+  color: var(--pi-muted);
+  font-size: 0.84rem;
+  line-height: 1.45;
+  margin: 0;
+}
+
+.payday-plan__check-in-form {
+  background: #f8f6ff;
+  border-color: var(--pi-line);
+}
+
+.payday-plan__buffer-progress,
+.payday-plan__buffer-empty,
+.payday-plan__buffer-form,
+.payday-plan__buffer-loading {
+  background: var(--pi-green-soft);
+  border: 1px solid #c3ebd8;
+  border-radius: 1.25rem;
+  margin-top: 1.3rem;
+  padding: 1.1rem;
+}
+
+.payday-plan__buffer-progress-copy {
+  align-items: baseline;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem 0.65rem;
+}
+
+.payday-plan__buffer-progress-copy p {
+  color: var(--pi-muted);
+  font-size: 0.84rem;
+  font-weight: 750;
+  margin: 0;
+}
+
+.payday-plan__buffer-progress-copy strong {
+  color: var(--pi-green);
+  font-size: clamp(1.45rem, 5vw, 2rem);
+  font-weight: 900;
+  letter-spacing: -0.055em;
+  line-height: 1;
+}
+
+.payday-plan__buffer-progress-copy strong span {
+  color: var(--pi-muted);
+  font-size: 0.8rem;
+  font-weight: 750;
+  letter-spacing: 0;
+}
+
+.payday-plan__buffer-progress-track {
+  background: #fff;
+  border-radius: 999px;
+  height: 0.6rem;
+  margin-top: 0.9rem;
+  overflow: hidden;
+}
+
+.payday-plan__buffer-progress-track span {
+  background: var(--pi-green);
+  border-radius: inherit;
+  display: block;
+  height: 100%;
+  transition: width 200ms ease;
+}
+
+.payday-plan__buffer-progress-note {
+  color: var(--pi-muted);
+  font-size: 0.8rem;
+  line-height: 1.45;
+  margin: 0.7rem 0 0;
+}
+
+.payday-plan__buffer-empty {
+  align-items: flex-start;
+  color: var(--pi-green);
+  display: flex;
+  gap: 0.7rem;
+}
+
+.payday-plan__buffer-loading {
+  background: #f8f6ff;
+  border-color: var(--pi-line);
+}
+
+.payday-plan__buffer-loading p {
+  color: var(--pi-muted);
+  font-size: 0.84rem;
+  line-height: 1.45;
+  margin: 0;
+}
+
+.payday-plan__buffer-empty svg {
+  flex: 0 0 auto;
+  height: 1.35rem;
+  margin-top: 0.05rem;
+  width: 1.35rem;
+}
+
+.payday-plan__buffer-empty p {
+  color: var(--pi-muted);
+  font-size: 0.84rem;
+  line-height: 1.45;
+  margin: 0;
+}
+
+.payday-plan__buffer-form {
+  background: #f8f6ff;
+  border-color: var(--pi-line);
+}
+
+.payday-plan__buffer-fields {
+  display: grid;
+  gap: 0.9rem;
+}
+
+.payday-plan__buffer-input {
+  display: grid;
+  gap: 0.4rem;
+}
+
+.payday-plan__buffer-input > span {
+  color: var(--pi-navy);
+  font-size: 0.88rem;
+  font-weight: 850;
+}
+
+.payday-plan__buffer-input > div {
+  align-items: center;
+  background: #fff;
+  border: 1px solid var(--pi-line);
+  border-radius: 0.8rem;
+  display: flex;
+  gap: 0.3rem;
+  min-height: 3rem;
+  padding: 0 0.8rem;
+}
+
+.payday-plan__buffer-input > div > span {
+  color: var(--pi-violet);
+  font-size: 1rem;
+  font-weight: 900;
+}
+
+.payday-plan__buffer-input input {
+  appearance: textfield;
+  background: transparent;
+  border: 0;
+  color: var(--pi-navy);
+  font: inherit;
+  font-size: 1rem;
+  font-weight: 800;
+  min-width: 0;
+  outline: 0;
+  padding: 0.45rem 0;
+  text-align: right;
+  width: 100%;
+}
+
+.payday-plan__buffer-input input::-webkit-inner-spin-button,
+.payday-plan__buffer-input input::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.payday-plan__buffer-actions {
+  align-items: center;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  margin-top: 1rem;
 }
 
 .payday-plan__actions {
@@ -365,10 +789,36 @@
   transform: translateY(-1px);
 }
 
+.payday-plan__primary-action:disabled {
+  background: #a8a6bb;
+  box-shadow: none;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.payday-plan__save-spinner {
+  animation: payday-plan-spin 800ms linear infinite;
+}
+
 .payday-plan__clear-button {
   font-size: 0.9rem;
   min-height: 2.5rem;
   padding: 0.35rem 0.5rem;
+}
+
+.payday-plan__secondary-actions {
+  align-items: center;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.payday-plan__secondary-actions .payday-plan__text-action {
+  font-size: 0.85rem;
+}
+
+@keyframes payday-plan-spin {
+  to { transform: rotate(360deg); }
 }
 
 .payday-plan__disclaimer,
@@ -491,6 +941,16 @@
     justify-content: space-between;
   }
 
+  .payday-plan__review-ready {
+    align-items: center;
+    flex-direction: row;
+    justify-content: space-between;
+  }
+
+  .payday-plan__review-ready a {
+    flex: 0 0 auto;
+  }
+
   .payday-plan__source {
     flex: 0 0 auto;
     margin-bottom: 0.25rem;
@@ -510,8 +970,42 @@
     justify-content: space-between;
   }
 
+  .payday-plan__date-field {
+    flex-direction: row;
+  }
+
+  .payday-plan__date-field input {
+    flex: 0 0 11rem;
+    width: 11rem;
+  }
+
+  .payday-plan__secondary-actions {
+    align-items: flex-end;
+  }
+
+  .payday-plan__buffer-fields {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .payday-plan__buffer-actions {
+    flex-direction: row;
+    justify-content: space-between;
+  }
+
   .payday-plan__primary-action {
     width: auto;
+  }
+}
+
+@media (min-width: 900px) {
+  .payday-plan {
+    max-width: 960px;
+    padding-top: 2rem;
+  }
+
+  .payday-plan__hero {
+    padding-bottom: 1.6rem;
+    padding-top: clamp(4rem, 5vw, 5rem);
   }
 }
 
@@ -543,7 +1037,9 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .payday-plan__primary-action {
+  .payday-plan__primary-action,
+  .payday-plan__save-spinner {
     transition: none;
+    animation: none;
   }
 }

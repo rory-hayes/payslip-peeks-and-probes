@@ -1,10 +1,23 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "npm:@supabase/supabase-js@2";
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import {
   createStripeClient,
   getPriceCatalogEntry,
   getStripeEnvironment,
+  matchesCatalogStripePrice,
 } from "../_shared/stripe.ts";
+
+const supabase = createClient(
+  Deno.env.get("SUPABASE_URL")!,
+  Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+);
+
+const responseHeaders = {
+  ...corsHeaders,
+  "Cache-Control": "no-store",
+  "Content-Type": "application/json",
+};
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -13,32 +26,41 @@ serve(async (req) => {
   if (req.method !== "POST") {
     return new Response(JSON.stringify({ error: "Method not allowed" }), {
       status: 405,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      headers: responseHeaders,
     });
   }
 
   try {
+    const accessToken = req.headers.get("authorization")?.replace("Bearer ", "");
+    const { data: { user }, error: authError } = await supabase.auth.getUser(accessToken);
+    if (authError || !user) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401,
+        headers: responseHeaders,
+      });
+    }
+
     const { priceId } = await req.json();
     const catalogEntry = getPriceCatalogEntry(priceId);
     if (!catalogEntry || typeof priceId !== "string") {
       return new Response(JSON.stringify({ error: "That plan is not available." }), {
         status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        headers: responseHeaders,
       });
     }
 
     const stripe = createStripeClient(getStripeEnvironment());
     const prices = await stripe.prices.list({ lookup_keys: [priceId], active: true, limit: 1 });
     const price = prices.data[0];
-    if (!price || price.lookup_key !== priceId || price.type !== catalogEntry.mode) {
+    if (!matchesCatalogStripePrice(price, priceId)) {
       return new Response(JSON.stringify({ error: "That plan is not currently available." }), {
         status: 503,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        headers: responseHeaders,
       });
     }
 
     return new Response(JSON.stringify({ stripeId: price.id }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      headers: responseHeaders,
     });
   } catch (error) {
     console.error("[get-stripe-price] failed", {
@@ -46,7 +68,7 @@ serve(async (req) => {
     });
     return new Response(JSON.stringify({ error: "Unable to resolve that plan." }), {
       status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      headers: responseHeaders,
     });
   }
 });

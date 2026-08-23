@@ -24,7 +24,7 @@ const WhyNetPayDown = () => (
 
     <h2 className="mt-10 text-2xl font-bold text-foreground">When the change is normal</h2>
     <p className="mt-3 text-muted-foreground leading-relaxed">
-      If gross pay is the same but a deduction is slightly higher, that's usually a tax code or pension adjustment. After a bonus month, tax often takes a bigger bite the following payslip — that's the system catching up, not an error.
+      If gross pay is the same but a deduction is higher, compare the tax code, pension percentage, and any one-off items with your previous payslip. A bonus can change deductions, but payroll can explain a change that is not clear from the payslip.
     </p>
 
     <h2 className="mt-10 text-2xl font-bold text-foreground">When it might be worth checking</h2>

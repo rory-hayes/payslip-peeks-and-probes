@@ -6,10 +6,11 @@ import {
   createStripeClient,
   getCheckoutIntentId,
   getCheckoutReturnUrl,
-  getPriceCatalogEntry,
   getStripeEnvironment,
+  matchesCatalogStripePrice,
   type StripeEnv,
 } from "../_shared/stripe.ts";
+import { validateCheckoutRequest } from "../_shared/checkout-request.ts";
 
 const supabase = createClient(
   Deno.env.get("SUPABASE_URL")!,
@@ -32,7 +33,8 @@ type CheckoutIntentState =
   | "succeeded"
   | "expired"
   | "failed"
-  | "requires_review";
+  | "requires_review"
+  | "account_deletion_pending";
 
 interface CheckoutIntent {
   id: string;
@@ -49,6 +51,7 @@ interface CheckoutIntent {
 
 type ExistingSessionResult =
   | { kind: "resume"; clientSecret: string }
+  | { kind: "account_deletion_pending" }
   | { kind: "pending" }
   | { kind: "review" }
   | { kind: "expired" };
@@ -56,7 +59,7 @@ type ExistingSessionResult =
 function jsonResponse(body: Record<string, unknown>, status = 200) {
   return new Response(JSON.stringify(body), {
     status,
-    headers: { ...corsHeaders, "Content-Type": "application/json" },
+    headers: { ...corsHeaders, "Cache-Control": "no-store", "Content-Type": "application/json" },
   });
 }
 
@@ -124,7 +127,7 @@ async function acquireCheckoutIntent(
   stripePriceId: string,
   customerEmail: string | null,
 ): Promise<CheckoutIntent> {
-  const { data, error } = await supabase.rpc("acquire_checkout_intent", {
+  const { data, error } = await supabase.rpc("acquire_secure_checkout_intent", {
     p_user_id: userId,
     p_environment: environment,
     p_price_lookup_key: priceLookupKey,
@@ -155,40 +158,36 @@ async function transitionIntent(
   if (error) throw new Error("Could not update checkout state");
 }
 
-async function bindStripeSession(intent: CheckoutIntent, sessionId: string, expiresAt: number | null) {
+async function bindSecureStripeSession(
+  intent: CheckoutIntent,
+  sessionId: string,
+  expiresAt: number | null,
+) {
   const expiresAtIso = expiresAt
     ? new Date(expiresAt * 1000).toISOString()
     : intent.expires_at;
-  const { data, error } = await supabase
-    .from("checkout_intents")
-    .update({
-      stripe_checkout_session_id: sessionId,
-      expires_at: expiresAtIso,
-      updated_at: new Date().toISOString(),
-    })
-    .eq("id", intent.id)
-    .eq("user_id", intent.user_id)
-    .eq("environment", intent.environment)
-    .is("stripe_checkout_session_id", null)
-    .select("stripe_checkout_session_id")
-    .maybeSingle();
+  const { data, error } = await supabase.rpc("bind_secure_stripe_checkout_session", {
+    p_intent_id: intent.id,
+    p_user_id: intent.user_id,
+    p_environment: intent.environment,
+    p_price_lookup_key: intent.price_lookup_key,
+    p_checkout_mode: intent.checkout_mode,
+    p_session_id: sessionId,
+    p_expires_at: expiresAtIso,
+  });
 
-  if (error) throw new Error("Could not record Stripe Checkout Session");
-  if (data?.stripe_checkout_session_id === sessionId) return;
-
-  // A concurrent retry may have recorded this exact session. Never overwrite a
-  // different session ID, even with service-role access.
-  const { data: stored, error: storedError } = await supabase
-    .from("checkout_intents")
-    .select("stripe_checkout_session_id")
-    .eq("id", intent.id)
-    .eq("user_id", intent.user_id)
-    .eq("environment", intent.environment)
-    .maybeSingle();
-
-  if (storedError || stored?.stripe_checkout_session_id !== sessionId) {
-    throw new Error("Checkout Session did not match its reservation");
+  if (error || typeof data !== "string") {
+    throw new Error("Could not safely bind Stripe Checkout Session");
   }
+  if (
+    data !== "bound"
+    && data !== "account_deletion_pending"
+    && data !== "requires_review"
+    && data !== "not_found"
+  ) {
+    throw new Error("Stripe Checkout binding returned an unexpected result");
+  }
+  return data;
 }
 
 function matchesCheckoutIntent(
@@ -222,7 +221,9 @@ async function resolveExistingStripeSession(
 
   if (session.status === "open") {
     if (!session.client_secret) throw new Error("Stripe did not return a checkout client secret");
-    await transitionIntent(intent, "open", ["creating"]);
+    const binding = await bindSecureStripeSession(intent, session.id, session.expires_at);
+    if (binding === "account_deletion_pending") return { kind: "account_deletion_pending" };
+    if (binding !== "bound") return { kind: "review" };
     return { kind: "resume", clientSecret: session.client_secret };
   }
 
@@ -260,13 +261,11 @@ serve(async (req) => {
       return jsonResponse({ error: "Invalid request" }, 400);
     }
 
-    const priceId = isRecord(body) ? body.priceId : undefined;
-    const catalogEntry = getPriceCatalogEntry(priceId);
-    if (!catalogEntry || typeof priceId !== "string") {
-      return jsonResponse({ error: "That plan is not available." }, 400);
-    }
-
     const environment = getStripeEnvironment();
+    const request = validateCheckoutRequest(body, environment);
+    if (!request.ok) return jsonResponse(request.response, request.status);
+    const { catalogEntry, priceId } = request.value;
+
     if (await hasBlockingBillingState(user.id, environment)) {
       return jsonResponse({
         code: "billing_already_active",
@@ -277,7 +276,7 @@ serve(async (req) => {
     const stripe = createStripeClient(environment);
     const prices = await stripe.prices.list({ lookup_keys: [priceId], active: true, limit: 1 });
     const stripePrice = prices.data[0];
-    if (!stripePrice || stripePrice.lookup_key !== priceId || stripePrice.type !== catalogEntry.mode) {
+    if (!matchesCatalogStripePrice(stripePrice, priceId)) {
       console.error("[create-checkout] configured catalog price is unavailable", {
         environment,
         priceLookupKey: priceId,
@@ -297,6 +296,13 @@ serve(async (req) => {
         user.email ?? null,
       );
 
+      if (intent.state === "account_deletion_pending") {
+        return jsonResponse({
+          code: "account_deletion_pending",
+          error: "Your account deletion is being safely completed, so a new payment cannot be started.",
+        }, 409);
+      }
+
       if (intent.state === "awaiting_payment") {
         return jsonResponse({
           code: "checkout_pending",
@@ -314,9 +320,16 @@ serve(async (req) => {
       if (existingSession?.kind === "resume") {
         return jsonResponse({
           clientSecret: existingSession.clientSecret,
+          environment,
           priceId: intent.price_lookup_key,
           resumed: true,
         });
+      }
+      if (existingSession?.kind === "account_deletion_pending") {
+        return jsonResponse({
+          code: "account_deletion_pending",
+          error: "Your account deletion is being safely completed, so this payment cannot be resumed.",
+        }, 409);
       }
       if (existingSession?.kind === "pending") {
         return jsonResponse({
@@ -353,6 +366,19 @@ serve(async (req) => {
         mode: intent.checkout_mode,
         return_url: getCheckoutReturnUrl(),
         ui_mode: "embedded",
+        // This is never an entitlement grant. It is a server-written locator
+        // for a refund webhook that may arrive before checkout completion; the
+        // webhook still proves the exact stored Checkout Session owns the
+        // PaymentIntent before it can revoke access.
+        ...(intent.checkout_mode === "payment" && {
+          payment_intent_data: {
+            metadata: {
+              checkoutIntentId: intent.id,
+              priceLookupKey: intent.price_lookup_key,
+              userId: user.id,
+            },
+          },
+        }),
         ...(intent.checkout_mode === "subscription" && {
           subscription_data: {
             metadata: {
@@ -367,11 +393,23 @@ serve(async (req) => {
       });
 
       if (!session.client_secret) throw new Error("Stripe did not return a checkout client secret");
-      await bindStripeSession(intent, session.id, session.expires_at);
-      await transitionIntent(intent, "open", ["creating"]);
+      const binding = await bindSecureStripeSession(intent, session.id, session.expires_at);
+      if (binding === "account_deletion_pending") {
+        return jsonResponse({
+          code: "account_deletion_pending",
+          error: "Your account deletion is being safely completed, so a new payment cannot be started.",
+        }, 409);
+      }
+      if (binding !== "bound") {
+        return jsonResponse({
+          code: "billing_needs_review",
+          error: "We need to check an existing billing record before another payment can be started.",
+        }, 409);
+      }
 
       return jsonResponse({
         clientSecret: session.client_secret,
+        environment,
         priceId: intent.price_lookup_key,
         resumed: false,
       });

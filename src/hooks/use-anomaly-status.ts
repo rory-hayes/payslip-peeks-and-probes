@@ -18,6 +18,9 @@ export function useUpdateAnomalyStatus() {
     },
     onSuccess: ({ status }) => {
       queryClient.invalidateQueries({ queryKey: ['anomalies'] });
+      // The vault's per-payslip badge counts only open items, so refresh that
+      // cached list as well when a person reviews, resolves, or reopens one.
+      queryClient.invalidateQueries({ queryKey: ['payslips'] });
       const labels: Record<AnomalyStatus, string> = {
         new: 'Reopened',
         reviewed: 'Marked as reviewed',

@@ -104,9 +104,12 @@ export function usePayslips() {
       if (error) throw error;
 
       // Count anomalies per payslip
-      const { data: anomalyCounts } = await supabase
+      const { data: anomalyCounts, error: anomalyCountsError } = await supabase
         .from('anomaly_results')
-        .select('payslip_id');
+        .select('payslip_id')
+        .eq('status', 'new');
+
+      if (anomalyCountsError) throw anomalyCountsError;
 
       const countMap: Record<string, number> = {};
       anomalyCounts?.forEach((a) => {

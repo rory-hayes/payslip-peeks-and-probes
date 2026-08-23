@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom';
+import { Link } from 'react-router';
 import { Button } from '@/components/ui/button';
 import { ArrowRight } from 'lucide-react';
 
@@ -11,11 +11,11 @@ const GuideCTA = () => (
       Upload this month's payslip, compare it to last month, and spot issues faster.
     </p>
     <div className="mt-6 flex justify-center">
-      <Link to="/sign-up">
-        <Button size="lg" className="gap-2 px-6">
+      <Button asChild size="lg" className="gap-2 px-6">
+        <Link to="/sign-up">
           Start checking payslips <ArrowRight className="h-4 w-4" />
-        </Button>
-      </Link>
+        </Link>
+      </Button>
     </div>
     <p className="mt-4 text-xs text-muted-foreground">
       Built for UK and Ireland employees.

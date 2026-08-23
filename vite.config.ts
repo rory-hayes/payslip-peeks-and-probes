@@ -1,8 +1,8 @@
 import { defineConfig, loadEnv } from "vite";
 import react from "@vitejs/plugin-react-swc";
 import path from "path";
-import { componentTagger } from "lovable-tagger";
 import { prerenderGuides } from "./vite-plugins/prerender-guides";
+import { releaseManifest } from "./vite-plugins/release-manifest";
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => {
@@ -30,8 +30,11 @@ export default defineConfig(({ mode }) => {
     },
     plugins: [
       react(),
-      mode === "development" && componentTagger(),
       prerenderGuides(),
+      // Vite loads .env.production into this object rather than process.env.
+      // Pass the configured revision explicitly so archive builds emit the
+      // same provenance that the release preflight later verifies.
+      releaseManifest(mode, env.VITE_RELEASE_SHA),
     ].filter(Boolean),
     resolve: {
       alias: {

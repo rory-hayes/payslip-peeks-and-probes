@@ -1,55 +1,182 @@
-import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useEffect } from 'react';
+import { Link, useNavigate, useSearchParams } from 'react-router';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { CheckCircle, ArrowLeft, Sparkles } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
-import { useSubscription } from '@/hooks/use-subscription';
+import { type Subscription, useSubscription } from '@/hooks/use-subscription';
 import { PaymentTestModeBanner } from '@/components/PaymentTestModeBanner';
-
-type Currency = 'GBP' | 'EUR';
-type Billing = 'yearly' | 'monthly';
-
-const priceIds: Record<Currency, { yearly: string; monthly: string; lifetime: string }> = {
-  EUR: { yearly: 'plus_yearly', monthly: 'plus_monthly', lifetime: 'lifetime_once' },
-  GBP: { yearly: 'plus_yearly_gbp', monthly: 'plus_monthly_gbp', lifetime: 'lifetime_once_gbp' },
-};
-
-const prices: Record<Currency, { symbol: string; yearly: string; yearlyPerMonth: string; monthly: string; lifetime: string }> = {
-  GBP: { symbol: '£', yearly: '17.99', yearlyPerMonth: '1.50', monthly: '2.99', lifetime: '29.99' },
-  EUR: { symbol: '€', yearly: '19.99', yearlyPerMonth: '1.67', monthly: '3.49', lifetime: '34.99' },
-};
+import { analytics } from '@/lib/analytics';
+import { isPaymentsClientConfigured } from '@/lib/stripe';
+import { applySeo } from '@/lib/seo';
+import { marketingSeoFor } from '@/lib/marketing-seo-data';
+import { BrandLockup } from '@/components/BrandLockup';
+import { checkoutPathForPrice, signUpPathForCheckout, type CheckoutPriceId } from '@/lib/checkout-price';
+import {
+  CUSTOMER_PRICING,
+  getPriceBillingInterval,
+  getPriceCurrency,
+  type PriceBillingInterval,
+  type PriceCurrency,
+} from '@/lib/customer-pricing';
 
 const freeFeatures = [
-  '3 automatic payslip checks per Dublin calendar month',
+  '3 automatic payslip checks per calendar month',
   'Review, track, and compare confirmed payslips',
-  '2 payroll-message drafts per Dublin calendar month',
+  '2 payroll-message drafts per calendar month',
+  'PDF export of your payslip history',
   'Contact us by email',
 ];
 
 const plusFeatures = [
-  'Automatic payslip checks beyond the Free plan allowance',
-  'Payroll-message drafts beyond the Free plan allowance',
+  'Up to 6 automatic payslip checks per calendar month',
+  'Up to 12 payroll-message drafts per calendar month',
   'All Free plan features',
-  'PDF export of your payslip history',
 ];
+
+type SubscriptionActionState = 'checking' | 'error' | 'ready' | 'unavailable';
+type SubscriptionPlanCard = 'free' | 'plus' | 'lifetime';
+
+interface AuthenticatedPlanActionProps {
+  card: SubscriptionPlanCard;
+  state: SubscriptionActionState;
+  subscription: Subscription;
+  planLabel: string;
+  priceId?: CheckoutPriceId;
+  onCheckout: (priceId: CheckoutPriceId) => void;
+}
+
+function AuthenticatedPlanAction({
+  card,
+  state,
+  subscription,
+  planLabel,
+  priceId,
+  onCheckout,
+}: AuthenticatedPlanActionProps) {
+  const isPaidCard = card !== 'free';
+  const isLifetimeCard = card === 'lifetime';
+  const className = isLifetimeCard
+    ? 'w-full mt-8 border-amber-300 text-amber-700 hover:bg-amber-50'
+    : 'w-full mt-8';
+  const variant = isPaidCard && !isLifetimeCard ? 'default' : 'outline';
+
+  if (state === 'checking') {
+    return (
+      <Button variant={variant} className={className} disabled aria-describedby="subscription-checking">
+        Checking your plan…
+      </Button>
+    );
+  }
+
+  if (state === 'error') {
+    return (
+      <Button variant={variant} className={className} disabled aria-describedby="subscription-error">
+        Plan status unavailable
+      </Button>
+    );
+  }
+
+  if (state === 'unavailable') {
+    return (
+      <Button variant={variant} className={className} disabled aria-describedby="checkout-availability">
+        {isPaidCard ? 'Checkout unavailable' : 'Plan unavailable'}
+      </Button>
+    );
+  }
+
+  if (!isPaidCard) {
+    return (
+      <Button variant="outline" className={className} disabled>
+        {subscription.isPremium ? 'Downgrade' : 'Current plan'}
+      </Button>
+    );
+  }
+
+  if (subscription.isPremium) {
+    return (
+      <Button variant={variant} className={className} disabled>
+        Current plan ({planLabel})
+      </Button>
+    );
+  }
+
+  if (!priceId) {
+    return (
+      <Button variant={variant} className={className} disabled>
+        Checkout unavailable
+      </Button>
+    );
+  }
+
+  return (
+    <Button
+      variant={variant}
+      className={className}
+      onClick={() => onCheckout(priceId)}
+    >
+      {card === 'plus' ? 'Upgrade to Plus' : 'Choose Lifetime'}
+    </Button>
+  );
+}
 
 const Pricing = () => {
   const { user } = useAuth();
-  const { subscription } = useSubscription();
+  const {
+    subscription,
+    isError: isSubscriptionError,
+    isFetching: isSubscriptionFetching,
+    isSuccess: isSubscriptionSettled,
+    refetch: refetchSubscription,
+  } = useSubscription();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
 
-  const [currency, setCurrency] = useState<Currency>('EUR');
-  const [billing, setBilling] = useState<Billing>('yearly');
-  const p = prices[currency];
-  const ids = priceIds[currency];
+  const currency = getPriceCurrency(searchParams.get('currency')) ?? 'EUR';
+  const billing = getPriceBillingInterval(searchParams.get('billing')) ?? 'yearly';
+  const pricing = CUSTOMER_PRICING[currency];
+  const plusPrice = pricing.plus[billing];
+
+  useEffect(() => {
+    applySeo(marketingSeoFor('/pricing'));
+  }, []);
+
+  const setCurrency = (nextCurrency: PriceCurrency) => {
+    setSearchParams((current) => {
+      const next = new URLSearchParams(current);
+      if (nextCurrency === 'EUR') next.delete('currency');
+      else next.set('currency', nextCurrency);
+      return next;
+    }, { replace: true });
+  };
+
+  const setBilling = (nextBilling: PriceBillingInterval) => {
+    setSearchParams((current) => {
+      const next = new URLSearchParams(current);
+      if (nextBilling === 'yearly') next.delete('billing');
+      else next.set('billing', nextBilling);
+      return next;
+    }, { replace: true });
+  };
 
   const isLoggedIn = !!user;
+  const paymentsConfigured = isPaymentsClientConfigured();
+  const subscriptionActionState: SubscriptionActionState = !isLoggedIn
+    ? 'ready'
+    : !paymentsConfigured
+      ? 'unavailable'
+      : isSubscriptionError
+        ? 'error'
+        : isSubscriptionSettled
+          ? 'ready'
+          : 'checking';
 
-  const handleCheckout = (priceId: string) => {
+  const handleCheckout = (priceId: CheckoutPriceId) => {
+    if (!paymentsConfigured || (isLoggedIn && subscriptionActionState !== 'ready')) return;
+    analytics.track('pricing_cta_clicked');
     if (!isLoggedIn) {
-      navigate('/sign-up');
+      navigate(signUpPathForCheckout(priceId));
       return;
     }
     if (subscription.needsBillingReview) {
@@ -58,7 +185,15 @@ const Pricing = () => {
     }
     // Prevent duplicate purchase
     if (subscription.isPremium) return;
-    navigate(`/checkout?price=${priceId}`);
+    navigate(checkoutPathForPrice(priceId));
+  };
+
+  const handleRetrySubscription = async () => {
+    try {
+      await refetchSubscription();
+    } catch {
+      // React Query retains the error state for the visible retry message.
+    }
   };
 
   const planLabel = subscription.plan === 'lifetime' ? 'Lifetime' : subscription.plan === 'plus' ? 'Plus' : 'Free';
@@ -70,10 +205,7 @@ const Pricing = () => {
       <nav className="sticky top-0 z-50 border-b border-border bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80">
         <div className="container flex h-16 items-center justify-between">
           <Link to={isLoggedIn ? '/dashboard' : '/'} className="flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
-              <CheckCircle className="h-5 w-5 text-primary-foreground" />
-            </div>
-            <span className="text-xl font-bold text-foreground">Payslip Insights</span>
+            <BrandLockup size="sm" />
           </Link>
           <div className="flex items-center gap-3">
             {isLoggedIn ? (
@@ -82,42 +214,60 @@ const Pricing = () => {
               </Button>
             ) : (
               <>
-                <Link to="/sign-in"><Button variant="ghost" size="sm">Sign in</Button></Link>
-                <Link to="/sign-up"><Button size="sm">Get started</Button></Link>
+                <Button asChild variant="ghost" size="sm" className="hidden min-h-11 sm:inline-flex">
+                  <Link to="/sign-in">Sign in</Link>
+                </Button>
+                <Button asChild size="sm" className="min-h-11">
+                  <Link to="/sign-up">Get started</Link>
+                </Button>
               </>
             )}
           </div>
         </div>
       </nav>
 
-      <div className="container py-16 md:py-24">
+      <main className="container py-16 md:py-24">
         <div className="max-w-4xl mx-auto space-y-10">
           {/* Header */}
           <div className="text-center space-y-4">
             <h1 className="text-3xl font-bold text-foreground md:text-4xl">Simple, transparent pricing</h1>
             <p className="text-muted-foreground max-w-md mx-auto">
-              Start with the Free plan. Choose a paid plan when you need checks or drafts beyond its monthly allowance.
+              Start with the Free plan. Choose a paid plan for up to 6 automatic checks and 12 payroll-message drafts each calendar month.
             </p>
 
             {/* Currency toggle */}
-            <div className="inline-flex items-center gap-1 rounded-lg bg-muted p-1">
-              <button
-                onClick={() => setCurrency('EUR')}
-                className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${
-                  currency === 'EUR' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
-                }`}
-              >
-                🇮🇪 EUR
-              </button>
-              <button
-                onClick={() => setCurrency('GBP')}
-                className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${
-                  currency === 'GBP' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
-                }`}
-              >
-                🇬🇧 GBP
-              </button>
+            <div className="space-y-2">
+              <div className="inline-flex items-center gap-1 rounded-lg bg-muted p-1" role="group" aria-label="Choose billing currency">
+                <button
+                  type="button"
+                  onClick={() => setCurrency('EUR')}
+                  aria-pressed={currency === 'EUR'}
+                  aria-label="Show prices in euro"
+                  className={`min-h-11 px-4 rounded-md text-sm font-medium transition-colors ${
+                    currency === 'EUR' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  Ireland · EUR
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setCurrency('GBP')}
+                  aria-pressed={currency === 'GBP'}
+                  aria-label="Show prices in pounds sterling"
+                  className={`min-h-11 px-4 rounded-md text-sm font-medium transition-colors ${
+                    currency === 'GBP' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  United Kingdom · GBP
+                </button>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Choose the currency for your plan. It does not change the country you select when reviewing a payslip.
+              </p>
             </div>
+            <p className="sr-only" aria-live="polite">
+              Prices are shown for {pricing.countryLabel} in {pricing.currency}.
+            </p>
           </div>
 
           {/* Plans */}
@@ -127,7 +277,7 @@ const Pricing = () => {
               <CardContent className="p-8 flex flex-col h-full">
                 <h3 className="text-lg font-semibold text-foreground">Free</h3>
                 <div className="mt-4">
-                  <span className="text-4xl font-bold text-foreground">{p.symbol}0</span>
+                  <span className="text-4xl font-bold text-foreground">{pricing.symbol}0</span>
                   <span className="text-muted-foreground">/month</span>
                 </div>
                 <p className="mt-2 text-sm text-muted-foreground">
@@ -141,13 +291,17 @@ const Pricing = () => {
                   ))}
                 </ul>
                 {isLoggedIn ? (
-                  <Button variant="outline" className="w-full mt-8" disabled>
-                    {subscription.isPremium ? 'Downgrade' : 'Current plan'}
-                  </Button>
+                  <AuthenticatedPlanAction
+                    card="free"
+                    state={subscriptionActionState}
+                    subscription={subscription}
+                    planLabel={planLabel}
+                    onCheckout={handleCheckout}
+                  />
                 ) : (
-                  <Link to="/sign-up" className="mt-8 block">
-                    <Button variant="outline" className="w-full">Get started free</Button>
-                  </Link>
+                  <Button asChild variant="outline" className="mt-8 w-full">
+                    <Link to="/sign-up">Get started free</Link>
+                  </Button>
                 )}
               </CardContent>
             </Card>
@@ -161,15 +315,15 @@ const Pricing = () => {
                 <div className="mt-4">
                   {billing === 'yearly' ? (
                     <>
-                      <span className="text-4xl font-bold text-foreground">{p.symbol}{p.yearly}</span>
+                      <span className="text-4xl font-bold text-foreground">{pricing.symbol}{pricing.plus.yearly.display}</span>
                       <span className="text-muted-foreground">/year</span>
                       <p className="text-sm text-muted-foreground mt-1">
-                        That's just {p.symbol}{p.yearlyPerMonth}/month
+                        That's just {pricing.symbol}{pricing.yearlyPerMonth}/month
                       </p>
                     </>
                   ) : (
                     <>
-                      <span className="text-4xl font-bold text-foreground">{p.symbol}{p.monthly}</span>
+                      <span className="text-4xl font-bold text-foreground">{pricing.symbol}{pricing.plus.monthly.display}</span>
                       <span className="text-muted-foreground">/month</span>
                     </>
                   )}
@@ -180,6 +334,7 @@ const Pricing = () => {
                   <Switch
                     checked={billing === 'monthly'}
                     onCheckedChange={(checked) => setBilling(checked ? 'monthly' : 'yearly')}
+                    aria-label={`Use ${billing === 'monthly' ? 'yearly' : 'monthly'} Plus billing`}
                   />
                   <span className={`text-xs font-medium ${billing === 'monthly' ? 'text-foreground' : 'text-muted-foreground'}`}>Monthly</span>
                 </div>
@@ -194,19 +349,31 @@ const Pricing = () => {
                     </li>
                   ))}
                 </ul>
+                <p className="mt-5 text-xs leading-5 text-muted-foreground">
+                  {billing === 'yearly'
+                    ? `Billed ${pricing.symbol}${pricing.plus.yearly.display} today, then every year until you cancel.`
+                    : `Billed ${pricing.symbol}${pricing.plus.monthly.display} today, then every month until you cancel.`}{' '}
+                  <Link to="/terms" className="font-medium text-foreground underline underline-offset-2 hover:text-primary">
+                    Billing terms
+                  </Link>
+                </p>
                 {isLoggedIn ? (
-                  subscription.isPremium ? (
-                    <Button variant="outline" className="w-full mt-8" disabled>
-                      Current plan ({planLabel})
-                    </Button>
-                  ) : (
-                    <Button className="w-full mt-8" onClick={() => handleCheckout(billing === 'yearly' ? ids.yearly : ids.monthly)}>
-                      Upgrade to Plus
-                    </Button>
-                  )
+                  <AuthenticatedPlanAction
+                    card="plus"
+                    state={subscriptionActionState}
+                    subscription={subscription}
+                    planLabel={planLabel}
+                    priceId={plusPrice.checkoutPriceId}
+                    onCheckout={handleCheckout}
+                  />
                 ) : (
-                  <Button className="w-full mt-8" onClick={() => handleCheckout(billing === 'yearly' ? ids.yearly : ids.monthly)}>
-                    Choose Plus
+                  <Button
+                    className="w-full mt-8"
+                    disabled={!paymentsConfigured}
+                    aria-describedby={paymentsConfigured ? undefined : 'checkout-availability'}
+                    onClick={() => handleCheckout(plusPrice.checkoutPriceId)}
+                  >
+                    {paymentsConfigured ? 'Choose Plus' : 'Checkout unavailable'}
                   </Button>
                 )}
               </CardContent>
@@ -217,7 +384,7 @@ const Pricing = () => {
               <CardContent className="p-8 flex flex-col h-full">
                 <h3 className="text-lg font-semibold text-foreground">Lifetime</h3>
                 <div className="mt-4">
-                  <span className="text-4xl font-bold text-foreground">{p.symbol}{p.lifetime}</span>
+                  <span className="text-4xl font-bold text-foreground">{pricing.symbol}{pricing.lifetime.display}</span>
                   <span className="text-muted-foreground"> once</span>
                 </div>
                 <p className="mt-2 text-sm text-muted-foreground">
@@ -231,48 +398,94 @@ const Pricing = () => {
                   ))}
                 </ul>
                 {isLoggedIn ? (
-                  subscription.isPremium ? (
-                    <Button variant="outline" className="w-full mt-8" disabled>
-                      Current plan ({planLabel})
-                    </Button>
-                  ) : (
-                    <Button variant="outline" className="w-full mt-8 border-amber-300 text-amber-700 hover:bg-amber-50" onClick={() => handleCheckout(ids.lifetime)}>
-                      Choose Lifetime
-                    </Button>
-                  )
+                  <AuthenticatedPlanAction
+                    card="lifetime"
+                    state={subscriptionActionState}
+                    subscription={subscription}
+                    planLabel={planLabel}
+                    priceId={pricing.lifetime.checkoutPriceId}
+                    onCheckout={handleCheckout}
+                  />
                 ) : (
-                  <Button variant="outline" className="w-full mt-8 border-amber-300 text-amber-700 hover:bg-amber-50" onClick={() => handleCheckout(ids.lifetime)}>
-                    Choose Lifetime
+                  <Button
+                    variant="outline"
+                    className="w-full mt-8 border-amber-300 text-amber-700 hover:bg-amber-50"
+                    disabled={!paymentsConfigured}
+                    aria-describedby={paymentsConfigured ? undefined : 'checkout-availability'}
+                    onClick={() => handleCheckout(pricing.lifetime.checkoutPriceId)}
+                  >
+                    {paymentsConfigured ? 'Choose Lifetime' : 'Checkout unavailable'}
                   </Button>
                 )}
               </CardContent>
             </Card>
           </div>
 
+          {!paymentsConfigured && (
+            <p id="checkout-availability" role="status" className="text-center text-sm text-muted-foreground">
+              {isLoggedIn
+                ? 'Online checkout is unavailable right now, so we cannot confirm your billing status in this browser.'
+                : 'Online checkout is unavailable right now. You can still create a Free account.'}
+            </p>
+          )}
+
+          {isLoggedIn && subscriptionActionState === 'checking' && (
+            <p id="subscription-checking" role="status" className="text-center text-sm text-muted-foreground">
+              Checking your plan before we show account actions…
+            </p>
+          )}
+
+          {isLoggedIn && subscriptionActionState === 'error' && (
+            <div
+              id="subscription-error"
+              role="alert"
+              className="mx-auto flex max-w-xl flex-col items-center gap-3 rounded-xl border border-destructive/30 bg-destructive/5 p-4 text-center text-sm text-foreground"
+            >
+              <p>We couldn’t confirm your plan. We have not changed your plan or started a checkout.</p>
+              <Button variant="outline" className="min-h-11" onClick={() => void handleRetrySubscription()} disabled={isSubscriptionFetching}>
+                {isSubscriptionFetching ? 'Retrying…' : 'Try again'}
+              </Button>
+            </div>
+          )}
+
           {/* Comparison table */}
           <Card className="border-0 shadow-sm overflow-hidden">
             <CardContent className="p-0">
-              <div className="grid grid-cols-4 text-sm">
-                <div className="border-b border-border bg-muted/50 p-4 font-medium text-muted-foreground">Feature</div>
-                <div className="border-b border-border bg-muted/50 p-4 text-center font-medium text-muted-foreground">Free</div>
-                <div className="border-b border-border bg-muted/50 p-4 text-center font-medium text-primary">Plus</div>
-                <div className="border-b border-border bg-muted/50 p-4 text-center font-medium text-amber-600">Lifetime</div>
-                {[
-                  { feature: 'Automatic payslip checks', free: '3 / Dublin month', plus: 'Beyond Free allowance', lifetime: 'Beyond Free allowance' },
-                  { feature: 'Payslip review', free: 'Included', plus: 'Included', lifetime: 'Included' },
-                  { feature: 'Payslip comparison & trends', free: 'Included', plus: 'Included', lifetime: 'Included' },
-                  { feature: 'Payroll-message drafts', free: '2 / Dublin month', plus: 'Beyond Free allowance', lifetime: 'Beyond Free allowance' },
-                  { feature: 'PDF export', free: 'Included', plus: 'Included', lifetime: 'Included' },
-                  { feature: 'Contact', free: 'Email', plus: 'Email', lifetime: 'Email' },
-                  { feature: 'Billing', free: 'No charge', plus: 'Monthly or yearly', lifetime: 'One payment' },
-                ].map((row, i) => (
-                  <div key={i} className="contents">
-                    <div className="border-b border-border p-4 text-muted-foreground">{row.feature}</div>
-                    <div className="border-b border-border p-4 text-center text-foreground">{row.free}</div>
-                    <div className="border-b border-border p-4 text-center text-foreground font-medium">{row.plus}</div>
-                    <div className="border-b border-border p-4 text-center text-foreground font-medium">{row.lifetime}</div>
-                  </div>
-                ))}
+              <div
+                className="overflow-x-auto focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
+                role="region"
+                aria-label="Plan feature comparison. Scroll horizontally to see every plan."
+                tabIndex={0}
+              >
+                <table className="w-full min-w-[42rem] border-collapse text-sm">
+                  <caption className="sr-only">Compare the Free, Plus, and Lifetime plans</caption>
+                  <thead>
+                    <tr>
+                      <th scope="col" className="border-b border-border bg-muted/50 p-4 text-left font-medium text-muted-foreground">Feature</th>
+                      <th scope="col" className="border-b border-border bg-muted/50 p-4 text-center font-medium text-muted-foreground">Free</th>
+                      <th scope="col" className="border-b border-border bg-muted/50 p-4 text-center font-medium text-primary">Plus</th>
+                      <th scope="col" className="border-b border-border bg-muted/50 p-4 text-center font-medium text-amber-600">Lifetime</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {[
+                      { feature: 'Automatic payslip checks', free: '3 / calendar month', plus: '6 / calendar month', lifetime: '6 / calendar month' },
+                      { feature: 'Payslip review', free: 'Included', plus: 'Included', lifetime: 'Included' },
+                      { feature: 'Payslip comparison & trends', free: 'Included', plus: 'Included', lifetime: 'Included' },
+                      { feature: 'Payroll-message drafts', free: '2 / calendar month', plus: '12 / calendar month', lifetime: '12 / calendar month' },
+                      { feature: 'PDF export', free: 'Included', plus: 'Included', lifetime: 'Included' },
+                      { feature: 'Contact', free: 'Email', plus: 'Email', lifetime: 'Email' },
+                      { feature: 'Billing', free: 'No charge', plus: 'Monthly or yearly', lifetime: 'One payment' },
+                    ].map((row) => (
+                      <tr key={row.feature}>
+                        <th scope="row" className="border-b border-border p-4 text-left font-normal text-muted-foreground">{row.feature}</th>
+                        <td className="border-b border-border p-4 text-center text-foreground">{row.free}</td>
+                        <td className="border-b border-border p-4 text-center font-medium text-foreground">{row.plus}</td>
+                        <td className="border-b border-border p-4 text-center font-medium text-foreground">{row.lifetime}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             </CardContent>
           </Card>
@@ -281,7 +494,7 @@ const Pricing = () => {
             The total for your selected plan is shown before you pay. Recurring plans can be managed from your account.
           </p>
         </div>
-      </div>
+      </main>
     </div>
   );
 };

@@ -1,22 +1,28 @@
-import { Link } from 'react-router-dom';
+import { useEffect } from 'react';
+import { Link } from 'react-router';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, CheckCircle } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
+import { BrandLockup } from '@/components/BrandLockup';
+import { applySeo } from '@/lib/seo';
+import { marketingSeoFor } from '@/lib/marketing-seo-data';
 
-const Privacy = () => (
+const Privacy = () => {
+  useEffect(() => {
+    applySeo(marketingSeoFor('/privacy'));
+  }, []);
+
+  return (
   <div className="min-h-screen bg-background">
     <nav className="sticky top-0 z-50 border-b border-border bg-card/95 backdrop-blur" role="navigation" aria-label="Main navigation">
       <div className="container flex h-16 items-center justify-between">
         <Link to="/" className="flex items-center gap-2" aria-label="Payslip Insights home">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
-            <CheckCircle className="h-5 w-5 text-primary-foreground" aria-hidden="true" />
-          </div>
-          <span className="text-xl font-bold text-foreground">Payslip Insights</span>
+          <BrandLockup />
         </Link>
-        <Link to="/">
-          <Button variant="ghost" size="sm" className="gap-1">
+        <Button asChild variant="ghost" size="sm" className="min-h-11 gap-1">
+          <Link to="/">
             <ArrowLeft className="h-4 w-4" aria-hidden="true" /> Back
-          </Button>
-        </Link>
+          </Link>
+        </Button>
       </div>
     </nav>
 
@@ -63,8 +69,9 @@ const Privacy = () => (
         </section>
 
         <section className="space-y-3">
-          <h2 className="text-lg font-semibold text-foreground">8. Cookies and similar technology</h2>
-          <p>We use the information needed to keep you signed in and remember essential product preferences. If we introduce optional analytics or marketing technology, we will update this policy and request consent where required.</p>
+          <h2 className="text-lg font-semibold text-foreground">8. Browser storage, cookies, and similar technology</h2>
+          <p>We use essential browser storage, including local storage, to keep you signed in and remember essential product preferences. If optional, privacy-friendly analytics are enabled for a live deployment, we ask for your choice first and measure only visits to selected public pages. That layer is designed not to receive payslip contents, account identifiers, private app routes, URL query strings, or URL fragments.</p>
+          <p>Before a public paid launch, we will publish the current analytics provider and any relevant browser-storage or cookie information alongside the wider provider list.</p>
         </section>
 
         <section className="space-y-3">
@@ -85,6 +92,7 @@ const Privacy = () => (
       </div>
     </footer>
   </div>
-);
+  );
+};
 
 export default Privacy;

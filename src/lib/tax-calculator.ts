@@ -1,5 +1,6 @@
 /**
- * Approximate monthly tax calculators per country (2024/25 rates).
+ * Historical, approximate monthly tax calculators.
+ * Each caller must check tax-estimate-availability before showing a result.
  * These are simplified estimates — not formal tax advice.
  *
  * Country logic lives in src/lib/countries/<code>.ts. To add a country,

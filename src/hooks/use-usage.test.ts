@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { dublinMonthPeriod } from './use-usage';
+import {
+  automaticCheckLimit,
+  dublinMonthPeriod,
+  PAID_DRAFTS_PER_MONTH,
+  PAID_UPLOADS_PER_MONTH,
+  payrollMessageDraftLimit,
+} from './use-usage';
 
 describe('dublinMonthPeriod', () => {
   it('uses the Europe/Dublin calendar month across the summer-time boundary', () => {
@@ -12,5 +18,17 @@ describe('dublinMonthPeriod', () => {
 
   it('rejects malformed dates instead of silently counting them in a free allowance', () => {
     expect(() => dublinMonthPeriod('not-a-date')).toThrow('Invalid date for monthly usage');
+  });
+
+  it('keeps the paid upload allowance finite in the browser pre-flight', () => {
+    expect(automaticCheckLimit(false, 3)).toBe(3);
+    expect(automaticCheckLimit(true, 3)).toBe(PAID_UPLOADS_PER_MONTH);
+    expect(PAID_UPLOADS_PER_MONTH).toBe(6);
+  });
+
+  it('keeps the paid payroll-message allowance finite in the browser pre-flight', () => {
+    expect(payrollMessageDraftLimit(false, 2)).toBe(2);
+    expect(payrollMessageDraftLimit(true, 2)).toBe(PAID_DRAFTS_PER_MONTH);
+    expect(PAID_DRAFTS_PER_MONTH).toBe(12);
   });
 });

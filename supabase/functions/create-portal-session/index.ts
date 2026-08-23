@@ -22,7 +22,7 @@ interface StoredSubscriptionCandidate {
 function jsonResponse(body: Record<string, unknown>, status = 200) {
   return new Response(JSON.stringify(body), {
     status,
-    headers: { ...corsHeaders, "Content-Type": "application/json" },
+    headers: { ...corsHeaders, "Cache-Control": "no-store", "Content-Type": "application/json" },
   });
 }
 
@@ -82,6 +82,16 @@ serve(async (req) => {
     const authHeader = req.headers.get("authorization")?.replace("Bearer ", "");
     const { data: { user }, error: authError } = await supabase.auth.getUser(authHeader);
     if (authError || !user) return jsonResponse({ error: "Unauthorized" }, 401);
+
+    const { data: lifecycleActive, error: lifecycleError } = await supabase.rpc("is_account_lifecycle_active", {
+      p_user_id: user.id,
+    });
+    if (lifecycleError || lifecycleActive !== true) {
+      return jsonResponse({
+        code: "account_deletion_pending",
+        error: "Your account deletion is being safely completed, so billing changes are unavailable.",
+      }, 409);
+    }
 
     const environment = getStripeEnvironment();
     const { data, error } = await supabase

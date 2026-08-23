@@ -32,6 +32,32 @@
   font: inherit;
 }
 
+.pi-landing__skip-link {
+  position: fixed;
+  z-index: 100;
+  top: 0.75rem;
+  left: 50%;
+  min-height: 2.75rem;
+  padding: 0.75rem 1rem;
+  border-radius: 0.75rem;
+  background: var(--pi-ink);
+  color: #ffffff !important;
+  font-size: 0.9rem;
+  font-weight: 800;
+  transform: translate(-50%, -160%);
+  transition: transform 160ms ease;
+}
+
+.pi-landing__skip-link:focus-visible {
+  transform: translate(-50%, 0);
+}
+
+.pi-landing a:focus-visible,
+.pi-landing button:focus-visible {
+  outline: 3px solid rgba(98, 78, 230, 0.5);
+  outline-offset: 3px;
+}
+
 .pi-landing__container {
   width: min(100% - 2rem, 72rem);
   margin: 0 auto;
@@ -58,6 +84,7 @@
 .pi-landing__brand {
   display: inline-flex;
   align-items: center;
+  min-height: 2.75rem;
   gap: 0.625rem;
   flex-shrink: 0;
   color: var(--pi-ink);
@@ -109,10 +136,45 @@
   gap: 0.9rem;
 }
 
-.pi-landing__sign-in {
+.pi-landing__mobile-menu-toggle {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 2.75rem;
+  min-width: 2.75rem;
+  min-height: 2.75rem;
+  padding: 0;
+  border: 1px solid rgba(20, 20, 92, 0.16);
+  border-radius: 0.72rem;
+  background: #ffffff;
   color: var(--pi-ink);
+  cursor: pointer;
+  transition: border-color 160ms ease, color 160ms ease, background-color 160ms ease;
+}
+
+.pi-landing__mobile-menu-toggle:hover {
+  border-color: var(--pi-violet);
+  color: var(--pi-violet);
+}
+
+.pi-landing__mobile-menu-toggle svg {
+  width: 1.2rem;
+  height: 1.2rem;
+  stroke-width: 2.5;
+}
+
+.pi-landing__mobile-navigation {
+  display: none;
+}
+
+.pi-landing__sign-in {
+  align-items: center;
+  color: var(--pi-ink);
+  display: inline-flex;
   font-size: 0.875rem;
   font-weight: 750;
+  min-height: 2.75rem;
+  padding-inline: 0.2rem;
   white-space: nowrap;
 }
 
@@ -409,7 +471,9 @@
   display: inline-flex;
   align-items: center;
   gap: 0.45rem;
+  min-height: 2.75rem;
   margin-top: 1.8rem;
+  padding-block: 0.35rem;
   color: var(--pi-violet);
   font-size: 0.92rem;
   font-weight: 850;
@@ -511,6 +575,50 @@
   background: #f8f8fe;
 }
 
+.pi-landing__currency-picker {
+  display: inline-flex;
+  gap: 0.3rem;
+  margin-top: 1.25rem;
+  padding: 0.3rem;
+  border: 1px solid #e5e0fa;
+  border-radius: 0.9rem;
+  background: #eeedfc;
+}
+
+.pi-landing__currency-help {
+  margin: 0.75rem 0 0;
+  color: var(--pi-muted);
+  font-size: 0.8125rem;
+  line-height: 1.45;
+  text-align: center;
+}
+
+.pi-landing__currency-picker button {
+  min-height: 2.5rem;
+  padding: 0.45rem 0.8rem;
+  border: 0;
+  border-radius: 0.65rem;
+  background: transparent;
+  color: var(--pi-ink-soft);
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 750;
+  line-height: 1.2;
+  transition: background 160ms ease, box-shadow 160ms ease, color 160ms ease;
+}
+
+.pi-landing__currency-picker button[aria-pressed='true'] {
+  background: #ffffff;
+  box-shadow: 0 2px 7px rgba(23, 21, 93, 0.11);
+  color: var(--pi-ink);
+}
+
+.pi-landing__currency-picker button:focus-visible {
+  outline: 2px solid var(--pi-violet);
+  outline-offset: 2px;
+}
+
 .pi-landing__pricing-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -588,6 +696,20 @@
   stroke-width: 3;
 }
 
+.pi-landing__billing-note {
+  margin: auto 0 0;
+  color: var(--pi-ink-soft);
+  font-size: 0.75rem;
+  line-height: 1.45;
+}
+
+.pi-landing__billing-note a {
+  color: var(--pi-ink);
+  font-weight: 750;
+  text-decoration: underline;
+  text-underline-offset: 0.16em;
+}
+
 .pi-landing__outline-button {
   width: 100%;
   margin-top: auto;
@@ -596,8 +718,8 @@
 }
 
 .pi-landing__price-card .pi-landing__button {
+  margin-top: 0.85rem;
   width: 100%;
-  margin-top: auto;
 }
 
 .pi-landing__pricing-link-wrap {
@@ -704,6 +826,13 @@
   font-weight: 650;
 }
 
+.pi-landing__footer-links a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2.75rem;
+  padding-block: 0.3rem;
+}
+
 .pi-landing__footer p {
   margin: 0;
   color: var(--pi-ink-soft);
@@ -714,6 +843,41 @@
 @media (max-width: 58rem) {
   .pi-landing__nav-links {
     display: none;
+  }
+
+  .pi-landing__mobile-menu-toggle {
+    display: inline-flex;
+  }
+
+  .pi-landing__mobile-navigation {
+    position: absolute;
+    top: calc(100% + 0.55rem);
+    right: max(1rem, calc((100% - 72rem) / 2));
+    left: max(1rem, calc((100% - 72rem) / 2));
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.45rem;
+    padding: 0.6rem;
+    border: 1px solid rgba(20, 20, 92, 0.13);
+    border-radius: 1rem;
+    background: #ffffff;
+    box-shadow: 0 18px 42px rgba(20, 20, 92, 0.16);
+  }
+
+  .pi-landing__mobile-navigation a {
+    display: flex;
+    align-items: center;
+    min-height: 2.75rem;
+    border-radius: 0.68rem;
+    padding: 0.55rem 0.72rem;
+    color: var(--pi-ink);
+    font-size: 0.88rem;
+    font-weight: 750;
+  }
+
+  .pi-landing__mobile-navigation a:hover {
+    background: rgba(98, 78, 230, 0.08);
+    color: var(--pi-violet);
   }
 
   .pi-landing__hero-grid,
@@ -732,16 +896,21 @@
   }
 
   .pi-landing__hero-art-wrap {
-    min-height: 26rem;
+    align-items: flex-end;
+    display: flex;
+    justify-content: center;
+    margin: 1.25rem auto 0;
     max-width: 31rem;
-    margin: -1rem auto 0;
+    min-height: 0;
+    width: min(100%, 31rem);
   }
 
   .pi-landing__hero-art {
-    right: 50%;
-    bottom: -2.2rem;
-    width: min(120%, 32rem);
-    transform: translateX(50%);
+    bottom: auto;
+    position: relative;
+    right: auto;
+    transform: none;
+    width: min(100%, 30rem);
   }
 
   .pi-landing__feature-intro {
@@ -787,11 +956,11 @@
   }
 
   .pi-landing__sign-in {
-    font-size: 0.8rem;
+    display: none;
   }
 
   .pi-landing__button--small {
-    min-height: 2.28rem;
+    min-height: 2.75rem;
     padding: 0.5rem 0.66rem;
     font-size: 0.73rem;
   }
@@ -834,13 +1003,13 @@
   }
 
   .pi-landing__hero-art-wrap {
-    min-height: 22rem;
-    margin-top: -0.5rem;
+    margin-top: 1.15rem;
+    max-width: 20rem;
+    width: min(100%, 20rem);
   }
 
   .pi-landing__hero-art {
-    bottom: -2rem;
-    width: min(119%, 26rem);
+    width: 100%;
   }
 
   .pi-landing__section {
@@ -904,6 +1073,14 @@
   .pi-landing__pricing-grid {
     grid-template-columns: 1fr;
     margin-top: 2.55rem;
+  }
+
+  .pi-landing__currency-picker {
+    width: 100%;
+  }
+
+  .pi-landing__currency-picker button {
+    flex: 1;
   }
 
   .pi-landing__price-card {

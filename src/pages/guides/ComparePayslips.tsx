@@ -20,9 +20,9 @@ const ComparePayslipsGuide = () => (
     <h2 className="mt-10 text-2xl font-bold text-foreground">What to compare line by line</h2>
     <ul className="mt-3 list-disc pl-6 space-y-1.5 text-muted-foreground">
       <li><strong className="text-foreground">Gross pay</strong> — same base salary, plus any overtime, bonus or commission.</li>
-      <li><strong className="text-foreground">Tax</strong> — should move proportionally with gross pay.</li>
-      <li><strong className="text-foreground">NI / PRSI / USC</strong> — band thresholds matter, but month-to-month should be steady.</li>
-      <li><strong className="text-foreground">Pension</strong> — the percentage should be identical unless you opted to change it.</li>
+      <li><strong className="text-foreground">Tax</strong> — compare the amount alongside your gross pay and any tax-code change.</li>
+      <li><strong className="text-foreground">NI / PRSI / USC</strong> — compare the amount and any applicable thresholds or class changes.</li>
+      <li><strong className="text-foreground">Pension</strong> — compare the percentage and amount with your scheme information.</li>
       <li><strong className="text-foreground">Other deductions</strong> — anything new, anything missing?</li>
       <li><strong className="text-foreground">Net pay</strong> — the bottom line, and the easiest to spot-check.</li>
     </ul>

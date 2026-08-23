@@ -1,7 +1,12 @@
-import { useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useEffect, useRef, useState } from 'react';
+import { Link, useNavigate } from 'react-router';
 import { useDemo } from '@/contexts/DemoContext';
-import { useAuth } from '@/contexts/AuthContext';
+import { useLandingSessionRedirect } from '@/hooks/use-landing-session-redirect';
+import { analytics } from '@/lib/analytics';
+import { applySeo } from '@/lib/seo';
+import { marketingSeoFor } from '@/lib/marketing-seo-data';
+import { signUpPathForCheckout } from '@/lib/checkout-price';
+import { CUSTOMER_PRICING, pricingPathForCurrency, type PriceCurrency } from '@/lib/customer-pricing';
 import {
   AlertTriangle,
   ArrowRight,
@@ -10,9 +15,11 @@ import {
   ChevronRight,
   Eye,
   FileCheck,
+  Menu,
   MessageSquare,
   TrendingUp,
   Upload,
+  X,
 } from 'lucide-react';
 import {
   Accordion,
@@ -70,17 +77,17 @@ const FEATURES = [
 ] as const;
 
 const FREE_FEATURES = [
-  '3 automatic payslip checks per Dublin calendar month',
+  '3 automatic payslip checks per calendar month',
   'Checks for changes worth reviewing',
   'Payslip comparison and history',
-  '2 payroll-message drafts per Dublin calendar month',
+  '2 payroll-message drafts per calendar month',
+  'PDF export of your payslip history',
 ] as const;
 
 const PLUS_FEATURES = [
-  'Automatic payslip checks beyond the Free plan allowance',
-  'Payroll-message drafts beyond the Free plan allowance',
-  'Review, track, and compare confirmed payslips',
-  'PDF export of your payslip history',
+  'Up to 6 automatic payslip checks per calendar month',
+  'Up to 12 payroll-message drafts per calendar month',
+  'All Free plan features',
 ] as const;
 
 const FAQ_ITEMS = [
@@ -113,22 +120,41 @@ const FAQ_ITEMS = [
 const Landing = () => {
   const navigate = useNavigate();
   const { enableDemo } = useDemo();
-  const { user, loading } = useAuth();
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [pricingCurrency, setPricingCurrency] = useState<PriceCurrency>('EUR');
+  const mobileMenuButtonRef = useRef<HTMLButtonElement>(null);
+  const selectedPricing = CUSTOMER_PRICING[pricingCurrency];
 
-  // If a logged-in user lands here (e.g. after OAuth callback), send them to the app.
   useEffect(() => {
-    if (!loading && user) {
-      navigate('/dashboard', { replace: true });
-    }
-  }, [user, loading, navigate]);
+    applySeo(marketingSeoFor('/'));
+  }, []);
+
+  // Preserve the authenticated-home redirect without making the Supabase
+  // runtime part of the public landing bundle.
+  useLandingSessionRedirect(navigate);
+
+  useEffect(() => {
+    if (!isMobileMenuOpen) return;
+
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return;
+      setIsMobileMenuOpen(false);
+      mobileMenuButtonRef.current?.focus();
+    };
+
+    window.addEventListener('keydown', closeOnEscape);
+    return () => window.removeEventListener('keydown', closeOnEscape);
+  }, [isMobileMenuOpen]);
 
   const handleTryDemo = () => {
+    analytics.track('demo_started');
     enableDemo();
     navigate('/dashboard');
   };
 
   return (
     <div className="pi-landing">
+      <a className="pi-landing__skip-link" href="#main-content">Skip to main content</a>
       <header className="pi-landing__nav-wrap">
         <nav className="pi-landing__nav" aria-label="Primary navigation">
           <Link to="/" className="pi-landing__brand" aria-label="Payslip Insights home">
@@ -145,13 +171,34 @@ const Landing = () => {
           </div>
 
           <div className="pi-landing__nav-actions">
+            <button
+              ref={mobileMenuButtonRef}
+              type="button"
+              className="pi-landing__mobile-menu-toggle"
+              aria-controls="landing-mobile-navigation"
+              aria-expanded={isMobileMenuOpen}
+              aria-label={isMobileMenuOpen ? 'Close navigation' : 'Open navigation'}
+              onClick={() => setIsMobileMenuOpen((isOpen) => !isOpen)}
+            >
+              {isMobileMenuOpen ? <X aria-hidden="true" /> : <Menu aria-hidden="true" />}
+            </button>
             <Link to="/sign-in" className="pi-landing__sign-in">Sign in</Link>
             <Link to="/sign-up" className="pi-landing__button pi-landing__button--small">Get started</Link>
           </div>
         </nav>
+        {isMobileMenuOpen && (
+          <nav id="landing-mobile-navigation" className="pi-landing__mobile-navigation" aria-label="Mobile navigation">
+            <a href="#how-it-works" onClick={() => setIsMobileMenuOpen(false)}>How it works</a>
+            <a href="#features" onClick={() => setIsMobileMenuOpen(false)}>Features</a>
+            <a href="#pricing" onClick={() => setIsMobileMenuOpen(false)}>Pricing</a>
+            <a href="#faq" onClick={() => setIsMobileMenuOpen(false)}>FAQ</a>
+            <Link to="/guides" onClick={() => setIsMobileMenuOpen(false)}>Guides</Link>
+            <Link to="/sign-in" onClick={() => setIsMobileMenuOpen(false)}>Sign in</Link>
+          </nav>
+        )}
       </header>
 
-      <main>
+      <main id="main-content" tabIndex={-1}>
         <section className="pi-landing__hero">
           <img src={aquaCorner} alt="" className="pi-landing__aqua-corner" aria-hidden="true" />
           <div className="pi-landing__container pi-landing__hero-grid">
@@ -161,7 +208,7 @@ const Landing = () => {
                 Upload your payslip, spot changes worth checking, and plan to your next payday. Clear figures and a calmer next step.
               </p>
               <div className="pi-landing__hero-actions">
-                <Link to="/sign-up" className="pi-landing__button">
+                <Link to="/sign-up" className="pi-landing__button" onClick={() => analytics.track('marketing_cta_clicked')}>
                   Check a payslip <ArrowRight aria-hidden="true" />
                 </Link>
                 <button type="button" className="pi-landing__secondary-action" onClick={handleTryDemo}>
@@ -212,8 +259,8 @@ const Landing = () => {
             <div className="pi-landing__feature-intro">
               <h2>Built around the moment your pay lands.</h2>
               <p>Not another generic budgeting dashboard. A simple place to understand what changed and decide what to do next.</p>
-              <Link to="/calculator" className="pi-landing__text-link">
-                Try the take-home calculator <ArrowRight aria-hidden="true" />
+              <Link to="/guides" className="pi-landing__text-link">
+                Explore payslip guides <ArrowRight aria-hidden="true" />
               </Link>
             </div>
             <div className="pi-landing__feature-list">
@@ -259,18 +306,40 @@ const Landing = () => {
           </div>
         </section>
 
-        <section id="pricing" className="pi-landing__section pi-landing__pricing-section">
+        <section id="pricing" tabIndex={-1} className="pi-landing__section pi-landing__pricing-section">
           <div className="pi-landing__container">
             <div className="pi-landing__section-heading pi-landing__section-heading--center">
               <h2>Simple, transparent pricing.</h2>
               <p>Start free. Upgrade when you need more.</p>
             </div>
 
+            <div className="pi-landing__currency-picker" role="group" aria-label="Choose billing currency">
+              {(['EUR', 'GBP'] as const).map((currency) => {
+                const option = CUSTOMER_PRICING[currency];
+                return (
+                  <button
+                    type="button"
+                    key={currency}
+                    aria-pressed={pricingCurrency === currency}
+                    onClick={() => setPricingCurrency(currency)}
+                  >
+                    {option.countryLabel} · {option.currency}
+                  </button>
+                );
+              })}
+            </div>
+            <p className="sr-only" aria-live="polite">
+              Prices are shown for {selectedPricing.countryLabel} in {selectedPricing.currency}.
+            </p>
+            <p className="pi-landing__currency-help">
+              Choose the currency for your plan. Your payslip country is selected separately during account setup.
+            </p>
+
             <div className="pi-landing__pricing-grid">
               <article className="pi-landing__price-card">
                 <div>
                   <h3>Free</h3>
-                  <p className="pi-landing__price"><strong>€0</strong><span>/month</span></p>
+                  <p className="pi-landing__price"><strong>{selectedPricing.symbol}0</strong><span>/month</span></p>
                   <p className="pi-landing__price-intro">Great for getting started.</p>
                 </div>
                 <ul>
@@ -278,13 +347,13 @@ const Landing = () => {
                     <li key={feature}><Check aria-hidden="true" />{feature}</li>
                   ))}
                 </ul>
-                <Link to="/sign-up" className="pi-landing__outline-button">Get started free</Link>
+                <Link to="/sign-up" className="pi-landing__outline-button" onClick={() => analytics.track('marketing_cta_clicked')}>Get started free</Link>
               </article>
 
               <article className="pi-landing__price-card pi-landing__price-card--plus">
                 <div>
                   <h3>Plus</h3>
-                  <p className="pi-landing__price"><strong>€19.99</strong><span>/year</span></p>
+                  <p className="pi-landing__price"><strong>{selectedPricing.symbol}{selectedPricing.plus.yearly.display}</strong><span>/year</span></p>
                   <p className="pi-landing__price-intro">More automatic checks and payroll-message drafts when you need them.</p>
                 </div>
                 <ul>
@@ -292,11 +361,14 @@ const Landing = () => {
                     <li key={feature}><Check aria-hidden="true" />{feature}</li>
                   ))}
                 </ul>
-                <Link to="/sign-up" className="pi-landing__button">Choose Plus <ArrowRight aria-hidden="true" /></Link>
+                <p className="pi-landing__billing-note">
+                  Billed {selectedPricing.symbol}{selectedPricing.plus.yearly.display} yearly until you cancel. <Link to="/terms">Billing terms</Link>
+                </p>
+                <Link to={signUpPathForCheckout(selectedPricing.plus.yearly.checkoutPriceId)} className="pi-landing__button" onClick={() => analytics.track('pricing_cta_clicked')}>Choose Plus <ArrowRight aria-hidden="true" /></Link>
               </article>
             </div>
             <div className="pi-landing__pricing-link-wrap">
-              <Link to="/pricing" className="pi-landing__text-link">View full pricing comparison <ArrowRight aria-hidden="true" /></Link>
+              <Link to={pricingPathForCurrency(pricingCurrency)} className="pi-landing__text-link">View full pricing comparison <ArrowRight aria-hidden="true" /></Link>
             </div>
           </div>
         </section>
@@ -326,7 +398,7 @@ const Landing = () => {
                 <h2>Ready to check your payslips?</h2>
                 <p>Upload a payslip, understand what changed, and make a simple plan to your next payday.</p>
               </div>
-              <Link to="/sign-up" className="pi-landing__button pi-landing__button--light">
+              <Link to="/sign-up" className="pi-landing__button pi-landing__button--light" onClick={() => analytics.track('marketing_cta_clicked')}>
                 Get started for free <ArrowRight aria-hidden="true" />
               </Link>
             </div>

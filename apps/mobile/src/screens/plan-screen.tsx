@@ -3,7 +3,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { AquaCorner, Brand, Notice, PrimaryButton, QuietButton, SectionHeading } from '../components/chrome';
 import { DateInput } from '../components/date-input';
-import { addBill, savePlan, savePrimaryGoal } from '../lib/data';
+import { addBill, savePaydayCheckIn, savePlan, savePrimaryGoal } from '../lib/data';
+import { validatePaydayCheckIn } from '../lib/payday-check-in';
 import { asNumber, daysUntil, formatDate, formatMoney, inferNextPayday } from '../lib/format';
 import { colors, radius, spacing } from '../theme';
 import type { CurrencyCode, MobileDashboardData, PaydayPlan, PlanAllocation, Profile } from '../types/models';
@@ -52,6 +53,9 @@ export function PlanScreen({
   const [savingPlan, setSavingPlan] = useState(false);
   const [savingGoal, setSavingGoal] = useState(false);
   const [savingBill, setSavingBill] = useState(false);
+  const [checkInRemaining, setCheckInRemaining] = useState('');
+  const [isCheckInOpen, setIsCheckInOpen] = useState(false);
+  const [savingCheckIn, setSavingCheckIn] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -63,6 +67,11 @@ export function PlanScreen({
     setGoalTarget(goal ? amountText(goal.target_amount) : '');
     setGoalCurrent(goal ? amountText(goal.current_amount) : '');
   }, [goal]);
+
+  useEffect(() => {
+    setCheckInRemaining(activePlan?.everyday_remaining == null ? '' : amountText(activePlan.everyday_remaining));
+    setIsCheckInOpen(false);
+  }, [activePlan?.everyday_checked_in_at, activePlan?.everyday_remaining, activePlan?.id]);
 
   const confirmedSource = !pendingReview && Boolean(
     activePlan || (
@@ -82,6 +91,12 @@ export function PlanScreen({
   const daysToNextPayday = isIsoDate(draft.nextPayday) ? daysUntil(draft.nextPayday) : 0;
   const dailyGuide = daysToNextPayday > 0 ? asOptionalAmount(draft.everydaySpending) / daysToNextPayday : null;
   const everydaySpending = asOptionalAmount(draft.everydaySpending);
+  const plannedEveryday = allocation(data?.allocations ?? [], 'everyday_spending');
+  const savedEverydayRemaining = activePlan?.everyday_remaining == null ? null : asNumber(activePlan.everyday_remaining);
+  const checkInDays = activePlan ? daysUntil(activePlan.next_payday) : 0;
+  const checkInDailyGuide = savedEverydayRemaining !== null && checkInDays > 0
+    ? savedEverydayRemaining / checkInDays
+    : null;
   const bufferTarget = asOptionalAmount(goalTarget);
   const bufferCurrent = asOptionalAmount(goalCurrent);
   const bufferProgress = bufferTarget > 0 ? Math.min(100, Math.max(0, (bufferCurrent / bufferTarget) * 100)) : 0;
@@ -191,6 +206,44 @@ export function PlanScreen({
     }
   };
 
+  const openCheckIn = () => {
+    setCheckInRemaining(savedEverydayRemaining === null ? '' : amountText(savedEverydayRemaining));
+    setError(null);
+    setMessage(null);
+    setIsCheckInOpen(true);
+  };
+
+  const saveCheckIn = async () => {
+    const candidate = requiredAmount(checkInRemaining);
+    const validation = validatePaydayCheckIn({
+      planId: activePlan?.id,
+      plannedEveryday,
+      everydayRemaining: candidate,
+    });
+    if (!validation.ok) {
+      setError(validation.error);
+      return;
+    }
+
+    setSavingCheckIn(true);
+    setError(null);
+    setMessage(null);
+    try {
+      await savePaydayCheckIn({
+        planId: activePlan!.id,
+        plannedEveryday,
+        everydayRemaining: validation.everydayRemaining,
+      });
+      await onSaved();
+      setIsCheckInOpen(false);
+      setMessage('Your payday check-in is saved.');
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'We could not save your payday check-in. Please try again.');
+    } finally {
+      setSavingCheckIn(false);
+    }
+  };
+
   if (!data) {
     return <LoadingPlan />;
   }
@@ -254,6 +307,48 @@ export function PlanScreen({
             </View>
           ) : null}
         </View>
+
+        {activePlan && plannedEveryday > 0 ? (
+          <View style={styles.section}>
+            <SectionHeading title="A quick payday check-in" />
+            <View style={styles.checkInCard}>
+              <View style={styles.checkInHeader}>
+                <View style={styles.checkInCopy}>
+                  <Text style={styles.checkInTitle}>{savedEverydayRemaining === null ? 'Keep a manual note of what is left.' : 'Your latest everyday check-in'}</Text>
+                  <Text style={styles.checkInBody}>This is a planning check, not a bank balance.</Text>
+                </View>
+                <View style={styles.checkInIcon}><Ionicons color="#0989A5" name="clipboard-outline" size={23} /></View>
+              </View>
+
+              {savedEverydayRemaining === null ? (
+                <Text style={styles.checkInSummary}>You planned {formatMoney(plannedEveryday, currency)} for everyday spending. Add a check-in whenever you want a calmer view of the days ahead.</Text>
+              ) : (
+                <View style={styles.checkInSaved}>
+                  <Text style={styles.checkInSavedLabel}>Everyday money left</Text>
+                  <Text style={styles.checkInSavedValue}>{formatMoney(savedEverydayRemaining, currency)} <Text style={styles.checkInSavedOf}>of {formatMoney(plannedEveryday, currency)}</Text></Text>
+                  <Text style={styles.checkInSummary}>
+                    {checkInDailyGuide !== null && checkInDays > 0
+                      ? `${formatMoney(checkInDailyGuide, currency)} a day across ${checkInDays} ${checkInDays === 1 ? 'day' : 'days'} until ${formatDate(activePlan.next_payday)}. This is a planning guide, not a live balance.`
+                      : 'Your check-in is saved. Update your next payday before using a daily planning guide.'}
+                  </Text>
+                </View>
+              )}
+
+              {isCheckInOpen ? (
+                <View style={styles.checkInForm}>
+                  <AmountField currency={currency} label="Everyday money left" value={checkInRemaining} onChangeText={setCheckInRemaining} />
+                  <Text style={styles.checkInHelp}>Enter an amount between {formatMoney(0, currency)} and {formatMoney(plannedEveryday, currency)} from this plan.</Text>
+                  <View style={styles.checkInActions}>
+                    <PrimaryButton disabled={savingCheckIn} label={savingCheckIn ? 'Saving…' : savedEverydayRemaining === null ? 'Save check-in' : 'Update check-in'} onPress={() => void saveCheckIn()} style={styles.checkInSave} />
+                    <QuietButton disabled={savingCheckIn} label="Cancel" onPress={() => setIsCheckInOpen(false)} />
+                  </View>
+                </View>
+              ) : (
+                <QuietButton label={savedEverydayRemaining === null ? 'Add a check-in' : 'Update check-in'} onPress={openCheckIn} />
+              )}
+            </View>
+          </View>
+        ) : null}
 
         <View style={styles.section}>
           <SectionHeading title="This pay" />
@@ -526,6 +621,21 @@ const styles = StyleSheet.create({
   bufferProgressValue: { color: colors.navy, fontSize: 12, fontWeight: '800' },
   bufferProgressTrack: { backgroundColor: colors.white, borderRadius: radius.pill, height: 8, marginTop: spacing.xs, overflow: 'hidden' },
   bufferProgressFill: { backgroundColor: colors.green, borderRadius: radius.pill, height: '100%' },
+  checkInCard: { backgroundColor: colors.white, borderColor: '#BDEEF6', borderRadius: radius.large, borderWidth: 1, gap: spacing.md, padding: spacing.md },
+  checkInHeader: { alignItems: 'flex-start', flexDirection: 'row', gap: spacing.md },
+  checkInCopy: { flex: 1 },
+  checkInTitle: { color: colors.navy, fontSize: 17, fontWeight: '900', letterSpacing: -0.3 },
+  checkInBody: { color: colors.muted, fontSize: 13, lineHeight: 19, marginTop: 3 },
+  checkInIcon: { alignItems: 'center', backgroundColor: colors.aquaSoft, borderRadius: 999, height: 42, justifyContent: 'center', width: 42 },
+  checkInSummary: { color: colors.muted, fontSize: 13, lineHeight: 19 },
+  checkInSaved: { backgroundColor: colors.aquaSoft, borderRadius: radius.medium, gap: 3, padding: spacing.sm },
+  checkInSavedLabel: { color: colors.navy, fontSize: 12, fontWeight: '800', textTransform: 'uppercase' },
+  checkInSavedValue: { color: colors.navy, fontSize: 25, fontWeight: '900', letterSpacing: -0.9 },
+  checkInSavedOf: { color: colors.muted, fontSize: 14, fontWeight: '700' },
+  checkInForm: { borderTopColor: colors.lavenderLine, borderTopWidth: StyleSheet.hairlineWidth, gap: spacing.md, marginHorizontal: -spacing.md, marginTop: -spacing.xs, paddingHorizontal: spacing.md, paddingTop: spacing.md },
+  checkInHelp: { color: colors.muted, fontSize: 12, lineHeight: 18, marginTop: -spacing.xs },
+  checkInActions: { alignItems: 'center', flexDirection: 'row', gap: spacing.md },
+  checkInSave: { flex: 1, minHeight: 50 },
   section: { marginHorizontal: spacing.lg, marginTop: spacing.xl },
   card: { backgroundColor: colors.white, borderColor: colors.lavenderLine, borderRadius: radius.large, borderWidth: 1, boxShadow: '0px 8px 16px rgba(23, 21, 93, 0.05)', overflow: 'hidden' },
   field: { borderBottomColor: colors.lavenderLine, borderBottomWidth: StyleSheet.hairlineWidth, gap: spacing.xs, paddingHorizontal: spacing.md, paddingVertical: spacing.md },

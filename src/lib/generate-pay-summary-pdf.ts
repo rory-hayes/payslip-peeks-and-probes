@@ -4,6 +4,7 @@ import type { Payslip } from '@/lib/types';
 import { calculateExpectedMonthly, type DeductionOptions } from '@/lib/tax-calculator';
 import type { CountryCode } from '@/lib/countries';
 import { getCountryConfig } from '@/lib/countries';
+import { getTaxEstimateAvailability } from '@/lib/tax-estimate-availability';
 
 interface PdfOptions {
   payslips: Payslip[];
@@ -135,7 +136,11 @@ export function generatePaySummaryPdf(options: PdfOptions) {
   y = (doc as any).lastAutoTable.finalY + 12;
 
   // ── Expected vs Actual section ──
-  if (annualSalary && annualSalary > 0 && sorted.length > 0) {
+  const latestPayslip = sorted.at(-1);
+  const estimateAvailability = latestPayslip
+    ? getTaxEstimateAvailability(country, latestPayslip.pay_date)
+    : null;
+  if (annualSalary && annualSalary > 0 && latestPayslip && estimateAvailability?.available) {
     const expected = calculateExpectedMonthly(annualSalary, country, deductionOpts);
 
     // Check if we need a new page
@@ -150,7 +155,7 @@ export function generatePaySummaryPdf(options: PdfOptions) {
     doc.text('Expected vs Actual (Latest Month)', margin, y);
     y += 6;
 
-    const latestSlip = sorted[sorted.length - 1];
+    const latestSlip = latestPayslip;
     const compRows = [
       ['Gross pay', fmt(expected.grossMonthly, sym), fmt(latestSlip.gross_pay, sym), fmt(latestSlip.gross_pay - expected.grossMonthly, sym)],
       ['Income tax', fmt(expected.incomeTax, sym), fmt(latestSlip.tax_amount, sym), fmt(latestSlip.tax_amount - expected.incomeTax, sym)],

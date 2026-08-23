@@ -3,7 +3,7 @@ import GuideCTA from '@/components/guides/GuideCTA';
 import { Card, CardContent } from '@/components/ui/card';
 
 const issues = [
-  { title: 'Tax higher than expected', what: 'Compare your tax code to last month. An emergency code (like 1257 W1/M1 in the UK) usually means HMRC or Revenue hasn\'t fully updated your record.' },
+  { title: 'Tax higher than expected', what: 'Compare your tax code to last month. An emergency code such as 1257L W1, 1257L M1, or 1257L X may be used when payroll does not yet have the details it needs. Check the code with HMRC or payroll.' },
   { title: 'Pension contribution missing or reduced', what: 'Check the pension line against your contract percentage. New starters and salary changes often miss a cycle.' },
   { title: 'New unexplained deduction', what: 'Look for unfamiliar line items. Season ticket loans, charity giving and union fees often start without explicit notice.' },
   { title: 'Same gross pay but lower take-home', what: 'Run a tax / NI / pension comparison with last month — one of them has moved.' },
@@ -18,12 +18,12 @@ const issues = [
 const CommonMistakes = () => (
   <GuideLayout
     title="Common Payslip Mistakes to Watch For"
-    description="The most common payslip issues we see across UK and Ireland employees, with what to check for each one before contacting payroll."
+    description="Common payslip issues to check across UK and Ireland employees, with practical next steps before contacting payroll."
     breadcrumbLabel="Common Payslip Mistakes"
   >
     <h1 className="text-4xl font-extrabold tracking-tight text-foreground">Common Payslip Mistakes to Watch For</h1>
     <p className="mt-4 text-lg text-muted-foreground leading-relaxed">
-      Payroll errors are far more common than most people realise. Here are the issues we see most often, and what to look for on your own payslip.
+      Here are common things to check on your own payslip before you decide whether to contact payroll.
     </p>
 
     <div className="mt-10 space-y-4">

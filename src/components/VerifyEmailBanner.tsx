@@ -33,16 +33,21 @@ export default function VerifyEmailBanner() {
   const handleResend = async () => {
     if (!user.email) return;
     setResending(true);
-    const { error } = await supabase.auth.resend({
-      type: 'signup',
-      email: user.email,
-      options: { emailRedirectTo: window.location.origin },
-    });
-    setResending(false);
-    if (error) {
-      toast({ title: 'Could not resend', description: error.message, variant: 'destructive' });
-    } else {
-      toast({ title: 'Verification email sent', description: `Check ${user.email} for the link.` });
+    try {
+      const { error } = await supabase.auth.resend({
+        type: 'signup',
+        email: user.email,
+        options: { emailRedirectTo: window.location.origin },
+      });
+      if (error) {
+        toast({ title: 'Could not resend', description: error.message, variant: 'destructive' });
+      } else {
+        toast({ title: 'Verification email sent', description: `Check ${user.email} for the link.` });
+      }
+    } catch {
+      toast({ title: 'Could not resend', description: 'We could not resend the verification email. Please try again.', variant: 'destructive' });
+    } finally {
+      setResending(false);
     }
   };
 

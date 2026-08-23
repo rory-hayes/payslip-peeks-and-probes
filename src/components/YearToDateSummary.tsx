@@ -1,6 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useCurrency } from '@/hooks/use-profile';
 import type { Payslip } from '@/lib/types';
+import { summariseYearToDate } from '@/lib/year-to-date';
 import { TrendingUp } from 'lucide-react';
 
 interface Props {
@@ -11,34 +12,9 @@ const YearToDateSummary = ({ payslips }: Props) => {
   const { format: fmt } = useCurrency();
   const currentYear = new Date().getFullYear();
 
-  const ytdSlips = payslips.filter(
-    (s) => new Date(s.pay_date).getFullYear() === currentYear,
-  );
+  const { payslips: ytdSlips, rows } = summariseYearToDate(payslips, currentYear);
 
   if (ytdSlips.length === 0) return null;
-
-  const totals = ytdSlips.reduce(
-    (acc, s) => ({
-      gross: acc.gross + s.gross_pay,
-      net: acc.net + s.net_pay,
-      tax: acc.tax + s.tax_amount,
-      ni: acc.ni + (s.ni_amount ?? 0),
-      pension: acc.pension + (s.pension_amount ?? 0),
-      studentLoan: acc.studentLoan + (s.student_loan_amount ?? 0),
-      deductions: acc.deductions + s.total_deductions,
-    }),
-    { gross: 0, net: 0, tax: 0, ni: 0, pension: 0, studentLoan: 0, deductions: 0 },
-  );
-
-  const rows = [
-    { label: 'Gross pay', value: totals.gross },
-    { label: 'Income tax', value: totals.tax },
-    totals.ni > 0 && { label: 'National Insurance', value: totals.ni },
-    totals.pension > 0 && { label: 'Pension', value: totals.pension },
-    totals.studentLoan > 0 && { label: 'Student loan', value: totals.studentLoan },
-    { label: 'Total deductions', value: totals.deductions },
-    { label: 'Net pay', value: totals.net, bold: true },
-  ].filter(Boolean) as { label: string; value: number; bold?: boolean }[];
 
   return (
     <Card className="border-0 shadow-sm">

@@ -1,16 +1,24 @@
 import { Ionicons } from '@expo/vector-icons';
 import * as DocumentPicker from 'expo-document-picker';
 import * as ImagePicker from 'expo-image-picker';
-import { useState } from 'react';
-import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { ActivityIndicator, Alert, AppState, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { AquaCorner, Brand, HeroIllustration, PrimaryButton, QuietButton } from '../components/chrome';
 import { LegalLinks } from '../components/legal-links';
 import { beginManualPayslipReview, deleteFailedPayslip, type PickedPayslipFile, retryPayslipProcessing, uploadPayslip } from '../lib/data';
+import {
+  canAutoRefreshProcessingStatus,
+  MAX_PENDING_PAYSLIP_STATUS_REFRESHES,
+  PENDING_PAYSLIP_STATUS_REFRESH_INTERVAL_MS,
+  processingPayslipKey,
+  shouldResetProcessingStatusRefreshes,
+} from '../lib/pending-payslip-status-refresh';
 import { colors, radius, spacing } from '../theme';
 import type { Payslip } from '../types/models';
 
 type ProcessState = 'idle' | 'selected' | 'processing' | 'waiting' | 'success' | 'failed';
 type RecoveryAction = 'manual' | 'removing';
+type StatusRefreshOrigin = 'automatic' | 'manual';
 
 export function PaycheckScreen({
   userId,
@@ -31,6 +39,103 @@ export function PaycheckScreen({
   const [failureCode, setFailureCode] = useState<string | null>(null);
   const [message, setMessage] = useState('');
   const [recoveryAction, setRecoveryAction] = useState<{ payslipId: string; type: RecoveryAction } | null>(null);
+  const [appState, setAppState] = useState(() => AppState.currentState);
+  const [automaticStatusRefreshes, setAutomaticStatusRefreshes] = useState(0);
+  const [lastStatusCheckedAt, setLastStatusCheckedAt] = useState<Date | null>(null);
+  const [statusRefreshInFlight, setStatusRefreshInFlight] = useState(false);
+  const [statusRefreshError, setStatusRefreshError] = useState<string | null>(null);
+  const mountedRef = useRef(true);
+  const appStateRef = useRef(AppState.currentState);
+  const onRefreshRef = useRef(onRefresh);
+  const statusRefreshInFlightRef = useRef(false);
+  const processingKey = processingPayslipKey(pendingPayslips);
+  const processingKeyRef = useRef(processingKey);
+  const previousProcessingKeyRef = useRef(processingKey);
+  processingKeyRef.current = processingKey;
+
+  useEffect(() => {
+    onRefreshRef.current = onRefresh;
+  }, [onRefresh]);
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', (nextAppState) => {
+      appStateRef.current = nextAppState;
+      if (mountedRef.current) setAppState(nextAppState);
+    });
+    return () => subscription.remove();
+  }, []);
+
+  useEffect(() => {
+    if (shouldResetProcessingStatusRefreshes(previousProcessingKeyRef.current, processingKey)) {
+      previousProcessingKeyRef.current = processingKey;
+      setAutomaticStatusRefreshes(0);
+      setLastStatusCheckedAt(null);
+      setStatusRefreshError(null);
+    }
+  }, [processingKey]);
+
+  const refreshProcessingStatus = useCallback(async (origin: StatusRefreshOrigin): Promise<boolean> => {
+    if (!mountedRef.current || statusRefreshInFlightRef.current || appStateRef.current !== 'active') return false;
+
+    if (origin === 'automatic' && !canAutoRefreshProcessingStatus({
+      appState: appStateRef.current,
+      processingKey: processingKeyRef.current,
+      automaticAttempts: automaticStatusRefreshes,
+      refreshInFlight: statusRefreshInFlightRef.current,
+    })) {
+      return false;
+    }
+
+    statusRefreshInFlightRef.current = true;
+    if (mountedRef.current) {
+      setStatusRefreshInFlight(true);
+      setStatusRefreshError(null);
+      if (origin === 'automatic') {
+        setAutomaticStatusRefreshes((attempts) => attempts + 1);
+      }
+    }
+
+    try {
+      // App supplies a dashboard read here. This path never invokes the
+      // processing/retry endpoint, so it cannot create another provider job.
+      await onRefreshRef.current();
+      if (mountedRef.current && appStateRef.current === 'active') {
+        setLastStatusCheckedAt(new Date());
+      }
+      return true;
+    } catch {
+      if (mountedRef.current && origin === 'manual') {
+        setStatusRefreshError('We could not refresh the latest status. Check your connection and try again.');
+      }
+      return false;
+    } finally {
+      statusRefreshInFlightRef.current = false;
+      if (mountedRef.current) setStatusRefreshInFlight(false);
+    }
+  }, [automaticStatusRefreshes]);
+
+  useEffect(() => {
+    if (!canAutoRefreshProcessingStatus({
+      appState,
+      processingKey,
+      automaticAttempts: automaticStatusRefreshes,
+      refreshInFlight: statusRefreshInFlight,
+    })) {
+      return;
+    }
+
+    const timeout = setTimeout(() => {
+      void refreshProcessingStatus('automatic');
+    }, PENDING_PAYSLIP_STATUS_REFRESH_INTERVAL_MS);
+    return () => clearTimeout(timeout);
+  }, [appState, automaticStatusRefreshes, processingKey, refreshProcessingStatus, statusRefreshInFlight]);
 
   const selectFile = (file: PickedPayslipFile) => {
     setSelected(file);
@@ -101,7 +206,7 @@ export function PaycheckScreen({
     }
     if (result.status === 'processing') {
       setState('waiting');
-      setMessage('We’re waiting for this check to finish. You can return here to refresh its status, or try the saved upload again if it is still waiting.');
+      setMessage('We’re waiting for this check to finish. Refresh its saved status now; once it appears in your saved checks, we’ll check it a few more times while this screen stays open.');
       return;
     }
     setState('failed');
@@ -115,7 +220,7 @@ export function PaycheckScreen({
     setState('processing');
     setMessage('Reading your payslip…');
     try {
-      await handleResult(await uploadPayslip(userId, selected));
+      await handleResult(await uploadPayslip(selected));
     } catch (error) {
       setState('failed');
       setMessage(error instanceof Error ? error.message : 'We couldn’t upload that payslip. Please try again.');
@@ -145,13 +250,13 @@ export function PaycheckScreen({
   const refreshPending = async () => {
     setState('waiting');
     setMessage('Refreshing the latest status…');
-    try {
-      await onRefresh();
+    const refreshed = await refreshProcessingStatus('manual');
+    if (refreshed) {
       setMessage('');
       setState('idle');
-    } catch {
-      setMessage('We could not refresh this check just now. Check your connection and try again.');
+      return;
     }
+    setMessage('We could not refresh this check just now. Check your connection and try again.');
   };
 
   const retryPending = async (payslipId: string) => {
@@ -187,9 +292,16 @@ export function PaycheckScreen({
   const removeFailedUpload = async (payslipId: string) => {
     setRecoveryAction({ payslipId, type: 'removing' });
     try {
-      await deleteFailedPayslip(userId, payslipId);
+      const result = await deleteFailedPayslip(payslipId);
       await onRefresh();
-      if (failedPayslipId === payslipId) reset();
+      if (result.pending) {
+        Alert.alert(
+          'Removal scheduled',
+          'For your privacy, this upload will be removed as soon as its short secure-upload window ends. You cannot retry or open it while that happens.',
+        );
+      } else if (failedPayslipId === payslipId) {
+        reset();
+      }
     } catch (error) {
       Alert.alert(
         'We couldn’t remove this upload',
@@ -226,11 +338,15 @@ export function PaycheckScreen({
                     <PendingCheck
                       key={payslip.id}
                       onReview={() => onReview(payslip.id)}
+                      onRefreshStatus={() => void refreshProcessingStatus('manual')}
                       onRetry={() => void retryPending(payslip.id)}
                       onStartManualReview={() => void startManualReview(payslip.id)}
                       onRemove={() => confirmRemoveFailedUpload(payslip.id)}
                       payslip={payslip}
                       recoveryAction={recoveryAction?.payslipId === payslip.id ? recoveryAction.type : null}
+                      lastStatusCheckedAt={lastStatusCheckedAt}
+                      statusRefreshError={statusRefreshError}
+                      statusRefreshInFlight={statusRefreshInFlight}
                     />
                   ))}
                 </View>
@@ -268,7 +384,8 @@ export function PaycheckScreen({
             <Text style={styles.stateTitle}>{state === 'processing' ? 'Checking the details' : 'Still checking your payslip'}</Text>
             <Text style={styles.stateBody}>{message}</Text>
             {state === 'processing' ? <Text style={styles.stateFoot}>This usually takes a moment. Keep the app open while we finish.</Text> : null}
-            {state === 'waiting' ? <PrimaryButton label="Refresh check" onPress={() => void refreshPending()} style={styles.actionButton} /> : null}
+            {state === 'waiting' ? <Text style={styles.statusCheckNote}>{statusRefreshInFlight ? 'Checking the latest saved status…' : lastStatusCheckedAt ? `Last checked at ${formatLastChecked(lastStatusCheckedAt)}.` : `We’ll check up to ${MAX_PENDING_PAYSLIP_STATUS_REFRESHES} times while this screen stays open.`}</Text> : null}
+            {state === 'waiting' ? <PrimaryButton disabled={statusRefreshInFlight} label={statusRefreshInFlight ? 'Checking status…' : 'Refresh check'} onPress={() => void refreshPending()} style={styles.actionButton} /> : null}
             {state === 'waiting' ? <QuietButton label="Check another payslip" onPress={reset} /> : null}
           </View>
         ) : null}
@@ -308,17 +425,25 @@ export function PaycheckScreen({
 function PendingCheck({
   payslip,
   onReview,
+  onRefreshStatus,
   onRetry,
   onStartManualReview,
   onRemove,
   recoveryAction,
+  lastStatusCheckedAt,
+  statusRefreshError,
+  statusRefreshInFlight,
 }: {
   payslip: Payslip;
   onReview: () => void;
+  onRefreshStatus: () => void;
   onRetry: () => void;
   onStartManualReview: () => void;
   onRemove: () => void;
   recoveryAction: RecoveryAction | null;
+  lastStatusCheckedAt: Date | null;
+  statusRefreshError: string | null;
+  statusRefreshInFlight: boolean;
 }) {
   if (payslip.status === 'failed') {
     return (
@@ -332,9 +457,17 @@ function PendingCheck({
     );
   }
 
-  // A processing row may be a live request or an upload whose original
-  // request never reached the processor. Retrying is safe: the server either
-  // starts an unclaimed row or returns the current processing status.
+  if (payslip.status === 'processing') {
+    return (
+      <ProcessingPendingCheck
+        lastStatusCheckedAt={lastStatusCheckedAt}
+        onRefreshStatus={onRefreshStatus}
+        statusRefreshError={statusRefreshError}
+        statusRefreshInFlight={statusRefreshInFlight}
+      />
+    );
+  }
+
   const action = payslip.status === 'needs_review' ? onReview : onRetry;
   const details = pendingDetails(payslip);
   return (
@@ -346,6 +479,50 @@ function PendingCheck({
       </View>
       <Ionicons color={details.color} name="chevron-forward" size={20} />
     </Pressable>
+  );
+}
+
+function ProcessingPendingCheck({
+  onRefreshStatus,
+  lastStatusCheckedAt,
+  statusRefreshError,
+  statusRefreshInFlight,
+}: {
+  onRefreshStatus: () => void;
+  lastStatusCheckedAt: Date | null;
+  statusRefreshError: string | null;
+  statusRefreshInFlight: boolean;
+}) {
+  const checkedCopy = statusRefreshInFlight
+    ? 'Checking the latest saved status…'
+    : lastStatusCheckedAt
+      ? `Last checked at ${formatLastChecked(lastStatusCheckedAt)}.`
+      : `We’ll check up to ${MAX_PENDING_PAYSLIP_STATUS_REFRESHES} times while you stay on this screen.`;
+
+  return (
+    <View style={[styles.pendingCheck, styles.pendingCheckProcessing]}>
+      <View style={styles.pendingCheckTopRow}>
+        <View style={[styles.pendingIcon, { backgroundColor: colors.aquaSoft }]}><Ionicons color="#0989A5" name="time-outline" size={22} /></View>
+        <View style={styles.pendingCopy}>
+          <Text style={styles.pendingCheckTitle}>Still checking your payslip</Text>
+          <Text style={styles.pendingCheckBody}>We only read the saved status here — we will not start another check.</Text>
+        </View>
+      </View>
+      <View style={styles.processingRefreshRow}>
+        <Text style={styles.processingRefreshStatus}>{checkedCopy}</Text>
+        <Pressable
+          accessibilityHint="Reads the saved status without starting another payslip check."
+          accessibilityRole="button"
+          accessibilityState={{ disabled: statusRefreshInFlight }}
+          disabled={statusRefreshInFlight}
+          onPress={onRefreshStatus}
+          style={({ pressed }) => [styles.processingRefreshButton, statusRefreshInFlight && styles.recoveryDisabled, pressed && !statusRefreshInFlight && styles.recoveryButtonPressed]}
+        >
+          <Text style={styles.processingRefreshButtonText}>{statusRefreshInFlight ? 'Checking…' : 'Refresh status'}</Text>
+        </Pressable>
+      </View>
+      {statusRefreshError ? <Text style={styles.processingRefreshError}>{statusRefreshError}</Text> : null}
+    </View>
   );
 }
 
@@ -362,6 +539,19 @@ function FailedPendingCheck({
   onRemove: () => void;
   recoveryAction: RecoveryAction | null;
 }) {
+  if (payslip.cleanup_requested_at) {
+    return (
+      <View style={[styles.pendingCheck, styles.pendingCheckFailed]}>
+        <View style={styles.pendingCheckTopRow}>
+          <View style={[styles.pendingIcon, { backgroundColor: colors.aquaSoft }]}><Ionicons color={colors.aqua} name="shield-checkmark-outline" size={22} /></View>
+          <View style={styles.pendingCopy}>
+            <Text style={styles.pendingCheckTitle}>Removing this upload securely</Text>
+            <Text style={styles.pendingCheckBody}>Its short upload window is closing. The file and unfinished check will disappear automatically after that.</Text>
+          </View>
+        </View>
+      </View>
+    );
+  }
   const details = pendingDetails(payslip);
   const busy = recoveryAction !== null;
   return (
@@ -417,6 +607,15 @@ function RecoveryButton({
 }
 
 function pendingDetails(payslip: Payslip) {
+  if (payslip.cleanup_requested_at) {
+    return {
+      title: 'Removing this upload securely',
+      body: 'Its short upload window is closing. The file and unfinished check will disappear automatically after that.',
+      icon: 'shield-checkmark-outline' as const,
+      color: colors.aqua,
+      surface: colors.aquaSoft,
+    };
+  }
   if (payslip.status === 'needs_review') {
     return { title: 'Your review is ready', body: 'Check the extracted figures before they join your pay history.', icon: 'create-outline' as const, color: colors.violet, surface: colors.lavender };
   }
@@ -432,6 +631,10 @@ function pendingDetails(payslip: Payslip) {
     };
   }
   return { title: 'Still checking your payslip', body: 'Open it to check the latest status or safely try the saved upload again.', icon: 'time-outline' as const, color: '#0989A5', surface: colors.aquaSoft };
+}
+
+function formatLastChecked(date: Date): string {
+  return date.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
 }
 
 function canRetryFailure(code: string | null | undefined): boolean {
@@ -468,6 +671,7 @@ const styles = StyleSheet.create({
   pendingList: { gap: spacing.xs },
   pendingCheck: { alignItems: 'center', backgroundColor: colors.white, borderColor: colors.lavenderLine, borderRadius: radius.medium, borderWidth: 1, flexDirection: 'row', gap: spacing.sm, minHeight: 76, paddingHorizontal: spacing.sm, paddingVertical: spacing.xs },
   pendingCheckFailed: { alignItems: 'stretch', flexDirection: 'column', gap: spacing.sm, padding: spacing.sm },
+  pendingCheckProcessing: { alignItems: 'stretch', flexDirection: 'column', gap: spacing.sm, padding: spacing.sm },
   pendingCheckTopRow: { alignItems: 'center', flexDirection: 'row', gap: spacing.sm },
   pendingCheckPressed: { backgroundColor: colors.lavender },
   pendingIcon: { alignItems: 'center', borderRadius: 999, height: 42, justifyContent: 'center', width: 42 },
@@ -483,6 +687,11 @@ const styles = StyleSheet.create({
   recoveryButtonTextPrimary: { color: colors.white },
   recoveryButtonTextQuiet: { color: colors.violet },
   recoveryDisabled: { opacity: 0.58 },
+  processingRefreshRow: { alignItems: 'center', flexDirection: 'row', gap: spacing.sm, justifyContent: 'space-between' },
+  processingRefreshStatus: { color: colors.muted, flex: 1, fontSize: 12, lineHeight: 17 },
+  processingRefreshButton: { alignItems: 'center', backgroundColor: colors.lavender, borderRadius: radius.small, justifyContent: 'center', minHeight: 38, paddingHorizontal: spacing.sm },
+  processingRefreshButtonText: { color: colors.violet, fontSize: 12, fontWeight: '800' },
+  processingRefreshError: { color: colors.coral, fontSize: 12, lineHeight: 17 },
   removeUploadButton: { alignSelf: 'flex-start', minHeight: 34, justifyContent: 'center', paddingHorizontal: spacing.xs },
   removeUploadButtonPressed: { opacity: 0.62 },
   removeUploadText: { color: colors.coral, fontSize: 13, fontWeight: '800' },
@@ -504,5 +713,6 @@ const styles = StyleSheet.create({
   stateTitle: { color: colors.navy, fontSize: 27, fontWeight: '900', letterSpacing: -1, marginTop: spacing.lg, textAlign: 'center' },
   stateBody: { color: colors.muted, fontSize: 16, lineHeight: 23, marginTop: spacing.sm, textAlign: 'center' },
   stateFoot: { color: colors.muted, fontSize: 12, lineHeight: 18, marginTop: spacing.md, textAlign: 'center' },
+  statusCheckNote: { color: colors.muted, fontSize: 12, lineHeight: 18, marginTop: spacing.md, textAlign: 'center' },
   actionButton: { alignSelf: 'stretch', marginTop: spacing.xl },
 });

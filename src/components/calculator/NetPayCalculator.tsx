@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { useNavigate, useSearchParams, Link } from 'react-router-dom';
+import { useNavigate, useSearchParams, Link } from 'react-router';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -11,7 +11,9 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ArrowRight, Info, Share2 } from 'lucide-react';
 import { calculateExpectedMonthly } from '@/lib/tax-calculator';
+import { getTaxEstimateAvailability } from '@/lib/tax-estimate-availability';
 import { getCountryConfig, LAUNCH_COUNTRY_LIST, type CountryCode } from '@/lib/countries';
+import TaxEstimateUnavailable from '@/components/TaxEstimateUnavailable';
 import { toast } from 'sonner';
 
 interface NetPayCalculatorProps {
@@ -29,6 +31,7 @@ const NetPayCalculator = ({ country, lockCountry = false, compact = false }: Net
   const [searchParams, setSearchParams] = useSearchParams();
 
   const config = getCountryConfig(country);
+  const estimateAvailability = getTaxEstimateAvailability(country);
 
   // ── Initial state from query params (deep-linkable) ──────────
   const initialGross = (() => {
@@ -77,14 +80,14 @@ const NetPayCalculator = ({ country, lockCountry = false, compact = false }: Net
 
   const breakdown = useMemo(
     () =>
-      calculateExpectedMonthly(gross, country, {
+      estimateAvailability.available ? calculateExpectedMonthly(gross, country, {
         pensionPercent: hasPension ? pensionPercent : 0,
         hasStudentLoan: country === 'UK' && hasStudentLoan,
         studentLoanPlan,
         subRegion,
         filingStatus,
-      }),
-    [gross, country, hasPension, pensionPercent, hasStudentLoan, studentLoanPlan, subRegion, filingStatus],
+      }) : null,
+    [gross, country, hasPension, pensionPercent, hasStudentLoan, studentLoanPlan, subRegion, filingStatus, estimateAvailability.available],
   );
 
   const fmt = (n: number) =>
@@ -111,7 +114,7 @@ const NetPayCalculator = ({ country, lockCountry = false, compact = false }: Net
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gross, hasPension, pensionPercent, hasStudentLoan, studentLoanPlan, country, subRegion, filingStatus]);
 
-  const effectiveTaxRate = gross > 0 ? ((breakdown.totalDeductions * 12) / gross) * 100 : 0;
+  const effectiveTaxRate = breakdown && gross > 0 ? ((breakdown.totalDeductions * 12) / gross) * 100 : 0;
 
   const onShare = async () => {
     try {
@@ -121,6 +124,10 @@ const NetPayCalculator = ({ country, lockCountry = false, compact = false }: Net
       toast.error('Could not copy link');
     }
   };
+
+  if (!estimateAvailability.available || !breakdown) {
+    return <TaxEstimateUnavailable message={estimateAvailability.message} />;
+  }
 
   return (
     <div className={compact ? 'space-y-4' : 'space-y-6'}>
@@ -331,16 +338,16 @@ const NetPayCalculator = ({ country, lockCountry = false, compact = false }: Net
 
             {!compact && (
               <div className="mt-6 flex flex-wrap gap-3">
-                <Link to="/sign-up" className="flex-1 min-w-[200px]">
-                  <Button className="w-full gap-2">
+                <Button asChild className="min-w-[200px] flex-1 gap-2">
+                  <Link to="/sign-up">
                     Track my real payslips <ArrowRight className="h-4 w-4" />
-                  </Button>
-                </Link>
-                <Link to={`/guides/${country.toLowerCase()}-payslip-guide`} className="flex-1 min-w-[200px]">
-                  <Button variant="outline" className="w-full">
+                  </Link>
+                </Button>
+                <Button asChild variant="outline" className="min-w-[200px] flex-1">
+                  <Link to={`/guides/${country.toLowerCase()}-payslip-guide`}>
                     Read the {config.name} payslip guide
-                  </Button>
-                </Link>
+                  </Link>
+                </Button>
               </div>
             )}
           </CardContent>

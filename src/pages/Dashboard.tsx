@@ -1,5 +1,5 @@
-import { lazy, Suspense } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { lazy, Suspense, useState } from 'react';
+import { Link, useNavigate } from 'react-router';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -10,41 +10,69 @@ import ExpectedVsActual from '@/components/ExpectedVsActual';
 import YearToDateSummary from '@/components/YearToDateSummary';
 import UpgradePrompt from '@/components/UpgradePrompt';
 import { useCurrency, useProfile } from '@/hooks/use-profile';
+import { useActivePaydayPlan } from '@/hooks/use-payday-plan';
 import { formatDate } from '@/lib/date-utils';
+import { calendarDaysUntilIsoDate } from '@/lib/payday-plan-utils';
+import { deriveUsualPayBaseline } from '@/lib/pay-baseline';
+import { getTaxEstimateAvailability } from '@/lib/tax-estimate-availability';
 import type { DeductionOptions } from '@/lib/tax-calculator';
 import { useDemo } from '@/contexts/DemoContext';
+import DemoPayslipPreview, { type DemoPayslipPreviewState } from '@/components/DemoPayslipPreview';
 import DemoReadOnlyLink from '@/components/DemoReadOnlyLink';
+import PaydayPlanPulse from '@/components/PaydayPlanPulse';
 import { DEMO_PAYSLIPS, DEMO_ANOMALIES, DEMO_TRENDS } from '@/lib/demo-data';
 import type { Payslip, AnomalyResult, PayTrend } from '@/lib/types';
 import payslipCheckHero from '@/assets/option-one-payslip-check-hero-v1.webp';
 import aquaCorner from '@/assets/option-one-aqua-corner-v2.webp';
 import {
   Upload, TrendingUp, TrendingDown, AlertTriangle, FileText, ArrowRight, Download,
-  Shield, Sparkles, X,
+  Shield, Sparkles, X, GitCompareArrows,
 } from 'lucide-react';
-import {
-  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-} from 'recharts';
 import './Dashboard.css';
 
 const ExpectedVsActualChart = lazy(() => import('@/components/ExpectedVsActualChart'));
+const NetPayTrendChart = lazy(() => import('@/components/NetPayTrendChart'));
 const YearToDateChart = lazy(() => import('@/components/YearToDateChart'));
+
+function formatPlanCurrency(amount: number, currency: 'GBP' | 'EUR'): string {
+  return new Intl.NumberFormat(currency === 'EUR' ? 'en-IE' : 'en-GB', {
+    currency,
+    style: 'currency',
+  }).format(amount);
+}
 
 const Dashboard = () => {
   const { isDemo, disableDemo } = useDemo();
   const navigate = useNavigate();
-  const { data: payslips, isLoading: loadingSlips } = usePayslips();
-  const { data: anomalies, isLoading: loadingAnomalies } = useAnomalies();
+  const { data: payslips, isLoading: loadingSlips, error: payslipsError, refetch: refetchPayslips } = usePayslips();
+  const { data: anomalies, isLoading: loadingAnomalies, error: anomaliesError, refetch: refetchAnomalies } = useAnomalies();
   const { data: trends } = usePayTrends();
   const { data: profile } = useProfile();
   const { format: formatCurrency, symbol: currSym, currency } = useCurrency();
-  const { uploadsRemaining, draftsRemaining, isPremium, limits } = useUsage();
+  const {
+    accessError,
+    accessPending,
+    accessReady,
+    draftsRemaining,
+    isPremium,
+    limits,
+    refetchAccess,
+    uploadsRemaining,
+  } = useUsage();
+  const {
+    data: activePaydayPlan,
+    isError: paydayPlanError,
+    isLoading: paydayPlanLoading,
+    refetch: refetchPaydayPlan,
+  } = useActivePaydayPlan();
+  const [demoPreview, setDemoPreview] = useState<DemoPayslipPreviewState | null>(null);
 
   const isLoading = isDemo ? false : loadingSlips || loadingAnomalies;
+  const hasDataLoadError = !isDemo && Boolean(payslipsError || anomaliesError);
   const allPayslips: Payslip[] = isDemo ? DEMO_PAYSLIPS : (payslips || []);
   const confirmedPayslips = allPayslips.filter((payslip) => payslip.status === 'confirmed');
   const pendingReview = isDemo ? null : allPayslips.find((payslip) => payslip.status === 'extracted') ?? null;
-  const isEmpty = !isLoading && !isDemo && allPayslips.length === 0;
+  const isEmpty = !isLoading && !isDemo && !hasDataLoadError && allPayslips.length === 0;
   const isAwaitingReview = !isLoading && !isDemo && confirmedPayslips.length === 0 && Boolean(pendingReview);
   const isCheckingPayslip = !isLoading && !isDemo && confirmedPayslips.length === 0 && allPayslips.length > 0 && !pendingReview;
   const allAnomalies: AnomalyResult[] = isDemo ? DEMO_ANOMALIES : (anomalies || []);
@@ -52,7 +80,29 @@ const Dashboard = () => {
 
   const latest = confirmedPayslips.length > 0 ? confirmedPayslips[confirmedPayslips.length - 1] : null;
   const previous = confirmedPayslips.length > 1 ? confirmedPayslips[confirmedPayslips.length - 2] : null;
+  const hasPaydayPlanError = !isDemo && paydayPlanError;
+  const isPaydayPlanLoading = !isDemo && paydayPlanLoading;
+  const planForLatestPayslip = !isDemo
+    && !hasPaydayPlanError
+    && latest
+    && activePaydayPlan?.payslipId === latest.id
+    && activePaydayPlan.payDate === latest.pay_date
+    ? activePaydayPlan
+    : null;
+  const daysUntilNextPayday = planForLatestPayslip
+    ? calendarDaysUntilIsoDate(planForLatestPayslip.nextPayday)
+    : null;
+  const hasCurrentPlanPayday = daysUntilNextPayday !== null && daysUntilNextPayday >= 0;
+  const nextPaydayLabel = hasCurrentPlanPayday
+    ? daysUntilNextPayday === 0
+      ? 'Today'
+      : `${daysUntilNextPayday} ${daysUntilNextPayday === 1 ? 'day' : 'days'}`
+    : 'Check date';
   const netChange = latest && previous ? latest.net_pay - previous.net_pay : 0;
+  const usualPayBaseline = deriveUsualPayBaseline(confirmedPayslips);
+  const hasUsualPayBaseline = usualPayBaseline.status === 'ready'
+    && usualPayBaseline.usualNetPay !== null
+    && usualPayBaseline.netDifference !== null;
   const newAnomalies = allAnomalies.filter((anomaly) => anomaly.status === 'new');
   const unresolvedCount = newAnomalies.length;
   const featuredAnomaly = newAnomalies[0];
@@ -60,9 +110,29 @@ const Dashboard = () => {
   const demoCurrencyFormat = (value: number) => `£${value.toLocaleString('en-GB', { minimumFractionDigits: 2 })}`;
   const fmtCurrency = isDemo ? demoCurrencyFormat : formatCurrency;
   const sym = isDemo ? '£' : currSym;
+  const usualPayCompareUrl = hasUsualPayBaseline && latest && usualPayBaseline.referencePayslipId
+    ? `/compare?current=${encodeURIComponent(latest.id)}&previous=${encodeURIComponent(usualPayBaseline.referencePayslipId)}`
+    : null;
+  const hasExpectedVsActualChart = Boolean(
+    profile?.annual_salary
+    && confirmedPayslips.length >= 2
+    && confirmedPayslips.every((payslip) => getTaxEstimateAvailability(profile.country, payslip.pay_date).available),
+  );
+  const currentYear = new Date().getFullYear();
+  const hasYearToDateChart = confirmedPayslips.filter(
+    (payslip) => new Date(payslip.pay_date).getFullYear() === currentYear,
+  ).length >= 2;
+  const showFreeUsage = !isDemo && accessReady && !isPremium;
+  const showUsageAccessError = !isDemo && accessError;
+  const showUsageAccessPending = !isDemo && accessPending && !accessError;
 
   const leaveDemoForSignUp = () => {
+    setDemoPreview(null);
     navigate('/sign-up', { state: { exitDemo: true } });
+  };
+
+  const closeDemoPreview = (open: boolean) => {
+    if (!open) setDemoPreview(null);
   };
 
   const handleExportPdf = async () => {
@@ -144,26 +214,26 @@ const Dashboard = () => {
                 Sign up to upload
               </Button>
             ) : pendingReview ? (
-              <Link to={`/vault?review=${encodeURIComponent(pendingReview.id)}`}>
-                <Button className="pi-dashboard__primary-action">
+              <Button asChild className="pi-dashboard__primary-action">
+                <Link to={`/vault?review=${encodeURIComponent(pendingReview.id)}`}>
                   <FileText className="h-4 w-4" aria-hidden="true" />
                   Review payslip
-                </Button>
-              </Link>
+                </Link>
+              </Button>
             ) : isCheckingPayslip ? (
-              <Link to="/vault">
-                <Button className="pi-dashboard__primary-action">
+              <Button asChild className="pi-dashboard__primary-action">
+                <Link to="/vault">
                   <FileText className="h-4 w-4" aria-hidden="true" />
                   View upload status
-                </Button>
-              </Link>
+                </Link>
+              </Button>
             ) : (
-              <Link to="/vault">
-                <Button className="pi-dashboard__primary-action">
+              <Button asChild className="pi-dashboard__primary-action">
+                <Link to="/vault">
                   <Upload className="h-4 w-4" aria-hidden="true" />
                   Upload payslip
-                </Button>
-              </Link>
+                </Link>
+              </Button>
             )}
           </div>
         </header>
@@ -176,6 +246,28 @@ const Dashboard = () => {
           </section>
         )}
 
+        {hasDataLoadError && (
+          <section className="pi-dashboard__empty" aria-labelledby="dashboard-load-error-heading" role="alert">
+            <div className="pi-dashboard__empty-copy">
+              <div className="pi-dashboard__empty-icon" aria-hidden="true"><AlertTriangle className="h-7 w-7" /></div>
+              <h2 id="dashboard-load-error-heading">We couldn’t load your latest pay data.</h2>
+              <p>
+                Your saved payslips have not been changed. Check your connection and try again before relying on this dashboard.
+              </p>
+              <Button
+                className="pi-dashboard__primary-action pi-dashboard__primary-action--roomy"
+                onClick={() => {
+                  void refetchPayslips();
+                  void refetchAnomalies();
+                }}
+              >
+                Try again
+              </Button>
+            </div>
+            <img className="pi-dashboard__empty-art" src={payslipCheckHero} alt="" aria-hidden="true" />
+          </section>
+        )}
+
         {isEmpty && (
           <section className="pi-dashboard__empty" aria-labelledby="empty-dashboard-heading">
             <div className="pi-dashboard__empty-copy">
@@ -184,12 +276,12 @@ const Dashboard = () => {
               <p>
                 Add a payslip and Payslip Insights will extract the key figures, compare them against your profile, and flag changes worth checking. We use the document to provide these features; read the <Link to="/privacy">Privacy Policy</Link> for current handling details.
               </p>
-              <Link to="/vault">
-                <Button className="pi-dashboard__primary-action pi-dashboard__primary-action--roomy">
+              <Button asChild className="pi-dashboard__primary-action pi-dashboard__primary-action--roomy">
+                <Link to="/vault">
                   <Upload className="h-4 w-4" aria-hidden="true" />
                   Upload your first payslip
-                </Button>
-              </Link>
+                </Link>
+              </Button>
               <span className="pi-dashboard__file-note">Add a PDF, photo or screenshot</span>
             </div>
             <img className="pi-dashboard__empty-art" src={payslipCheckHero} alt="" aria-hidden="true" />
@@ -209,12 +301,12 @@ const Dashboard = () => {
               <p>
                 The extracted figures are waiting for your review. Check them against your original payslip before they appear in your pay history or payday plan.
               </p>
-              <Link to={`/vault?review=${encodeURIComponent(pendingReview.id)}`}>
-                <Button className="pi-dashboard__primary-action pi-dashboard__primary-action--roomy">
+              <Button asChild className="pi-dashboard__primary-action pi-dashboard__primary-action--roomy">
+                <Link to={`/vault?review=${encodeURIComponent(pendingReview.id)}`}>
                   Check the details
                   <ArrowRight className="h-4 w-4" aria-hidden="true" />
-                </Button>
-              </Link>
+                </Link>
+              </Button>
             </div>
             <img className="pi-dashboard__empty-art" src={payslipCheckHero} alt="" aria-hidden="true" />
             <div className="pi-dashboard__empty-promises">
@@ -233,12 +325,12 @@ const Dashboard = () => {
               <p>
                 We’ll only show figures here after they are ready for your review. You can return to your vault to check its current status.
               </p>
-              <Link to="/vault">
-                <Button className="pi-dashboard__primary-action pi-dashboard__primary-action--roomy">
+              <Button asChild className="pi-dashboard__primary-action pi-dashboard__primary-action--roomy">
+                <Link to="/vault">
                   Open payslip vault
                   <ArrowRight className="h-4 w-4" aria-hidden="true" />
-                </Button>
-              </Link>
+                </Link>
+              </Button>
             </div>
             <img className="pi-dashboard__empty-art" src={payslipCheckHero} alt="" aria-hidden="true" />
             <div className="pi-dashboard__empty-promises">
@@ -265,10 +357,12 @@ const Dashboard = () => {
                   ) : <p className="pi-dashboard__first-pay">Your first payslip in the timeline.</p>}
                   <DemoReadOnlyLink
                     className="pi-dashboard__payslip-link"
+                    demoAriaLabel="Open sample payslip preview"
                     isDemo={isDemo}
+                    onDemoActivate={() => setDemoPreview({ anomaly: featuredAnomaly, payslip: latest })}
                     to={`/payslip/${latest.id}`}
                   >
-                    {isDemo ? 'Sample payslip' : 'Open payslip'} <ArrowRight className="h-4 w-4" aria-hidden="true" />
+                    {isDemo ? <>Review sample payslip <ArrowRight className="h-4 w-4" aria-hidden="true" /></> : <>Open payslip <ArrowRight className="h-4 w-4" aria-hidden="true" /></>}
                   </DemoReadOnlyLink>
                 </div>
               </div>
@@ -297,41 +391,170 @@ const Dashboard = () => {
 
             <section className="pi-dashboard__check-banner" aria-labelledby="check-banner-heading">
               <div className="pi-dashboard__check-copy">
-                <div className="pi-dashboard__check-mark" aria-hidden="true"><AlertTriangle className="h-5 w-5" /></div>
+                <div className="pi-dashboard__check-mark" aria-hidden="true">
+                  {hasUsualPayBaseline ? <GitCompareArrows className="h-5 w-5" /> : <AlertTriangle className="h-5 w-5" />}
+                </div>
                 <div>
-                  <h2 id="check-banner-heading">{featuredAnomaly ? (unresolvedCount === 1 ? 'One thing worth checking' : `${unresolvedCount} things worth checking`) : 'Your latest check is ready'}</h2>
-                  <p>{featuredAnomaly ? featuredAnomaly.title : 'No new changes are currently flagged. You can still review the figures before relying on them.'}</p>
-                  {featuredAnomaly && !isDemo ? <Link to="/anomalies" className="pi-dashboard__inline-link">Review the details <ArrowRight className="h-4 w-4" aria-hidden="true" /></Link> : null}
-                  {featuredAnomaly && isDemo ? <span className="pi-dashboard__demo-note">Sample data only</span> : null}
+                  <h2 id="check-banner-heading">
+                    {hasUsualPayBaseline
+                      ? usualPayBaseline.netDifference === 0
+                        ? 'Your take-home is in line with your usual pay'
+                        : 'What changed from your usual pay?'
+                      : featuredAnomaly
+                        ? (unresolvedCount === 1 ? 'One thing worth checking' : `${unresolvedCount} things worth checking`)
+                        : 'Your latest check is ready'}
+                  </h2>
+                  <p>
+                    {hasUsualPayBaseline
+                      ? usualPayBaseline.netDifference === 0
+                        ? `Your take-home is in line with your usual ${fmtCurrency(usualPayBaseline.usualNetPay)}. Based on your last ${usualPayBaseline.sampleSize} confirmed payslips.`
+                        : `Your take-home was ${fmtCurrency(Math.abs(usualPayBaseline.netDifference))} ${usualPayBaseline.netDifference > 0 ? 'higher' : 'lower'} than your usual ${fmtCurrency(usualPayBaseline.usualNetPay)}. Based on your last ${usualPayBaseline.sampleSize} confirmed payslips.`
+                      : featuredAnomaly
+                        ? featuredAnomaly.title
+                        : 'No new changes are currently flagged. You can still review the figures before relying on them.'}
+                  </p>
+                  <div className="pi-dashboard__check-actions">
+                    {usualPayCompareUrl && !isDemo ? <Link to={usualPayCompareUrl} className="pi-dashboard__inline-link">Compare the figures <ArrowRight className="h-4 w-4" aria-hidden="true" /></Link> : null}
+                    {featuredAnomaly && !isDemo ? <Link to="/anomalies" className="pi-dashboard__inline-link pi-dashboard__inline-link--secondary">{unresolvedCount === 1 ? 'Review the detail' : `${unresolvedCount} things worth checking`} <ArrowRight className="h-4 w-4" aria-hidden="true" /></Link> : null}
+                    {isDemo && (hasUsualPayBaseline || featuredAnomaly) ? <span className="pi-dashboard__demo-note">Sample data only</span> : null}
+                  </div>
                 </div>
               </div>
               <img className="pi-dashboard__check-art" src={payslipCheckHero} alt="" aria-hidden="true" />
             </section>
 
             <section id="payday-plan" className="pi-dashboard__plan" aria-labelledby="payday-plan-heading">
-              <div>
+              <div className="pi-dashboard__plan-copy">
                 <h2 id="payday-plan-heading">Plan until payday</h2>
-                <p>Use the pay you have checked as a starting point for bills, everyday spending and a little buffer.</p>
+                <p>
+                  {hasPaydayPlanError
+                    ? 'We couldn’t check whether you have a saved plan. Your existing plan has not been changed.'
+                    : isPaydayPlanLoading
+                      ? 'We’re checking whether you already have a saved plan before showing your next step.'
+                      : planForLatestPayslip
+                        ? `Your saved plan gives your everyday spending an intentional place until ${formatDate(planForLatestPayslip.nextPayday)}.`
+                        : 'Use the pay you have checked as a starting point for bills, everyday spending and a little buffer.'}
+                </p>
               </div>
-              <div className="pi-dashboard__plan-action">
-                <Link to={isDemo ? '/calculator' : '/plan'} state={isDemo ? { exitDemo: true } : undefined}>
-                  <Button className="pi-dashboard__primary-action pi-dashboard__primary-action--roomy">
-                    {isDemo ? 'Open pay calculator' : 'Start my plan'}
-                    <ArrowRight className="h-4 w-4" aria-hidden="true" />
+              {isDemo ? (
+                <div className="pi-dashboard__plan-saved">
+                  <dl className="pi-dashboard__plan-summary" aria-label="Sample payday plan">
+                    <div>
+                      <dt>Everyday spending</dt>
+                      <dd>£780.00</dd>
+                      <span>Sample allocation</span>
+                    </div>
+                    <div>
+                      <dt>Buffer</dt>
+                      <dd>£250.00</dd>
+                      <span>Sample allocation</span>
+                    </div>
+                  </dl>
+                  <div className="pi-dashboard__plan-action">
+                    <Button className="pi-dashboard__primary-action pi-dashboard__primary-action--roomy" onClick={leaveDemoForSignUp}>
+                      Sign up to make my plan
+                      <ArrowRight className="h-4 w-4" aria-hidden="true" />
+                    </Button>
+                    <p>Sample figures only. Planning guide, not a bank balance.</p>
+                  </div>
+                </div>
+              ) : hasPaydayPlanError ? (
+                <div className="pi-dashboard__plan-action" role="alert">
+                  <strong>We couldn’t check your saved plan.</strong>
+                  <Button
+                    className="pi-dashboard__primary-action pi-dashboard__primary-action--roomy"
+                    onClick={() => { void refetchPaydayPlan(); }}
+                  >
+                    Try again
                   </Button>
-                </Link>
-                <p>It is a planning guide, not your bank balance.</p>
-              </div>
+                  <p>Check your connection and try again before starting or changing a plan.</p>
+                </div>
+              ) : isPaydayPlanLoading ? (
+                <div className="pi-dashboard__plan-action" role="status" aria-live="polite">
+                  <strong>Checking your saved plan…</strong>
+                  <p>We’ll show the right next step as soon as it is ready.</p>
+                </div>
+              ) : planForLatestPayslip ? (
+                <div className="pi-dashboard__plan-saved">
+                  <dl className="pi-dashboard__plan-summary">
+                    <div>
+                      <dt>Everyday amount in this plan</dt>
+                      <dd>{formatPlanCurrency(planForLatestPayslip.allocations.everydaySpending, planForLatestPayslip.currency)}</dd>
+                      <span>Planned amount</span>
+                    </div>
+                    <div>
+                      <dt>Days to next payday</dt>
+                      <dd>{nextPaydayLabel}</dd>
+                      <span>{hasCurrentPlanPayday ? formatDate(planForLatestPayslip.nextPayday) : 'Open your plan to update the date.'}</span>
+                    </div>
+                  </dl>
+                  <div className="pi-dashboard__plan-action">
+                    <Button asChild className="pi-dashboard__primary-action pi-dashboard__primary-action--roomy">
+                      <Link to="/plan">
+                        Open my plan
+                        <ArrowRight className="h-4 w-4" aria-hidden="true" />
+                      </Link>
+                    </Button>
+                    <p>Planned amounts, not a live balance or financial advice.</p>
+                  </div>
+                </div>
+              ) : (
+                <div className="pi-dashboard__plan-action">
+                  <Button asChild className="pi-dashboard__primary-action pi-dashboard__primary-action--roomy">
+                    <Link to="/plan">
+                      Start my plan
+                      <ArrowRight className="h-4 w-4" aria-hidden="true" />
+                    </Link>
+                  </Button>
+                  <p>It is a planning guide, not your bank balance.</p>
+                </div>
+              )}
             </section>
 
-            {!isPremium && (
+            {!isDemo && planForLatestPayslip && daysUntilNextPayday !== null ? (
+              <PaydayPlanPulse
+                key={planForLatestPayslip.id}
+                daysUntilNextPayday={daysUntilNextPayday}
+                payFrequency={profile?.pay_frequency}
+                plan={planForLatestPayslip}
+              />
+            ) : null}
+
+            {showUsageAccessPending && (
+              <section className="pi-dashboard__usage" aria-label="Checking account access" role="status">
+                <div className="pi-dashboard__usage-heading">
+                  <div>
+                    <h2>Checking your account access</h2>
+                    <p>We’re confirming your plan and monthly allowance before showing usage or upgrade options.</p>
+                  </div>
+                </div>
+              </section>
+            )}
+
+            {showUsageAccessError && (
+              <section className="pi-dashboard__usage" aria-label="Account access check failed" role="alert">
+                <div className="pi-dashboard__usage-heading">
+                  <div>
+                    <h2>We couldn’t verify your account access</h2>
+                    <p>Check your connection and try again before relying on usage or upgrade options.</p>
+                  </div>
+                  <Button className="pi-dashboard__quiet-action" variant="outline" onClick={() => { void refetchAccess(); }}>
+                    Try again
+                  </Button>
+                </div>
+              </section>
+            )}
+
+            {showFreeUsage && (
               <section className="pi-dashboard__usage" aria-label="Free plan usage this month">
                 <div className="pi-dashboard__usage-heading">
                   <div>
                     <h2>Free plan usage</h2>
                     <p>Keep an eye on the checks and drafts included this month.</p>
                   </div>
-                  <Link to="/pricing"><Button className="pi-dashboard__quiet-action" variant="outline">Upgrade</Button></Link>
+                  <Button asChild className="pi-dashboard__quiet-action" variant="outline">
+                    <Link to="/pricing">Upgrade</Link>
+                  </Button>
                 </div>
                 <div className="pi-dashboard__usage-bars">
                   <UsageBar
@@ -350,10 +573,10 @@ const Dashboard = () => {
               </section>
             )}
 
-            {!isPremium && (uploadsRemaining === 0 || draftsRemaining === 0) && (
+            {showFreeUsage && (uploadsRemaining === 0 || draftsRemaining === 0) && (
               <UpgradePrompt
                 title="You've hit your free limit"
-                description="See Plus options for automatic checks and payroll-message drafts beyond the Free plan allowance."
+                description="See Plus options for up to 6 automatic checks and 12 payroll-message drafts per calendar month."
               />
             )}
 
@@ -366,13 +589,17 @@ const Dashboard = () => {
               </div>
               <div className="pi-dashboard__detail-stack">
                 <ExpectedVsActual latestPayslip={latest} />
-                <Suspense fallback={<div className="pi-dashboard__chart-loading"><Skeleton className="h-full w-full" /></div>}>
-                  <ExpectedVsActualChart payslips={confirmedPayslips} />
-                </Suspense>
+                {hasExpectedVsActualChart ? (
+                  <Suspense fallback={<div className="pi-dashboard__chart-loading"><Skeleton className="h-full w-full" /></div>}>
+                    <ExpectedVsActualChart payslips={confirmedPayslips} />
+                  </Suspense>
+                ) : null}
                 <YearToDateSummary payslips={confirmedPayslips} />
-                <Suspense fallback={<div className="pi-dashboard__chart-loading"><Skeleton className="h-full w-full" /></div>}>
-                  <YearToDateChart payslips={confirmedPayslips} />
-                </Suspense>
+                {hasYearToDateChart ? (
+                  <Suspense fallback={<div className="pi-dashboard__chart-loading"><Skeleton className="h-full w-full" /></div>}>
+                    <YearToDateChart payslips={confirmedPayslips} />
+                  </Suspense>
+                ) : null}
               </div>
             </section>
 
@@ -386,16 +613,9 @@ const Dashboard = () => {
                     </div>
                   </div>
                   <div className="pi-dashboard__chart">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <LineChart data={allTrends} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="#E5E0FA" />
-                        <XAxis dataKey="month" tick={{ fontSize: 12, fill: '#64658D' }} stroke="#E5E0FA" />
-                        <YAxis tick={{ fontSize: 12, fill: '#64658D' }} stroke="#E5E0FA" tickFormatter={(value) => `${sym}${value}`} />
-                        <Tooltip formatter={(value: number) => [fmtCurrency(value), '']} />
-                        <Line type="monotone" dataKey="net" stroke="#704BFF" strokeWidth={3} dot={{ r: 4, fill: '#704BFF', strokeWidth: 0 }} name="Net pay" />
-                        <Line type="monotone" dataKey="gross" stroke="#0989A5" strokeWidth={2} dot={{ r: 3, fill: '#0989A5', strokeWidth: 0 }} name="Gross pay" />
-                      </LineChart>
-                    </ResponsiveContainer>
+                    <Suspense fallback={<Skeleton className="h-full w-full" />}>
+                      <NetPayTrendChart currencySymbol={sym} formatCurrency={fmtCurrency} trends={allTrends} />
+                    </Suspense>
                   </div>
                 </article>
               )}
@@ -411,7 +631,17 @@ const Dashboard = () => {
                   </div>
                   <div className="pi-dashboard__anomaly-list">
                     {newAnomalies.slice(0, 4).map((anomaly) => (
-                      <DemoReadOnlyLink key={anomaly.id} isDemo={isDemo} to={`/payslip/${anomaly.payslip_id}`} className="pi-dashboard__anomaly-row">
+                      <DemoReadOnlyLink
+                        key={anomaly.id}
+                        className="pi-dashboard__anomaly-row"
+                        demoAriaLabel={`Open sample details: ${anomaly.title}`}
+                        isDemo={isDemo}
+                        onDemoActivate={() => setDemoPreview({
+                          anomaly,
+                          payslip: allPayslips.find((payslip) => payslip.id === anomaly.payslip_id) ?? latest,
+                        })}
+                        to={`/payslip/${anomaly.payslip_id}`}
+                      >
                         <div className={`pi-dashboard__anomaly-icon pi-dashboard__anomaly-icon--${anomaly.severity}`}><AlertTriangle className="h-4 w-4" aria-hidden="true" /></div>
                         <div className="pi-dashboard__anomaly-copy">
                           <p>{anomaly.title}</p>
@@ -434,24 +664,43 @@ const Dashboard = () => {
                 {!isDemo && <Link to="/vault" className="pi-dashboard__inline-link">View all <ArrowRight className="h-4 w-4" aria-hidden="true" /></Link>}
               </div>
               <div className="pi-dashboard__history-list">
-                {confirmedPayslips.slice().reverse().slice(0, 4).map((slip) => (
-                  <DemoReadOnlyLink key={slip.id} isDemo={isDemo} to={`/payslip/${slip.id}`} className="pi-dashboard__history-row">
-                    <div className="pi-dashboard__history-icon"><FileText className="h-5 w-5" aria-hidden="true" /></div>
-                    <div className="pi-dashboard__history-copy">
-                      <p>{formatDate(slip.pay_date)}</p>
-                      <span>{slip.employer_name}</span>
-                    </div>
-                    <div className="pi-dashboard__history-amount">
-                      <strong>{fmtCurrency(slip.net_pay)}</strong>
-                      <span>net pay</span>
-                    </div>
-                    {slip.anomaly_count > 0 && <Badge variant="destructive" className="pi-dashboard__history-badge">{slip.anomaly_count}</Badge>}
-                  </DemoReadOnlyLink>
-                ))}
+                {confirmedPayslips.slice().reverse().slice(0, 4).map((slip) => {
+                  const sampleAnomaly = allAnomalies.find((anomaly) => anomaly.payslip_id === slip.id);
+
+                  return (
+                    <DemoReadOnlyLink
+                      key={slip.id}
+                      className="pi-dashboard__history-row"
+                      demoAriaLabel={`Open sample payslip from ${formatDate(slip.pay_date)}`}
+                      isDemo={isDemo}
+                      onDemoActivate={() => setDemoPreview({ anomaly: sampleAnomaly, payslip: slip })}
+                      to={`/payslip/${slip.id}`}
+                    >
+                      <div className="pi-dashboard__history-icon"><FileText className="h-5 w-5" aria-hidden="true" /></div>
+                      <div className="pi-dashboard__history-copy">
+                        <p>{formatDate(slip.pay_date)}</p>
+                        <span>{slip.employer_name}</span>
+                      </div>
+                      <div className="pi-dashboard__history-amount">
+                        <strong>{fmtCurrency(slip.net_pay)}</strong>
+                        <span>net pay</span>
+                      </div>
+                      {slip.anomaly_count > 0 && <Badge variant="destructive" className="pi-dashboard__history-badge">{slip.anomaly_count}</Badge>}
+                    </DemoReadOnlyLink>
+                  );
+                })}
               </div>
             </section>
           </>
         )}
+
+        {isDemo ? (
+          <DemoPayslipPreview
+            onOpenChange={closeDemoPreview}
+            onSignUp={leaveDemoForSignUp}
+            preview={demoPreview}
+          />
+        ) : null}
 
         <p className="pi-dashboard__disclaimer">
           Payslip Insights provides guidance and issue spotting — not formal tax, legal, or payroll advice. Always confirm findings with your employer or a professional.

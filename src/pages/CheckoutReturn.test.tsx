@@ -1,22 +1,28 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { act, render, screen } from "@testing-library/react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { act, render, screen, waitFor } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import CheckoutReturn from "@/pages/CheckoutReturn";
 
-const mockUseSearchParams = vi.fn();
-const mockUseSubscription = vi.fn();
+const state = vi.hoisted(() => ({
+  invoke: vi.fn(),
+  searchParams: new URLSearchParams(),
+}));
 
-vi.mock("react-router-dom", async () => {
-  const actual = await vi.importActual<typeof import("react-router-dom")>("react-router-dom");
+vi.mock("react-router", async () => {
+  const actual = await vi.importActual<typeof import("react-router")>("react-router");
   return {
     ...actual,
     Link: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-    useSearchParams: () => mockUseSearchParams(),
+    useSearchParams: () => [state.searchParams],
   };
 });
 
-vi.mock("@/hooks/use-subscription", () => ({
-  useSubscription: () => mockUseSubscription(),
+vi.mock("@/integrations/supabase/client", () => ({
+  supabase: { functions: { invoke: state.invoke } },
+}));
+
+vi.mock("@/lib/stripe", () => ({
+  getStripeEnvironment: () => "sandbox",
 }));
 
 function renderPage() {
@@ -30,65 +36,87 @@ function renderPage() {
 
 describe("CheckoutReturn", () => {
   beforeEach(() => {
-    vi.useFakeTimers();
-    mockUseSubscription.mockReset();
-    mockUseSearchParams.mockReset();
+    vi.useRealTimers();
+    state.invoke.mockReset();
+    state.searchParams = new URLSearchParams("session_id=cs_test_checkoutreturn123");
   });
 
-  it("does not report success until premium access is confirmed", async () => {
-    let isPremium = false;
-    const refetch = vi.fn(async () => ({ data: { plan: "free", status: "active", isPremium } }));
+  afterEach(() => {
+    vi.useRealTimers();
+  });
 
-    mockUseSubscription.mockImplementation(() => ({
-      subscription: { plan: "free", status: "active", isPremium },
-      refetch,
-    }));
-    mockUseSearchParams.mockReturnValue([new URLSearchParams("session_id=test_session")]);
+  it("reports success only after the exact server-owned return session is confirmed", async () => {
+    state.invoke.mockResolvedValue({
+      data: { environment: "sandbox", status: "confirmed" },
+      error: null,
+    });
 
     renderPage();
 
-    expect(screen.getByText("Processing payment…")).toBeInTheDocument();
-
-    await act(async () => {
-      await vi.advanceTimersByTimeAsync(1_500);
+    await waitFor(() => {
+      expect(screen.getByText("Payment successful!")).toBeInTheDocument();
     });
-    expect(screen.queryByText("Payment successful!")).not.toBeInTheDocument();
-
-    isPremium = true;
-    await act(async () => {
-      await vi.advanceTimersByTimeAsync(1_500);
+    expect(screen.getByRole('heading', { name: 'Payment successful!' })).toHaveFocus();
+    expect(screen.getByRole('status')).toHaveTextContent('Payment confirmed. Your account has been upgraded.');
+    expect(state.invoke).toHaveBeenCalledWith("verify-checkout-return", {
+      body: { sessionId: "cs_test_checkoutreturn123" },
     });
-
-    expect(screen.getByText("Payment successful!")).toBeInTheDocument();
   });
 
   it("fails immediately when the return URL has no session id", () => {
-    mockUseSubscription.mockReturnValue({
-      subscription: { plan: "free", status: "active", isPremium: false },
-      refetch: vi.fn(),
-    });
-    mockUseSearchParams.mockReturnValue([new URLSearchParams()]);
+    state.searchParams = new URLSearchParams();
 
     renderPage();
 
     expect(screen.getByText("Something went wrong")).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Something went wrong' })).toHaveFocus();
+    expect(screen.getByRole('status')).toHaveTextContent('We could not confirm this checkout return. Do not submit another payment.');
+    expect(state.invoke).not.toHaveBeenCalled();
   });
 
-  it("shows a pending state instead of inviting a second payment after the confirmation poll window", async () => {
-    const refetch = vi.fn(async () => ({ data: { plan: "free", status: "active", isPremium: false } }));
-    mockUseSubscription.mockReturnValue({
-      subscription: { plan: "free", status: "active", isPremium: false },
-      refetch,
+  it("shows a pending state instead of inviting a second payment while the exact session is unresolved", async () => {
+    vi.useFakeTimers();
+    state.invoke.mockResolvedValue({
+      data: { environment: "sandbox", status: "pending" },
+      error: null,
     });
-    mockUseSearchParams.mockReturnValue([new URLSearchParams("session_id=test_session")]);
 
     renderPage();
 
     await act(async () => {
-      await vi.advanceTimersByTimeAsync(15_000);
+      await vi.advanceTimersByTimeAsync(16_000);
     });
 
     expect(screen.getByText("Your payment is being confirmed")).toBeInTheDocument();
-    expect(screen.queryByText("Something went wrong")).not.toBeInTheDocument();
+    expect(screen.queryByText("Payment successful!")).not.toBeInTheDocument();
+  });
+
+  it("treats a transport failure as unresolved instead of leaving the payment screen loading forever", async () => {
+    vi.useFakeTimers();
+    state.invoke.mockRejectedValue(new Error('network unavailable'));
+
+    renderPage();
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(16_000);
+    });
+
+    expect(screen.getByText("Your payment is being confirmed")).toBeInTheDocument();
+    expect(state.invoke).toHaveBeenCalledTimes(8);
+    expect(screen.queryByText("Payment successful!")).not.toBeInTheDocument();
+  });
+
+  it("does not claim success when the browser and server billing environments disagree", async () => {
+    state.invoke.mockResolvedValue({
+      data: { environment: "live", status: "confirmed" },
+      error: null,
+    });
+
+    renderPage();
+
+    await waitFor(() => {
+      expect(screen.getByText("We need to check this payment")).toBeInTheDocument();
+    });
+    expect(screen.queryByText("Payment successful!")).not.toBeInTheDocument();
   });
 });

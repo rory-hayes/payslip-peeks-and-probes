@@ -5,13 +5,13 @@ import RelatedGuides from '@/components/guides/RelatedGuides';
 const IrelandPayslipGuide = () => (
   <GuideLayout
     title="Ireland Payslip Guide"
-    description="PAYE, PRSI and USC explained in plain English for Ireland-based employees, with the issues most often worth checking."
+    description="PAYE, PRSI and USC explained in plain English for Ireland-based employees, with key payslip details to review."
     datePublished="2025-02-08"
     breadcrumbLabel="Ireland Payslip Guide"
   >
     <h1 className="text-4xl font-extrabold tracking-tight text-foreground">Ireland Payslip Guide</h1>
     <p className="mt-4 text-lg text-muted-foreground leading-relaxed">
-      A plain-English walkthrough of Irish payslips, the deductions you'll see each month, and the issues Ireland-based employees most often need to check.
+      A plain-English walkthrough of Irish payslips, the deductions you may see each month, and the details to review before contacting payroll.
     </p>
 
     <h2 className="mt-12 text-2xl font-bold text-foreground">What appears on an Ireland payslip</h2>
@@ -26,7 +26,7 @@ const IrelandPayslipGuide = () => (
 
     <h2 className="mt-10 text-2xl font-bold text-foreground">Common Ireland payslip issues</h2>
     <p className="mt-3 text-muted-foreground leading-relaxed">
-      The most common issues are PAYE applied incorrectly after a job change, PRSI class changes that affect contributions, and USC bands not updating after a pay rise. Pension contribution changes after auto-enrolment cycles also catch people off guard.
+      A change in PAYE after a job change, a different PRSI class, a different USC amount after a pay rise, or a pension contribution change can all be worth asking payroll about if they do not match your records.
     </p>
 
     <h2 className="mt-10 text-2xl font-bold text-foreground">PAYE, PRSI and USC overview</h2>

@@ -1,12 +1,12 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useEffect, useRef, useState } from 'react';
+import { useNavigate, useSearchParams } from 'react-router';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Progress } from '@/components/ui/progress';
-import { CheckCircle, ArrowRight, ArrowLeft, Upload, Sparkles } from 'lucide-react';
+import { ArrowRight, ArrowLeft, Upload, Sparkles } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
@@ -19,11 +19,19 @@ import {
 
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { HelpCircle } from 'lucide-react';
+import { BrandLockup } from '@/components/BrandLockup';
+import {
+  checkoutPathForPrice,
+  checkoutReturnPathForSession,
+  getCheckoutPriceId,
+  getCheckoutReturnSessionId,
+} from '@/lib/checkout-price';
 
 const STEPS = ['Welcome', 'Country', 'Pay profile', 'Sensitivity', 'Payroll setup', 'Ready'] as const;
 
 const Onboarding = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -37,8 +45,20 @@ const Onboarding = () => {
   const [threshold, setThreshold] = useState<number>(5);
   const [flags, setFlags] = useState({ pension: false, studentLoan: false, bonus: false, benefits: false });
   const [saving, setSaving] = useState(false);
+  const stepHeadingRef = useRef<HTMLHeadingElement>(null);
+  const checkoutPriceId = getCheckoutPriceId(searchParams.get('checkout'));
+  const checkoutReturnSessionId = getCheckoutReturnSessionId(searchParams.get('checkout_return'));
+  const checkoutPath = checkoutReturnSessionId
+    ? checkoutReturnPathForSession(checkoutReturnSessionId)
+    : checkoutPriceId
+      ? checkoutPathForPrice(checkoutPriceId)
+      : null;
 
   const progress = ((step + 1) / STEPS.length) * 100;
+
+  useEffect(() => {
+    stepHeadingRef.current?.focus();
+  }, [step]);
 
   const countryCfgEarly = country ? getCountryConfig(country) : null;
   const needsSubRegion = !!countryCfgEarly?.subRegions?.length;
@@ -58,6 +78,13 @@ const Onboarding = () => {
     if (step === 5) return true;
     return false;
   })();
+  const payProfileRequirementsMessage = !frequency && !employer.trim()
+    ? 'Choose a pay frequency and enter your employer name to continue.'
+    : !frequency
+      ? 'Choose a pay frequency to continue.'
+      : !employer.trim()
+        ? 'Enter your employer name to continue.'
+        : '';
 
   const next = () => { if (canNext && step < STEPS.length - 1) setStep(step + 1); };
   const back = () => { if (step > 0) setStep(step - 1); };
@@ -72,55 +99,93 @@ const Onboarding = () => {
   const handleFinish = async () => {
     if (!user) return;
     setSaving(true);
+    try {
+      const cfg = country ? getCountryConfig(country) : null;
+      const parsedSalary = annualSalary.trim() ? Number(annualSalary.replace(/[^0-9.]/g, '')) : null;
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .update({
+          country: country || null,
+          currency: cfg?.currency ?? 'GBP',
+          sub_region: needsSubRegion ? (subRegion || null) : null,
+          filing_status: needsFilingStatus ? (filingStatus || null) : null,
+          pay_frequency: frequency,
+          employer_name: employer.trim(),
+          annual_salary: parsedSalary && parsedSalary > 0 ? parsedSalary : null,
+          anomaly_threshold_percent: threshold,
+          has_pension: flags.pension,
+          has_student_loan: flags.studentLoan,
+          has_bonus: flags.bonus,
+          has_benefits: flags.benefits,
+          onboarding_complete: true,
+        })
+        .eq('user_id', user.id);
 
-    const cfg = country ? getCountryConfig(country) : null;
-    const parsedSalary = annualSalary.trim() ? Number(annualSalary.replace(/[^0-9.]/g, '')) : null;
-    const { error: profileError } = await supabase
-      .from('profiles')
-      .update({
-        country: country || null,
-        currency: cfg?.currency ?? 'GBP',
-        sub_region: needsSubRegion ? (subRegion || null) : null,
-        filing_status: needsFilingStatus ? (filingStatus || null) : null,
-        pay_frequency: frequency,
-        employer_name: employer.trim(),
-        annual_salary: parsedSalary && parsedSalary > 0 ? parsedSalary : null,
-        anomaly_threshold_percent: threshold,
-        has_pension: flags.pension,
-        has_student_loan: flags.studentLoan,
-        has_bonus: flags.bonus,
-        has_benefits: flags.benefits,
-        onboarding_complete: true,
-      })
-      .eq('user_id', user.id);
+      if (profileError) {
+        toast({
+          title: 'We couldn’t finish setup',
+          description: 'Please try again.',
+          variant: 'destructive',
+        });
+        return;
+      }
 
-    if (employer.trim()) {
-      await supabase.from('employers').insert({
-        user_id: user.id,
-        name: employer.trim(),
-      });
-    }
+      if (employer.trim()) {
+        const { error: employerError } = await supabase.from('employers').insert({
+          user_id: user.id,
+          name: employer.trim(),
+        });
+        if (employerError) {
+          // The profile is already saved, so do not trap a person in setup for
+          // optional employer history. Make the partial save explicit instead.
+          toast({
+            title: 'Setup saved',
+            description: 'Your profile is ready. You can update your employer later in Settings.',
+          });
+        }
+      }
 
-    setSaving(false);
-
-    if (profileError) {
-      toast({ title: 'Something went wrong', description: profileError.message, variant: 'destructive' });
-    } else {
       await queryClient.invalidateQueries({ queryKey: ['profile', user.id] });
-      navigate('/vault');
+      navigate(checkoutPath ?? '/vault');
+    } catch {
+      toast({
+        title: 'We couldn’t finish setup',
+        description: 'Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setSaving(false);
     }
   };
 
   const handleSkip = async () => {
     if (!user) return;
     setSaving(true);
-    await supabase
-      .from('profiles')
-      .update({ onboarding_complete: true })
-      .eq('user_id', user.id);
-    await queryClient.invalidateQueries({ queryKey: ['profile', user.id] });
-    setSaving(false);
-    navigate('/dashboard');
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({ onboarding_complete: true })
+        .eq('user_id', user.id);
+      if (error) {
+        toast({
+          title: 'We couldn’t finish setup',
+          description: 'Please try again.',
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      await queryClient.invalidateQueries({ queryKey: ['profile', user.id] });
+      navigate(checkoutPath ?? '/dashboard');
+    } catch {
+      toast({
+        title: 'We couldn’t finish setup',
+        description: 'Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setSaving(false);
+    }
   };
 
   const countryCfg = country ? getCountryConfig(country) : null;
@@ -133,17 +198,14 @@ const Onboarding = () => {
       <div className="border-b border-border bg-card px-4 py-3">
         <div className="mx-auto flex max-w-lg items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className="flex h-7 w-7 items-center justify-center rounded-md bg-primary">
-              <CheckCircle className="h-4 w-4 text-primary-foreground" />
-            </div>
-            <span className="font-semibold text-foreground">Payslip Insights</span>
+            <BrandLockup size="sm" />
           </div>
           <span className="text-xs text-muted-foreground">Step {step + 1} of {STEPS.length}</span>
         </div>
       </div>
-      <Progress value={progress} className="h-1 rounded-none" />
+      <Progress value={progress} className="h-1 rounded-none" aria-label={`Onboarding progress: step ${step + 1} of ${STEPS.length}`} />
 
-      <div className="flex flex-1 items-center justify-center px-4 py-8 sm:py-12">
+      <main className="flex flex-1 items-center justify-center px-4 py-8 sm:py-12">
         <Card className="w-full max-w-lg border-0 shadow-lg">
           <CardContent className="p-6 sm:p-8">
 
@@ -153,7 +215,7 @@ const Onboarding = () => {
                 <div className="flex h-16 w-16 mx-auto items-center justify-center rounded-2xl bg-primary/10">
                   <Sparkles className="h-8 w-8 text-primary" />
                 </div>
-                <h2 className="text-2xl font-bold text-foreground">Welcome to Payslip Insights</h2>
+                <h1 ref={stepHeadingRef} tabIndex={-1} className="text-2xl font-bold text-foreground">Welcome to Payslip Insights</h1>
                 <p className="text-muted-foreground leading-relaxed">
                   Upload your payslips, track changes month to month, and get a heads-up when something looks off. Let's get your profile set up — it takes less than a minute.
                 </p>
@@ -164,13 +226,15 @@ const Onboarding = () => {
             {step === 1 && (
               <div className="space-y-6">
                 <div className="text-center">
-                  <h2 className="text-2xl font-bold text-foreground">Where are you employed?</h2>
+                  <h1 ref={stepHeadingRef} tabIndex={-1} className="text-2xl font-bold text-foreground">Where are you employed?</h1>
                   <p className="mt-2 text-sm text-muted-foreground">This sets your currency and tax rules.</p>
                 </div>
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-2 gap-3" role="group" aria-label="Country of employment">
                   {LAUNCH_COUNTRY_LIST.map((c) => (
                     <button
                       key={c.code}
+                      type="button"
+                      aria-pressed={country === c.code}
                       onClick={() => handleCountrySelect(c.code)}
                       className={`flex flex-col items-center gap-2 rounded-xl border-2 p-4 transition-all ${
                         country === c.code
@@ -210,11 +274,12 @@ const Onboarding = () => {
                         <Label htmlFor="filingStatus">
                           {countryCfgEarly?.filingStatusLabel ?? 'Filing status'} <span className="text-destructive">*</span>
                         </Label>
-                        <div className="grid grid-cols-1 gap-2">
+                        <div className="grid grid-cols-1 gap-2" role="group" aria-label={countryCfgEarly?.filingStatusLabel ?? 'Filing status'}>
                           {countryCfgEarly?.filingStatuses?.map((fs) => (
                             <button
                               key={fs.code}
                               type="button"
+                              aria-pressed={filingStatus === fs.code}
                               onClick={() => setFilingStatus(fs.code)}
                               className={`text-left rounded-lg border px-3 py-2.5 text-sm transition-all ${
                                 filingStatus === fs.code
@@ -247,38 +312,56 @@ const Onboarding = () => {
             {step === 2 && (
               <div className="space-y-6">
                 <div className="text-center">
-                  <h2 className="text-2xl font-bold text-foreground">Your pay profile</h2>
+                  <h1 ref={stepHeadingRef} tabIndex={-1} className="text-2xl font-bold text-foreground">Your pay profile</h1>
                   <p className="mt-2 text-sm text-muted-foreground">Tell us how you're paid so we can run the right checks.</p>
                 </div>
                 <div className="space-y-4">
-                  <div className="space-y-2">
-                    <Label>Pay frequency <span className="text-destructive">*</span></Label>
+                  <fieldset className="space-y-2" aria-describedby="pay-profile-requirements">
+                    <legend className="text-sm font-medium leading-none">Pay frequency <span className="text-destructive">*</span></legend>
                     <div className="grid grid-cols-2 gap-2">
                       {['weekly', 'fortnightly', 'monthly', 'other'].map((f) => (
-                        <button
-                          key={f}
-                          onClick={() => setFrequency(f)}
-                          className={`rounded-lg border px-3 py-2.5 text-sm capitalize transition-all ${
-                            frequency === f
-                              ? 'border-primary bg-primary/5 text-primary font-medium'
-                              : 'border-border text-muted-foreground hover:border-muted-foreground/30'
-                          }`}
-                        >
-                          {f}
-                        </button>
+                        <div key={f}>
+                          <input
+                            id={`pay-frequency-${f}`}
+                            type="radio"
+                            name="pay-frequency"
+                            value={f}
+                            checked={frequency === f}
+                            onChange={() => setFrequency(f)}
+                            className="peer sr-only"
+                            required
+                          />
+                          <Label
+                            htmlFor={`pay-frequency-${f}`}
+                            className={`flex min-h-11 cursor-pointer items-center justify-center rounded-lg border px-3 py-2.5 text-sm capitalize transition-all peer-focus-visible:outline-none peer-focus-visible:ring-2 peer-focus-visible:ring-ring peer-focus-visible:ring-offset-2 ${
+                              frequency === f
+                                ? 'border-primary bg-primary/5 text-primary font-medium'
+                                : 'border-border text-muted-foreground hover:border-muted-foreground/30'
+                            }`}
+                          >
+                            {f}
+                          </Label>
+                        </div>
                       ))}
                     </div>
-                  </div>
+                  </fieldset>
                   <div className="space-y-2">
                     <Label htmlFor="employer">Employer name <span className="text-destructive">*</span></Label>
                     <Input
                       id="employer"
+                      autoComplete="organization"
+                      aria-describedby="pay-profile-requirements"
+                      aria-required="true"
                       placeholder="e.g. Acme Technologies Ltd"
                       value={employer}
                       onChange={(e) => setEmployer(e.target.value)}
                       maxLength={200}
+                      required
                     />
                   </div>
+                  <p id="pay-profile-requirements" className="min-h-5 text-xs text-muted-foreground" role="status" aria-live="polite">
+                    {payProfileRequirementsMessage}
+                  </p>
                   <div className="space-y-2">
                     <Label htmlFor="annualSalary" className="flex items-center gap-1.5">
                       Annual gross salary
@@ -300,7 +383,7 @@ const Onboarding = () => {
                       />
                     </div>
                     <p className="text-xs text-muted-foreground leading-relaxed">
-                      Powers your <strong className="text-foreground">Expected vs Actual</strong> breakdown so we can spot under-payments. You can add this later in Settings.
+                      Helps put your confirmed pay history in context and plan around paydays. You can add this later in Settings; it is not a tax or payroll verdict.
                     </p>
                   </div>
                 </div>
@@ -311,7 +394,7 @@ const Onboarding = () => {
             {step === 3 && (
               <div className="space-y-6">
                 <div className="text-center">
-                  <h2 className="text-2xl font-bold text-foreground">How sensitive should we be?</h2>
+                  <h1 ref={stepHeadingRef} tabIndex={-1} className="text-2xl font-bold text-foreground">How sensitive should we be?</h1>
                   <p className="mt-2 text-sm text-muted-foreground">
                     We flag pay changes between payslips when they exceed your threshold.
                   </p>
@@ -364,7 +447,7 @@ const Onboarding = () => {
             {step === 4 && (
               <div className="space-y-6">
                 <div className="text-center">
-                  <h2 className="text-2xl font-bold text-foreground">Payroll details</h2>
+                  <h1 ref={stepHeadingRef} tabIndex={-1} className="text-2xl font-bold text-foreground">Payroll details</h1>
                   <p className="mt-2 text-sm text-muted-foreground">Tick anything that applies — this helps us run smarter checks on your payslips.</p>
                 </div>
                 <div className="space-y-3">
@@ -400,7 +483,7 @@ const Onboarding = () => {
                   <div className="flex h-16 w-16 mx-auto items-center justify-center rounded-2xl bg-success/10">
                     <Upload className="h-8 w-8 text-success" />
                   </div>
-                  <h2 className="text-2xl font-bold text-foreground">You're all set!</h2>
+                  <h1 ref={stepHeadingRef} tabIndex={-1} className="text-2xl font-bold text-foreground">You're all set!</h1>
                   <p className="text-muted-foreground leading-relaxed">
                     Here's what we captured. You can update any of this later in Settings.
                   </p>
@@ -479,7 +562,12 @@ const Onboarding = () => {
               )}
 
               {step < STEPS.length - 1 ? (
-                <Button onClick={next} disabled={!canNext} className="gap-1">
+                <Button
+                  onClick={next}
+                  disabled={!canNext}
+                  className="gap-1"
+                  aria-describedby={step === 2 && !canNext ? 'pay-profile-requirements' : undefined}
+                >
                   Continue <ArrowRight className="h-4 w-4" />
                 </Button>
               ) : (
@@ -490,7 +578,7 @@ const Onboarding = () => {
             </div>
           </CardContent>
         </Card>
-      </div>
+      </main>
     </div>
   );
 };

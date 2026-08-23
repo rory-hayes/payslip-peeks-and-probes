@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom';
+import { Link } from 'react-router';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Sparkles } from 'lucide-react';
@@ -11,7 +11,7 @@ interface UpgradePromptProps {
 
 const UpgradePrompt = ({
   title = 'Upgrade to Plus',
-  description = 'See Plus options for automatic payslip checks and payroll-message drafts beyond the Free plan allowance.',
+  description = 'See Plus options for up to 6 automatic payslip checks and 12 payroll-message drafts per calendar month.',
   className = '',
 }: UpgradePromptProps) => (
   <Card className={`border-primary/30 bg-primary/5 ${className}`}>
@@ -23,9 +23,9 @@ const UpgradePrompt = ({
         <h4 className="font-semibold text-foreground">{title}</h4>
         <p className="text-sm text-muted-foreground">{description}</p>
       </div>
-      <Link to="/pricing">
-        <Button size="sm" className="shrink-0">View plans</Button>
-      </Link>
+      <Button asChild size="sm" className="min-h-11 shrink-0">
+        <Link to="/pricing">View plans</Link>
+      </Button>
     </CardContent>
   </Card>
 );

@@ -1,21 +1,17 @@
 import { createClient, type SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
+import {
+  createRateLimitWindow,
+  deniedRateLimitResult,
+  isPositiveSafeInteger,
+  resolveRateLimitResult,
+  type RateLimitResult,
+} from "./rate-limit-contract.ts";
 
 export interface RateLimitOptions {
   bucketKey: string;
   maxPerWindow: number;
   windowSeconds: number;
   client?: SupabaseClient;
-}
-
-export interface RateLimitResult {
-  allowed: boolean;
-  retryAfterSeconds: number;
-  remaining: number;
-}
-
-interface RateLimitRpcResult {
-  allowed: boolean;
-  current_count: number;
 }
 
 let cached: SupabaseClient | null = null;
@@ -29,17 +25,7 @@ function admin(): SupabaseClient {
   return cached;
 }
 
-function windowStart(now: Date, windowSeconds: number): Date {
-  const epoch = Math.floor(now.getTime() / 1000);
-  const slot = epoch - (epoch % windowSeconds);
-  return new Date(slot * 1000);
-}
-
-function isRateLimitResult(value: unknown): value is RateLimitRpcResult {
-  if (!value || typeof value !== "object") return false;
-  const result = value as Record<string, unknown>;
-  return typeof result.allowed === "boolean" && typeof result.current_count === "number";
-}
+export type { RateLimitResult } from "./rate-limit-contract.ts";
 
 /**
  * Consumes a bucket with a single database operation. Failure is deliberately
@@ -47,29 +33,28 @@ function isRateLimitResult(value: unknown): value is RateLimitRpcResult {
  * brief retry message during a database outage.
  */
 export async function checkRateLimit(opts: RateLimitOptions): Promise<RateLimitResult> {
+  const window = createRateLimitWindow(new Date(), opts.windowSeconds);
+
+  if (!window || !isPositiveSafeInteger(opts.maxPerWindow)) {
+    console.error("[rate-limit] invalid configuration");
+    return deniedRateLimitResult(window?.retryAfterSeconds);
+  }
+
   const supabase = opts.client ?? admin();
-  const now = new Date();
-  const start = windowStart(now, opts.windowSeconds);
-  const retryAfterSeconds = Math.max(
-    opts.windowSeconds - Math.floor((now.getTime() - start.getTime()) / 1000),
-    1,
-  );
 
   const { data, error } = await supabase.rpc("consume_rate_limit", {
     p_bucket_key: opts.bucketKey,
     p_max_per_window: opts.maxPerWindow,
-    p_window_start: start.toISOString(),
+    p_window_start: window.start.toISOString(),
   });
-  const result = Array.isArray(data) ? data[0] : data;
+  const result = error
+    ? null
+    : resolveRateLimitResult(data, opts.maxPerWindow, window.retryAfterSeconds);
 
-  if (error || !isRateLimitResult(result)) {
+  if (!result) {
     console.error("[rate-limit] consume failed", { code: error?.code ?? "invalid_response" });
-    return { allowed: false, retryAfterSeconds, remaining: 0 };
+    return deniedRateLimitResult(window.retryAfterSeconds);
   }
 
-  return {
-    allowed: result.allowed,
-    retryAfterSeconds: result.allowed ? 0 : retryAfterSeconds,
-    remaining: Math.max(opts.maxPerWindow - result.current_count, 0),
-  };
+  return result;
 }

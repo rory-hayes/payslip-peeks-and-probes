@@ -1,5 +1,5 @@
-import { fireEvent, render, screen } from "@testing-library/react";
-import { MemoryRouter, useLocation } from "react-router-dom";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { MemoryRouter, useLocation } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import AppLayout from "./AppLayout";
 
@@ -61,5 +61,37 @@ describe("AppLayout demo navigation", () => {
     );
 
     expect(screen.getAllByRole("link", { name: "Plan" }).some((link) => link.getAttribute("href") === "/plan")).toBe(true);
+  });
+
+  it('gives the mobile navigation dialog an accessible name', async () => {
+    state.isDemo = false;
+
+    render(
+      <MemoryRouter initialEntries={["/dashboard"]}>
+        <AppLayout><p>Dashboard content</p></AppLayout>
+      </MemoryRouter>,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Open menu' }));
+
+    expect(await screen.findByRole('dialog', { name: 'Navigation menu' })).toBeInTheDocument();
+  });
+
+  it("keeps a signed-in person in place when provider sign-out fails", async () => {
+    state.isDemo = false;
+    state.signOut.mockRejectedValue(new Error('network unavailable'));
+
+    render(
+      <MemoryRouter initialEntries={["/dashboard"]}>
+        <AppLayout><p>Dashboard content</p></AppLayout>
+        <Location />
+      </MemoryRouter>,
+    );
+
+    fireEvent.click(screen.getAllByRole('button', { name: 'Sign out' })[0]);
+
+    await waitFor(() => expect(state.signOut).toHaveBeenCalledTimes(1));
+    expect(screen.getByTestId('location')).toHaveTextContent('/dashboard');
+    expect(screen.getAllByRole('button', { name: 'Sign out' })[0]).toBeEnabled();
   });
 });
