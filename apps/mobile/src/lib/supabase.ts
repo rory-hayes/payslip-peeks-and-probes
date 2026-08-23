@@ -13,6 +13,7 @@ export const supabase: SupabaseClient | null = hasSupabaseConfig
       auth: {
         ...(Platform.OS !== 'web' ? { storage: secureSessionStorage } : {}),
         autoRefreshToken: true,
+        flowType: 'pkce',
         persistSession: true,
         detectSessionInUrl: false,
       },

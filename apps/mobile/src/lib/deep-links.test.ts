@@ -7,32 +7,31 @@ import { parseAuthRedirect } from './deep-links';
 describe('parseAuthRedirect', () => {
   it('accepts the documented email-confirmation callback', () => {
     expect(parseAuthRedirect('payslipinsights://auth/callback?code=confirmation-code&type=signup')).toEqual({
-      accessToken: null,
       code: 'confirmation-code',
       errorDescription: null,
-      refreshToken: null,
       type: 'signup',
     });
   });
 
-  it('accepts the documented password-reset callback with hash tokens', () => {
-    expect(parseAuthRedirect('payslipinsights://reset-password#access_token=access-token&refresh_token=refresh-token&type=recovery')).toEqual({
-      accessToken: 'access-token',
-      code: null,
+  it('accepts a PKCE password-reset callback with a one-time code', () => {
+    expect(parseAuthRedirect('payslipinsights://reset-password#code=recovery-code&type=recovery')).toEqual({
+      code: 'recovery-code',
       errorDescription: null,
-      refreshToken: 'refresh-token',
       type: 'recovery',
     });
   });
 
   it('keeps provider error redirects on the documented callback route', () => {
     expect(parseAuthRedirect('payslipinsights://auth/callback?error_description=link-expired')).toEqual({
-      accessToken: null,
       code: null,
       errorDescription: 'link-expired',
-      refreshToken: null,
       type: null,
     });
+  });
+
+  it('rejects bearer tokens on the custom scheme, including mixed code and token redirects', () => {
+    expect(parseAuthRedirect('payslipinsights://reset-password#access_token=access-token&refresh_token=refresh-token&type=recovery')).toBeNull();
+    expect(parseAuthRedirect('payslipinsights://reset-password?code=recovery-code&refresh_token=unexpected')).toBeNull();
   });
 
   it('rejects token-bearing URLs outside the two registered native callback routes', () => {

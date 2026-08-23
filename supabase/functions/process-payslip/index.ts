@@ -743,23 +743,19 @@ serve(async (req) => {
 
     // Fetch the row once and bind the privileged storage operation to the
     // caller's UUID-prefixed object key, rather than relying on key secrecy.
+    // Include ownership in the lookup so foreign and unknown UUIDs have the
+    // same response and cannot be distinguished as a payslip existence oracle.
     const { data: initialPayslip, error: payslipErr } = await supabase
       .from("payslips")
       .select("id, user_id, file_path, file_name, country, status, processing_attempts, processing_started_at, cleanup_requested_at")
       .eq("id", payslipId)
-      .single();
+      .eq("user_id", user.id)
+      .maybeSingle();
 
     if (payslipErr || !initialPayslip) {
       return new Response(
         JSON.stringify({ error: "Payslip not found" }),
         { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
-    if (initialPayslip.user_id !== user.id) {
-      return new Response(
-        JSON.stringify({ error: "Forbidden" }),
-        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 

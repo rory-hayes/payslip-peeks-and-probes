@@ -110,6 +110,11 @@ if (sourceHas("src/pages/Terms.tsx", "Before a public paid launch, we will publi
   blockers.push("Finish the operating-entity, contact, and governing-law details in the Terms of Service.");
 }
 
+if (!sourceHas("public/_headers", "X-Frame-Options: DENY")
+  || !sourceHas("public/_headers", "Content-Security-Policy: frame-ancestors 'none';")) {
+  blockers.push("Serve the web app with clickjacking protection (X-Frame-Options: DENY and CSP frame-ancestors 'none').");
+}
+
 if (!existsSync(`supabase/migrations/${REQUIRED_MIGRATION}`)) {
   blockers.push(`The required release migration ${REQUIRED_MIGRATION} is missing from this artifact.`);
 }

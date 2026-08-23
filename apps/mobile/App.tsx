@@ -50,9 +50,7 @@ export default function App() {
     try {
       const result = redirect.code
         ? await supabase.auth.exchangeCodeForSession(redirect.code)
-        : redirect.accessToken && redirect.refreshToken
-          ? await supabase.auth.setSession({ access_token: redirect.accessToken, refresh_token: redirect.refreshToken })
-          : null;
+        : null;
       if (!result?.data.session || result.error) throw result?.error ?? new Error('No session returned');
       if (redirect.type === 'recovery') setPasswordRecovery(true);
     } catch {

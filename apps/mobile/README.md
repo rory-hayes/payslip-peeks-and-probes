@@ -38,7 +38,7 @@ resolved and a signed device build is verified.
 
 ## Auth redirect configuration
 
-The mobile client sends signup-confirmation links to `payslipinsights://auth/callback` and password-recovery links to `payslipinsights://reset-password`, both matching the public `scheme` in `app.json`. Before sending real emails, add both URLs (or the constrained `payslipinsights://**` pattern) to the Supabase Auth redirect allow-list. A release build is required for a stable native app scheme; Expo Go URLs are not suitable for production links.
+The mobile client sends signup-confirmation links to `payslipinsights://auth/callback` and password-recovery links to `payslipinsights://reset-password`, both matching the public `scheme` in `app.json`. The native Supabase client uses PKCE, and the parser rejects implicit-flow access or refresh tokens from the custom scheme; an intercepted URL therefore contains only a one-time code that cannot be exchanged without the verifier held in this app's SecureStore. Before sending real emails, add both URLs (or the constrained `payslipinsights://**` pattern) to the Supabase Auth redirect allow-list. A release build is required for a stable native app scheme; Expo Go URLs are not suitable for production links. A later store release should add verified HTTPS Universal Links/App Links for phishing-resistant routing and denial-of-service resistance.
 
 ## Required server-side release work
 

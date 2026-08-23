@@ -1,8 +1,9 @@
 import 'react-native-url-polyfill/auto';
 
 /**
- * This must match `expo.scheme` in app.json. Supabase sends recovery links
- * back to installed builds through this public app scheme.
+ * These must match `expo.scheme` in app.json. The native client uses Supabase's
+ * PKCE flow, so these redirects carry a one-time authorization code rather
+ * than bearer session tokens.
  */
 export const PASSWORD_RESET_REDIRECT_URL = 'payslipinsights://reset-password';
 export const EMAIL_CONFIRMATION_REDIRECT_URL = 'payslipinsights://auth/callback';
@@ -13,17 +14,17 @@ const AUTH_REDIRECT_ROUTES = [
 ] as const;
 
 export type AuthRedirect = {
-  accessToken: string | null;
   code: string | null;
   errorDescription: string | null;
-  refreshToken: string | null;
   type: string | null;
 };
 
 /**
  * Native auth redirects can put values in either the query string or hash.
  * Keeping this parser local means the client never needs to log a sensitive
- * redirect URL or hand its token to a web view.
+ * redirect URL or hand its authorization code to a web view. Bearer tokens
+ * are rejected: a custom URL scheme can be claimed by another app, while a
+ * PKCE authorization code is useless without the verifier held by this app.
  */
 export function parseAuthRedirect(url: string): AuthRedirect | null {
   let callbackUrl: URL;
@@ -34,7 +35,7 @@ export function parseAuthRedirect(url: string): AuthRedirect | null {
   }
 
   // Linking emits every URL that opens the app. Only the two native URLs that
-  // Supabase is configured to return to may supply a code or session tokens.
+  // Supabase is configured to return to may supply a PKCE code or an error.
   const isExpectedCallback = callbackUrl.protocol === 'payslipinsights:'
     && AUTH_REDIRECT_ROUTES.some((route) => callbackUrl.host === route.host && callbackUrl.pathname === route.path);
   if (!isExpectedCallback) return null;
@@ -42,18 +43,18 @@ export function parseAuthRedirect(url: string): AuthRedirect | null {
   const query = callbackUrl.search.slice(1);
   const hash = callbackUrl.hash.slice(1);
   const params = new URLSearchParams([query, hash].filter(Boolean).join('&'));
-  const accessToken = params.get('access_token');
-  const refreshToken = params.get('refresh_token');
   const code = params.get('code');
   const errorDescription = params.get('error_description') ?? params.get('error');
 
-  if (!accessToken && !code && !errorDescription) return null;
+  // Never accept an implicit-flow session from a custom scheme. Reject mixed
+  // redirects too, so a future caller cannot accidentally prefer the code and
+  // leave a bearer token exposed to a competing app.
+  if (params.has('access_token') || params.has('refresh_token')) return null;
+  if (!code && !errorDescription) return null;
 
   return {
-    accessToken,
     code,
     errorDescription,
-    refreshToken,
     type: params.get('type'),
   };
 }
