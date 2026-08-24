@@ -25,4 +25,10 @@ describe('release source hygiene', () => {
     expect(packageJson.dependencies?.['@lovable.dev/cloud-auth-js']).toBeUndefined();
     expect(packageJson.devDependencies?.['lovable-tagger']).toBeUndefined();
   });
+
+  it('keeps the web release on its reviewed npm dependency lockfile', () => {
+    expect(existsSync(projectFile('package-lock.json'))).toBe(true);
+    expect(existsSync(projectFile('bun.lock'))).toBe(false);
+    expect(existsSync(projectFile('bun.lockb'))).toBe(false);
+  });
 });

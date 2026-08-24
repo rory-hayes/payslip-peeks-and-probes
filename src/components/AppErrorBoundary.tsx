@@ -1,5 +1,5 @@
 import { Component, type ErrorInfo, type ReactNode } from 'react';
-import brandMark from '@/assets/payslip-insights-mark.webp';
+import brandMark from '@/assets/payslip-insights-mark.png';
 
 type AppErrorBoundaryProps = { children: ReactNode };
 type AppErrorBoundaryState = { hasError: boolean };

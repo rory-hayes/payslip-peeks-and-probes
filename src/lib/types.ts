@@ -37,6 +37,14 @@ export interface PayslipYearToDate {
   pension: number | null;
 }
 
+export interface PayslipExtractionContext {
+  tax_code: string | null;
+  national_insurance_category: string | null;
+  prsi_class: string | null;
+  pay_frequency: 'weekly' | 'fortnightly' | 'four_weekly' | 'monthly' | 'annual' | 'other' | null;
+  pay_basis: string | null;
+}
+
 export interface Payslip {
   id: string;
   employer_name: string;
@@ -69,6 +77,7 @@ export interface Payslip {
   extraction_line_items?: PayslipLineItem[];
   extraction_field_evidence?: PayslipFieldEvidence[];
   year_to_date?: PayslipYearToDate;
+  extraction_context?: PayslipExtractionContext;
   anomaly_count: number;
 }
 

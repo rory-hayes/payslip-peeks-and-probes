@@ -56,6 +56,13 @@ export const DEMO_PAYSLIPS: Payslip[] = [
     taxable_pay: 3750,
     currency: 'GBP',
     extraction_confidence: 'high',
+    extraction_context: {
+      tax_code: '1257L',
+      national_insurance_category: 'A',
+      prsi_class: null,
+      pay_frequency: 'monthly',
+      pay_basis: 'Salary',
+    },
     extraction_line_items: [
       {
         label: 'Basic pay',

@@ -3,6 +3,7 @@ import type {
   PayslipFieldEvidence,
   PayslipLineItem,
   PayslipYearToDate,
+  PayslipExtractionContext,
 } from './types';
 
 type ExtractionDetails = Pick<
@@ -12,7 +13,25 @@ type ExtractionDetails = Pick<
   | 'extraction_line_items'
   | 'extraction_field_evidence'
   | 'year_to_date'
+  | 'extraction_context'
 >;
+
+export const EXTRACTION_CONTEXT_FIELDS: ReadonlyArray<{
+  key: keyof PayslipExtractionContext;
+  label: string;
+}> = [
+  { key: 'tax_code', label: 'Tax code' },
+  { key: 'national_insurance_category', label: 'NI category' },
+  { key: 'prsi_class', label: 'PRSI class' },
+  { key: 'pay_frequency', label: 'Pay frequency' },
+  { key: 'pay_basis', label: 'Pay basis' },
+];
+
+export function formatExtractionContextValue(key: keyof PayslipExtractionContext, value: string): string {
+  if (key !== 'pay_frequency') return value;
+  if (value === 'four_weekly') return 'Four-weekly';
+  return value.charAt(0).toUpperCase() + value.slice(1);
+}
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -39,6 +58,33 @@ function parseYearToDate(value: unknown): PayslipYearToDate | undefined {
     ni: boundedMoney(value.ni),
     pension: boundedMoney(value.pension),
   };
+}
+
+function parseExtractionContext(value: unknown): PayslipExtractionContext | undefined {
+  if (!isRecord(value)) return undefined;
+
+  const textValue = (candidate: unknown, maxLength: number) => {
+    if (candidate === null || candidate === undefined || candidate === '') return null;
+    if (typeof candidate !== 'string') return undefined;
+    const trimmed = candidate.trim();
+    return trimmed.length <= maxLength ? (trimmed || null) : undefined;
+  };
+  const payFrequency = value.pay_frequency;
+  if (payFrequency !== null && payFrequency !== undefined && payFrequency !== ''
+    && payFrequency !== 'weekly' && payFrequency !== 'fortnightly' && payFrequency !== 'four_weekly'
+    && payFrequency !== 'monthly' && payFrequency !== 'annual' && payFrequency !== 'other') {
+    return undefined;
+  }
+
+  const context: PayslipExtractionContext = {
+    tax_code: textValue(value.tax_code, 40),
+    national_insurance_category: textValue(value.national_insurance_category, 20),
+    prsi_class: textValue(value.prsi_class, 20),
+    pay_frequency: (payFrequency || null) as PayslipExtractionContext['pay_frequency'],
+    pay_basis: textValue(value.pay_basis, 40),
+  };
+
+  return Object.values(context).some((field) => field === undefined) ? undefined : context;
 }
 
 function parseLineItems(value: unknown): PayslipLineItem[] {
@@ -95,5 +141,6 @@ export function normalizeExtractionDetails(extraction: unknown): ExtractionDetai
     extraction_line_items: parseLineItems(normalized.line_items),
     extraction_field_evidence: parseFieldEvidence(normalized.field_evidence),
     year_to_date: parseYearToDate(row.year_to_date_json ?? normalized.year_to_date),
+    extraction_context: parseExtractionContext(normalized.document_context),
   };
 }

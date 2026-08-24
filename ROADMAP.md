@@ -16,7 +16,7 @@ The core intended journey is:
 6. Usage limits and subscription state control premium capabilities.
 7. The user can export data or delete their account.
 
-The repo is beyond a static prototype, but it is not yet a credible production MVP. Several core flows exist in code, but security, validation, test coverage, dependency health, RLS verification, country support consistency, deployment, and production ownership of Lovable/Stripe/AI integrations still need focused work.
+The repo is beyond a static prototype, but it is not yet a credible production MVP. Several core flows exist in code, but security, validation, test coverage, dependency health, RLS verification, country support consistency, deployment, and production ownership of third-party/Stripe/AI integrations still need focused work.
 
 ## 2. Current Implementation Status
 
@@ -31,7 +31,7 @@ Remaining gaps:
 - Client-side route protection is not a security boundary.
 - Server-side ownership/RLS coverage needs verification.
 - Auth smoke tests are missing for protected routes and onboarding redirects.
-- OAuth is present through generated Lovable integration code, but production ownership and provider behavior are unclear.
+- OAuth is present through generated third-party integration code, but production ownership and provider behavior are unclear.
 
 ### Core User Flows
 
@@ -43,18 +43,18 @@ Remaining gaps:
 
 - Upload failure states can be misleading: extraction invocation failures are surfaced as "upload complete" and may show success even when processing did not start or failed.
 - End-to-end signup, onboarding, upload, extraction, review, billing, export, and delete flows have not been proven locally.
-- Some routes rely on live Supabase, Lovable, Stripe, or AI gateway behavior that is not covered by tests.
+- Some routes rely on live Supabase, Stripe, or AI gateway behavior that is not covered by tests.
 
 ### UI / UX
 
 Status: Partially Implemented
 
-The app uses Tailwind, shadcn/Radix components, lucide icons, dense dashboard layouts, public guides/calculators, and multiple empty/loading/error states. The product surface is substantial for a Lovable-migrated SaaS app.
+The app uses Tailwind, shadcn/Radix components, lucide icons, dense dashboard layouts, public guides/calculators, and multiple empty/loading/error states. The product surface is substantial for a migrated SaaS app.
 
 Remaining gaps:
 
 - There are likely inconsistent empty/error states across upload, extraction, billing, and account deletion flows.
-- Some Lovable starter artifacts remain, including unused placeholder files.
+- Some starter artifacts remain, including unused placeholder files.
 - Accessibility and responsive behavior are not covered by automated or documented manual tests.
 - Country support messaging is inconsistent, especially around United States support.
 
@@ -86,7 +86,7 @@ The backend is mainly Supabase Edge Functions:
 - `payments-webhook`
 - `cancel-subscription-on-delete`
 
-Several functions perform manual auth checks, rate limiting, storage access, Stripe connector calls, Lovable AI gateway calls, and database updates.
+Several functions perform manual auth checks, rate limiting, storage access, Stripe connector calls, AI gateway calls, and database updates.
 
 Remaining gaps:
 
@@ -99,11 +99,11 @@ Remaining gaps:
 
 Status: Partially Implemented
 
-Supabase, Lovable AI gateway, Lovable Stripe connector, Stripe webhook verification, generated Lovable auth integration, PostHog environment placeholders, and Google command-centre export support are present.
+Supabase, the AI gateway, the Stripe connector, Stripe webhook verification, generated auth integration, PostHog environment placeholders, and Google command-centre export support are present.
 
 Remaining gaps:
 
-- Production ownership of Lovable gateway/connector services is unclear.
+- Production ownership of gateway/connector services is unclear.
 - Stripe sandbox and live webhook flows need manual verification.
 - AI provider cost, latency, retries, schema validation, and observability are not mature.
 - Command-centre and Linear exports exist locally, but Linear issue creation was blocked by workspace issue limits.
@@ -201,7 +201,7 @@ There is no global Redux/Zustand-style store.
 
 ### Auth Approach
 
-Supabase Auth is the primary auth provider. Sessions are persisted by the Supabase browser client. `ProtectedRoute` guards authenticated routes and onboarding completion. Generated Lovable OAuth glue code exists in `src/integrations/lovable/index.ts`.
+Supabase Auth is the primary auth provider. Sessions are persisted by the Supabase browser client. `ProtectedRoute` guards authenticated routes and onboarding completion. Generated OAuth glue code should remain behind the owned auth boundary.
 
 ### Database / Storage Approach
 
@@ -220,7 +220,7 @@ Deployment setup is unclear. The repo has Vite build scripts and Supabase config
 - Browser data access should go through Supabase hooks and generated types.
 - Edge Functions handle privileged work, AI extraction, and Stripe connector calls.
 - Server-only secrets belong in Supabase function secrets, not Vite environment variables.
-- Lovable-generated code should be treated as a boundary and not casually rewritten.
+- Generated integration code should be treated as a boundary and not casually rewritten.
 - Supabase migrations and generated types must remain synchronized.
 
 ## 4. Production Readiness Assessment
@@ -265,7 +265,7 @@ Production cannot be considered safe until committed environment values are remo
 
 #### Recommended Fix
 
-Remove tracked local environment files, keep only `.env.example`, update `.gitignore`, document rotation steps, and rotate any potentially exposed Supabase, Stripe, Lovable, analytics, or deployment credentials.
+Remove tracked local environment files, keep only `.env.example`, update `.gitignore`, document rotation steps, and rotate any potentially exposed Supabase, Stripe, analytics, or deployment credentials.
 
 ### GAP-002: Production dependency vulnerabilities are open
 
@@ -603,7 +603,7 @@ Remove tracked `.env`, `.env.development`, and `.env.production` from the reposi
 
 - [ ] Local environment files are no longer tracked.
 - [ ] `.env.example` remains available with placeholder names only.
-- [ ] Rotation checklist covers Supabase, Stripe, Lovable, analytics, and deployment credentials.
+- [ ] Rotation checklist covers Supabase, Stripe, analytics, and deployment credentials.
 - [ ] No application code changes are included.
 
 #### Validation
@@ -1278,7 +1278,7 @@ Define logging fields, redaction rules, event names, error tracking target, and 
 
 This is a planning task unless a provider is already selected.
 
-### TASK-022: Clean unused Lovable starter artifacts and duplicate tooling leftovers
+### TASK-022: Clean unused starter artifacts and duplicate tooling leftovers
 
 Status: Ready  
 Priority: P2  
@@ -1292,7 +1292,7 @@ Reduce confusion from generated or unused migration artifacts.
 
 #### Scope
 
-Remove or document unused starter files, placeholder routes, duplicate lockfiles, and generated Lovable artifacts that are not part of runtime behavior.
+Remove or document unused starter files, placeholder routes, duplicate lockfiles, and generated artifacts that are not part of runtime behavior.
 
 #### Acceptance Criteria
 
@@ -1302,7 +1302,7 @@ Remove or document unused starter files, placeholder routes, duplicate lockfiles
 
 #### Validation
 
-- [ ] `rg "REMOVE_THIS|Index.tsx|App.css|Lovable" src docs`
+- [ ] `rg "REMOVE_THIS|Index.tsx|App.css" src docs`
 - [ ] `npm run lint`
 - [ ] `npx tsc --noEmit`
 - [ ] `npm test`
@@ -1427,7 +1427,7 @@ Validation: RLS/storage isolation command, `npm test`, `npx tsc --noEmit`.
 ### Assumptions
 
 - Supabase is the intended long-term auth, database, storage, and function backend.
-- Lovable gateway/connector integrations are currently required for AI and Stripe behavior.
+- Gateway/connector integrations are currently required for AI and Stripe behavior.
 - `project-status.json` reflects recent validation results.
 - Linear issue creation did not complete because of workspace issue limits, so local `PPP-*` references are treated as planning IDs, not confirmed Linear issue keys.
 - No `PLANS.md` or `SPRINT.md` file is currently required to understand this roadmap.

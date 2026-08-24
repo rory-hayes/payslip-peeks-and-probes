@@ -28,7 +28,7 @@ import {
   AccordionTrigger,
 } from '@/components/ui/accordion';
 import payslipCheckHero from '@/assets/option-one-payslip-check-hero-v1.webp';
-import payslipMark from '@/assets/payslip-insights-mark.webp';
+import payslipMark from '@/assets/payslip-insights-mark.png';
 import aquaCorner from '@/assets/option-one-aqua-corner-v2.webp';
 import './Landing.css';
 

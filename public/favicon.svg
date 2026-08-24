@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-labelledby="title">
+  <title>Payslip Insights</title>
+  <rect width="64" height="64" rx="15" fill="#F6F4EE"/>
+  <path d="M13 7h26l12 12v35a4 4 0 0 1-4 4H17a4 4 0 0 1-4-4V7Z" fill="#173B67"/>
+  <path d="M39 7v12h12" fill="#2C6B93"/>
+  <path d="M22 27h20M22 34h13" stroke="#F6F4EE" stroke-linecap="round" stroke-width="3"/>
+  <circle cx="43" cy="44" r="11" fill="#F05D55"/>
+  <path d="m38 47 4-5 3 3 4-6" fill="none" stroke="#fff" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5"/>
+</svg>

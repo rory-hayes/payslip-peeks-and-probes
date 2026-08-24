@@ -1,4 +1,4 @@
-import brandMark from "@/assets/payslip-insights-mark.webp";
+import brandMark from "@/assets/payslip-insights-mark.png";
 import { cn } from "@/lib/utils";
 
 type BrandLockupProps = {

@@ -9,6 +9,13 @@ function validExtraction(overrides: Record<string, unknown> = {}) {
     employer_name: 'Example Ltd',
     country: 'UK',
     currency: 'GBP',
+    document_context: {
+      tax_code: '1257L',
+      national_insurance_category: 'A',
+      prsi_class: null,
+      pay_frequency: 'monthly',
+      pay_basis: 'Salary',
+    },
     gross_pay: 3000,
     net_pay: 2300,
     taxable_pay: 3000,
@@ -49,6 +56,7 @@ describe('payslip extraction parser', () => {
 
     expect(parsed).toMatchObject({
       currency: 'GBP',
+      document_context: { tax_code: '1257L', pay_frequency: 'monthly' },
       line_items: [{ label: 'Basic pay', amount: 3000, evidence: 'Basic pay £3,000.00' }],
       field_evidence: [{ field: 'gross_pay', confidence: 'high' }],
       year_to_date: { gross_pay: 9000, tax: 1200 },
@@ -83,5 +91,17 @@ describe('payslip extraction parser', () => {
     }));
 
     expect(parseExtraction(validExtraction({ line_items: lineItems }))).toBeNull();
+  });
+
+  it('rejects guessed or unsupported payroll context values', () => {
+    expect(parseExtraction(validExtraction({
+      document_context: {
+        tax_code: '1257L',
+        national_insurance_category: 'A',
+        prsi_class: null,
+        pay_frequency: 'every-other-week',
+        pay_basis: 'Salary',
+      },
+    }))).toBeNull();
   });
 });

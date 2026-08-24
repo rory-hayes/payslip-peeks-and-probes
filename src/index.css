@@ -1053,6 +1053,55 @@
   margin-top: 3px;
 }
 
+.pi-review-extraction-context {
+  margin-top: 12px;
+}
+
+.pi-review-extraction-context > p {
+  color: #17155d;
+  font-size: 12px;
+  font-weight: 900;
+  margin: 0;
+}
+
+.pi-review-extraction-context > span {
+  color: #64658d;
+  display: block;
+  font-size: 10px;
+  line-height: 1.4;
+  margin-top: 3px;
+}
+
+.pi-review-extraction-context > div {
+  display: grid;
+  gap: 7px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin-top: 9px;
+}
+
+.pi-review-extraction-context > div > div {
+  background: #eeeafe;
+  border-radius: 9px;
+  padding: 8px 9px;
+}
+
+.pi-review-extraction-context > div span,
+.pi-review-extraction-context > div strong {
+  display: block;
+}
+
+.pi-review-extraction-context > div span {
+  color: #64658d;
+  font-size: 10px;
+  font-weight: 750;
+}
+
+.pi-review-extraction-context > div strong {
+  color: #17155d;
+  font-size: 12px;
+  margin-top: 3px;
+}
+
 .pi-review-extraction-evidence {
   color: #17155d;
   font-size: 11px;

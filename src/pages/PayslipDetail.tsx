@@ -11,6 +11,7 @@ import { usePayslip, usePayslips, useAnomalies } from '@/hooks/use-payslip-data'
 import { useCurrency } from '@/hooks/use-profile';
 import { formatDate } from '@/lib/date-utils';
 import { selectPayslipComparison } from '@/lib/payslip-comparison';
+import { EXTRACTION_CONTEXT_FIELDS, formatExtractionContextValue } from '@/lib/payslip-extraction-details';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useQueryClient } from '@tanstack/react-query';
@@ -134,6 +135,12 @@ const PayslipDetail = () => {
   const lineItems = slip.extraction_line_items ?? [];
   const fieldEvidence = slip.extraction_field_evidence ?? [];
   const yearToDate = slip.year_to_date;
+  const extractionContextEntries = slip.extraction_context
+    ? EXTRACTION_CONTEXT_FIELDS.flatMap(({ key, label }) => {
+        const value = slip.extraction_context?.[key];
+        return value ? [{ key, label, value: formatExtractionContextValue(key, value) }] : [];
+      })
+    : [];
 
   return (
     <AppLayout>
@@ -181,7 +188,7 @@ const PayslipDetail = () => {
           </CardContent>
         </Card>
 
-        {(lineItems.length > 0 || yearToDate || fieldEvidence.length > 0) && (
+        {(lineItems.length > 0 || yearToDate || fieldEvidence.length > 0 || extractionContextEntries.length > 0) && (
           <Card className="border-0 shadow-sm">
             <CardHeader className="pb-2">
               <div className="flex flex-wrap items-start justify-between gap-3">
@@ -210,6 +217,21 @@ const PayslipDetail = () => {
                       <div key={item.label} className="flex items-center justify-between rounded-lg bg-muted/40 px-3 py-2 text-sm">
                         <span className="text-muted-foreground">{item.label}</span>
                         <span className="font-medium text-foreground">{item.value == null ? '—' : formatCurrency(item.value)}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {extractionContextEntries.length > 0 && (
+                <div>
+                  <h3 className="text-sm font-semibold text-foreground">Payroll context printed on the payslip</h3>
+                  <p className="mt-1 text-xs text-muted-foreground">Useful labels for understanding a deduction; they do not confirm that payroll is correct.</p>
+                  <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                    {extractionContextEntries.map((item) => (
+                      <div key={item.key} className="flex items-center justify-between gap-3 rounded-lg bg-muted/40 px-3 py-2 text-sm">
+                        <span className="text-muted-foreground">{item.label}</span>
+                        <span className="text-right font-medium text-foreground">{item.value}</span>
                       </div>
                     ))}
                   </div>

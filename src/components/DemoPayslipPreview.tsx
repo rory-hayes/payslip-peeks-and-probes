@@ -11,6 +11,7 @@ import {
 } from '@/components/ui/dialog';
 import AnomalyExplanation from '@/components/AnomalyExplanation';
 import { formatDate } from '@/lib/date-utils';
+import { EXTRACTION_CONTEXT_FIELDS, formatExtractionContextValue } from '@/lib/payslip-extraction-details';
 import type { AnomalyResult, Payslip } from '@/lib/types';
 
 export interface DemoPayslipPreviewState {
@@ -38,6 +39,12 @@ function formatDemoCurrency(value: number): string {
 const DemoPayslipPreview = ({ onOpenChange, onSignUp, preview }: DemoPayslipPreviewProps) => {
   const payslip = preview?.payslip;
   const anomaly = preview?.anomaly;
+  const extractionContextEntries = payslip?.extraction_context
+    ? EXTRACTION_CONTEXT_FIELDS.flatMap(({ key, label }) => {
+        const value = payslip.extraction_context?.[key];
+        return value ? [{ key, label, value: formatExtractionContextValue(key, value) }] : [];
+      })
+    : [];
 
   return (
     <Dialog open={Boolean(preview)} onOpenChange={onOpenChange}>
@@ -70,7 +77,7 @@ const DemoPayslipPreview = ({ onOpenChange, onSignUp, preview }: DemoPayslipPrev
                 </dl>
               </section>
 
-              {(payslip.extraction_line_items?.length || payslip.year_to_date) ? (
+              {(payslip.extraction_line_items?.length || payslip.year_to_date || extractionContextEntries.length > 0) ? (
                 <section className="pi-demo-preview__extraction" aria-labelledby="sample-extraction-heading">
                   <div className="pi-demo-preview__section-heading">
                     <span className="pi-demo-preview__check" aria-hidden="true"><FileText /></span>
@@ -80,7 +87,7 @@ const DemoPayslipPreview = ({ onOpenChange, onSignUp, preview }: DemoPayslipPrev
                     </div>
                   </div>
                   <p className="pi-demo-preview__plain-copy">
-                    Line items, year-to-date figures and short source snippets stay together so you can spot what needs checking before you confirm it.
+                    Line items, payroll context, year-to-date figures and short source snippets stay together so you can spot what needs checking before you confirm it.
                   </p>
                   {payslip.extraction_line_items?.length ? (
                     <div className="pi-demo-preview__line-items" aria-label="Sample extracted line items">
@@ -108,6 +115,20 @@ const DemoPayslipPreview = ({ onOpenChange, onSignUp, preview }: DemoPayslipPrev
                           <strong>{typeof value === 'number' ? formatDemoCurrency(value) : '—'}</strong>
                         </div>
                       ))}
+                    </div>
+                  ) : null}
+                  {extractionContextEntries.length > 0 ? (
+                    <div className="pi-demo-preview__context" aria-label="Sample payroll context">
+                      <p>Payroll context printed on the payslip</p>
+                      <span>Useful labels to check against the original; not a payroll verdict.</span>
+                      <div>
+                        {extractionContextEntries.map((item) => (
+                          <div key={item.key}>
+                            <span>{item.label}</span>
+                            <strong>{item.value}</strong>
+                          </div>
+                        ))}
+                      </div>
                     </div>
                   ) : null}
                 </section>

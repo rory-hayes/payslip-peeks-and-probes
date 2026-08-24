@@ -32,6 +32,11 @@ describe("payslip provider dispatch boundary", () => {
     expect(body.response_format).toEqual(PAYSLIP_PROVIDER_RESPONSE_FORMAT);
     expect(body.response_format.type).toBe("json_schema");
     expect(body.response_format.json_schema.strict).toBe(true);
+    expect(body.response_format.json_schema.schema.required).toContain("document_context");
+    expect(body.response_format.json_schema.schema.properties.document_context.properties).toMatchObject({
+      tax_code: { type: ["string", "null"] },
+      pay_frequency: { enum: ["weekly", "fortnightly", "four_weekly", "monthly", "annual", "other", null] },
+    });
     expect(body.messages[1].content[0]).toEqual({
       type: "file",
       file: {

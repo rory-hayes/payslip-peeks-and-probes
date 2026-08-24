@@ -16,7 +16,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useDemo } from '@/contexts/DemoContext';
 import { useToast } from '@/hooks/use-toast';
 import VerifyEmailBanner from '@/components/VerifyEmailBanner';
-import brandMark from '@/assets/payslip-insights-mark.webp';
+import brandMark from '@/assets/payslip-insights-mark.png';
 
 const primaryNavItems = [
   { label: 'Home', icon: Home, path: '/dashboard' },

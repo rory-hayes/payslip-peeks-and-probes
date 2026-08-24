@@ -21,13 +21,15 @@ The structured result now includes:
 - headline pay and deduction totals;
 - year-to-date gross, tax, NI/PRSI, and pension values;
 - distinct earning, deduction, employer-contribution, and informational rows;
+- non-identifying payroll context printed on the document, including tax code,
+  NI category/PRSI class, pay frequency, and pay basis where visible;
 - short source snippets for line items and headline fields;
 - a bounded confidence value for the extraction and each row.
 
-The upload review and detail screen surface these values as transcription
-evidence. They do not present confidence as proof, and they continue to show
-the private original-payslip link, the review boundary, and the payroll/tax
-disclaimer before a user relies on the figures.
+The upload review, sample preview, and detail screen surface these values as
+transcription evidence. They do not present confidence as proof, and they
+continue to show the private original-payslip link, the review boundary, and
+the payroll/tax disclaimer before a user relies on the figures.
 
 ## What this proves
 

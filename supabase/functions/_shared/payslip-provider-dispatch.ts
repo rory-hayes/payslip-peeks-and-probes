@@ -22,6 +22,13 @@ Return a JSON object using this exact schema (use null for fields you cannot fin
   "employer_name": "string or null",
   "country": "UK or Ireland or null",
   "currency": "GBP or EUR or null",
+  "document_context": {
+    "tax_code": "string or null",
+    "national_insurance_category": "string or null",
+    "prsi_class": "string or null",
+    "pay_frequency": "weekly | fortnightly | four_weekly | monthly | annual | other | null",
+    "pay_basis": "string or null"
+  },
   "gross_pay": number or null,
   "net_pay": number or null,
   "taxable_pay": number or null,
@@ -75,8 +82,9 @@ UK and Ireland field mapping:
 - National Insurance → national_insurance_amount.
 - PRSI → prsi_amount; USC → usc_amount.
 - Employee pension contribution → pension_amount.
+- Capture a visible tax code, National Insurance category, PRSI class, pay frequency, or pay basis in document_context. These are useful context, not proof that payroll is correct.
 - Student loan, bonus, overtime and total deductions should be recorded only where clearly shown.
-- Include every distinct earning, deduction, employer contribution, and other financial line that is visibly printed. Do not include names, addresses, bank details, tax codes, or other personal identifiers.
+- Include every distinct earning, deduction, employer contribution, and other financial line that is visibly printed. Do not include names, addresses, bank details, employee IDs, or other personal identifiers. A tax code is allowed only in document_context because it helps explain a payroll deduction.
 - Keep line-item amounts positive and use the "kind" field to describe whether the row is an earning or deduction. Do not calculate missing amounts or totals.
 - The "evidence" field must be a short exact label-and-amount fragment from the document, never a personal identifier or a paragraph.
 - The "field_evidence" array should include only fields supported by visible text. Use the canonical field name from the schema, or "line_item" for a row-specific fragment.
@@ -86,6 +94,7 @@ Rules:
 - Use the EMPLOYEE share, NOT the employer share
 - Be precise with decimal values
 - Do not calculate, infer, or give tax advice. Only transcribe fields visible on the document.
+- Do not guess document_context values. Use null when the relevant label is not clearly visible.
 - Only return the JSON object, no other text`;
 
 const NULLABLE_MONEY_SCHEMA = { type: ["number", "null"] } as const;
@@ -117,6 +126,21 @@ export const PAYSLIP_PROVIDER_RESPONSE_FORMAT = {
         currency: {
           type: ["string", "null"],
           enum: ["GBP", "EUR", null],
+        },
+        document_context: {
+          type: "object",
+          additionalProperties: false,
+          properties: {
+            tax_code: NULLABLE_TEXT_SCHEMA,
+            national_insurance_category: NULLABLE_TEXT_SCHEMA,
+            prsi_class: NULLABLE_TEXT_SCHEMA,
+            pay_frequency: {
+              type: ["string", "null"],
+              enum: ["weekly", "fortnightly", "four_weekly", "monthly", "annual", "other", null],
+            },
+            pay_basis: NULLABLE_TEXT_SCHEMA,
+          },
+          required: ["tax_code", "national_insurance_category", "prsi_class", "pay_frequency", "pay_basis"],
         },
         gross_pay: NULLABLE_MONEY_SCHEMA,
         net_pay: NULLABLE_MONEY_SCHEMA,
@@ -199,6 +223,7 @@ export const PAYSLIP_PROVIDER_RESPONSE_FORMAT = {
         "employer_name",
         "country",
         "currency",
+        "document_context",
         "gross_pay",
         "net_pay",
         "taxable_pay",

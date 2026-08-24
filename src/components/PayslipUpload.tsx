@@ -14,7 +14,11 @@ import { Upload, FileText, CheckCircle, AlertCircle, ClipboardCheck, ExternalLin
 import { useToast } from '@/hooks/use-toast';
 import { formatDate } from '@/lib/date-utils';
 import { useUsage } from '@/hooks/use-usage';
-import { normalizeExtractionDetails } from '@/lib/payslip-extraction-details';
+import {
+  EXTRACTION_CONTEXT_FIELDS,
+  formatExtractionContextValue,
+  normalizeExtractionDetails,
+} from '@/lib/payslip-extraction-details';
 import {
   PAYSLIP_ALLOWED_FILE_TYPES,
   PAYSLIP_MAX_FILE_BYTES,
@@ -677,6 +681,12 @@ const PayslipUpload = ({ onUploadComplete, resumeReviewId = null }: PayslipUploa
   const reviewLineItems = reviewExtraction.extraction_line_items ?? [];
   const reviewFieldEvidence = reviewExtraction.extraction_field_evidence ?? [];
   const reviewYearToDate = reviewExtraction.year_to_date;
+  const reviewExtractionContextEntries = reviewExtraction.extraction_context
+    ? EXTRACTION_CONTEXT_FIELDS.flatMap(({ key, label }) => {
+        const value = reviewExtraction.extraction_context?.[key];
+        return value ? [{ key, label, value: formatExtractionContextValue(key, value) }] : [];
+      })
+    : [];
   const reviewCurrency = reviewExtraction.currency ?? (isIreland ? 'EUR' : 'GBP');
 
   const renderFieldStatus = (key: string) => {
@@ -821,7 +831,7 @@ const PayslipUpload = ({ onUploadComplete, resumeReviewId = null }: PayslipUploa
               )}
             </div>
 
-            {(reviewLineItems.length > 0 || reviewYearToDate || reviewFieldEvidence.length > 0) && (
+            {(reviewLineItems.length > 0 || reviewYearToDate || reviewFieldEvidence.length > 0 || reviewExtractionContextEntries.length > 0) && (
               <section className="pi-review-extraction" aria-labelledby="review-extraction-heading">
                 <div className="pi-review-extraction-header">
                   <div>
@@ -864,6 +874,21 @@ const PayslipUpload = ({ onUploadComplete, resumeReviewId = null }: PayslipUploa
                         <strong>{typeof value === 'number' ? formatReviewMoney(value, reviewCurrency) : '—'}</strong>
                       </div>
                     ))}
+                  </div>
+                )}
+
+                {reviewExtractionContextEntries.length > 0 && (
+                  <div className="pi-review-extraction-context" aria-label="Extracted payroll context">
+                    <p>Payroll context printed on the payslip</p>
+                    <span>Useful labels to check against the original, not a payroll verdict.</span>
+                    <div>
+                      {reviewExtractionContextEntries.map((item) => (
+                        <div key={item.key}>
+                          <span>{item.label}</span>
+                          <strong>{item.value}</strong>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 )}
 

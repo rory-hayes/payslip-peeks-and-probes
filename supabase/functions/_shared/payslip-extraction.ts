@@ -21,6 +21,21 @@ export interface Extraction {
 export type ExtractionLineItemKind = "earning" | "deduction" | "employer_contribution" | "information";
 export type ExtractionConfidence = "high" | "medium" | "low";
 
+export type ExtractionPayFrequency = "weekly" | "fortnightly" | "four_weekly" | "monthly" | "annual" | "other" | null;
+
+/**
+ * Non-identifying payroll context that helps a person understand why a
+ * deduction may have changed. Employee IDs, addresses, bank details, and
+ * other personal identifiers deliberately do not belong here.
+ */
+export interface ExtractionDocumentContext {
+  tax_code: string | null;
+  national_insurance_category: string | null;
+  prsi_class: string | null;
+  pay_frequency: ExtractionPayFrequency;
+  pay_basis: string | null;
+}
+
 export interface ExtractionLineItem {
   label: string;
   kind: ExtractionLineItemKind;
@@ -49,6 +64,7 @@ export interface ParsedExtraction extends Extraction {
     ni: number | null;
     pension: number | null;
   } | null;
+  document_context: ExtractionDocumentContext;
   line_items: ExtractionLineItem[];
   field_evidence: ExtractionFieldEvidence[];
   confidence: ExtractionConfidence;
@@ -93,6 +109,36 @@ function nullableCurrency(value: unknown): "GBP" | "EUR" | null | undefined {
 
 function nullableConfidence(value: unknown): ExtractionConfidence {
   return value === "high" || value === "medium" || value === "low" ? value : "low";
+}
+
+function nullablePayFrequency(value: unknown): ExtractionPayFrequency | undefined {
+  if (value == null || value === "") return null;
+  if (value === "weekly" || value === "fortnightly" || value === "four_weekly" || value === "monthly" || value === "annual" || value === "other") {
+    return value;
+  }
+  return undefined;
+}
+
+function parseDocumentContext(value: unknown): ExtractionDocumentContext | undefined {
+  if (!isPlainObject(value)) return undefined;
+
+  const taxCode = nullableText(value.tax_code, 40);
+  const nationalInsuranceCategory = nullableText(value.national_insurance_category, 20);
+  const prsiClass = nullableText(value.prsi_class, 20);
+  const payFrequency = nullablePayFrequency(value.pay_frequency);
+  const payBasis = nullableText(value.pay_basis, 40);
+
+  if ([taxCode, nationalInsuranceCategory, prsiClass, payFrequency, payBasis].some((field) => field === undefined)) {
+    return undefined;
+  }
+
+  return {
+    tax_code: taxCode,
+    national_insurance_category: nationalInsuranceCategory,
+    prsi_class: prsiClass,
+    pay_frequency: payFrequency,
+    pay_basis: payBasis,
+  };
 }
 
 function parseLineItems(value: unknown): ExtractionLineItem[] | undefined {
@@ -190,6 +236,7 @@ export function parseExtraction(value: unknown): ParsedExtraction | null {
   const country = nullableCountry(value.country);
   const currency = nullableCurrency(value.currency);
   const yearToDate = parseYearToDate(value.year_to_date);
+  const documentContext = parseDocumentContext(value.document_context);
   const lineItems = parseLineItems(value.line_items);
   const fieldEvidence = parseFieldEvidence(value.field_evidence);
 
@@ -216,6 +263,7 @@ export function parseExtraction(value: unknown): ParsedExtraction | null {
     country,
     currency,
     yearToDate,
+    documentContext,
     lineItems,
     fieldEvidence,
   ].some((field) => field === undefined)) {
@@ -245,6 +293,7 @@ export function parseExtraction(value: unknown): ParsedExtraction | null {
     country,
     currency,
     year_to_date: yearToDate,
+    document_context: documentContext,
     line_items: lineItems,
     field_evidence: fieldEvidence,
     confidence: nullableConfidence(value.confidence),
