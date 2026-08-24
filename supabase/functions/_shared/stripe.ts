@@ -47,8 +47,8 @@ function getStripeSecretKey(environment: StripeEnv): string {
 }
 
 /**
- * Edge Functions talk to Stripe directly. Lovable credentials and connector
- * gateways are deliberately not part of this production boundary.
+ * Edge Functions talk to Stripe directly. Third-party connector credentials
+ * and browser-side payment secrets are deliberately not part of this boundary.
  */
 export function createStripeClient(environment: StripeEnv = getStripeEnvironment()): Stripe {
   return new Stripe(getStripeSecretKey(environment), {

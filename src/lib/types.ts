@@ -12,6 +12,30 @@ export type PayFrequency = 'weekly' | 'fortnightly' | 'monthly' | 'other';
 export type AnomalySeverity = 'low' | 'medium' | 'high';
 export type AnomalyStatus = 'new' | 'reviewed' | 'raised' | 'resolved';
 export type PayslipStatus = 'uploading' | 'processing' | 'extracted' | 'confirmed' | 'failed';
+export type PayslipExtractionConfidence = 'high' | 'medium' | 'low';
+export type PayslipLineItemKind = 'earning' | 'deduction' | 'employer_contribution' | 'information';
+
+export interface PayslipLineItem {
+  label: string;
+  kind: PayslipLineItemKind;
+  amount: number | null;
+  year_to_date_amount: number | null;
+  evidence: string | null;
+  confidence: PayslipExtractionConfidence;
+}
+
+export interface PayslipFieldEvidence {
+  field: string;
+  evidence: string | null;
+  confidence: PayslipExtractionConfidence;
+}
+
+export interface PayslipYearToDate {
+  gross_pay: number | null;
+  tax: number | null;
+  ni: number | null;
+  pension: number | null;
+}
 
 export interface Payslip {
   id: string;
@@ -40,6 +64,11 @@ export interface Payslip {
   overtime_amount?: number;
   total_deductions: number;
   taxable_pay?: number;
+  currency?: 'GBP' | 'EUR';
+  extraction_confidence?: PayslipExtractionConfidence;
+  extraction_line_items?: PayslipLineItem[];
+  extraction_field_evidence?: PayslipFieldEvidence[];
+  year_to_date?: PayslipYearToDate;
   anomaly_count: number;
 }
 

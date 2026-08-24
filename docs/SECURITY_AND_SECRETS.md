@@ -29,6 +29,9 @@ encodes it as base64, and sends that document content to
 `AI_GATEWAY_API_KEY`. PDFs use file parts and images use high-detail image
 parts. The configured model identifier in source is `openai/gpt-5.4`, with a
 strict JSON Schema response contract and an independent server-side parser.
+The normalized result can include bounded line items, year-to-date values, and
+short source snippets; see [`AI_EXTRACTION_AUDIT.md`](AI_EXTRACTION_AUDIT.md)
+for the accuracy and live-provider gates.
 
 That is a real external processor boundary. It is not an approval statement
 about provider terms, region, retention, training, or subprocessors. Before

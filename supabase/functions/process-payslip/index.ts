@@ -7,6 +7,7 @@ import {
 } from "../_shared/payslip-file-validation.ts";
 import { PAYSLIP_MAX_FILE_BYTES, isOwnedPayslipObjectPath } from "../_shared/payslip-storage-boundary.ts";
 import { buildPayslipExtractionProviderRequest } from "../_shared/payslip-provider-dispatch.ts";
+import { nullableCountry, parseExtraction, type Extraction } from "../_shared/payslip-extraction.ts";
 
 // ---------- Date normalisation ----------
 
@@ -83,173 +84,11 @@ const corsHeaders = {
 
 // ---------- Anomaly detection ----------
 
-interface Extraction {
-  gross_pay: number | null;
-  net_pay: number | null;
-  taxable_pay: number | null;
-  tax_amount: number | null;
-  national_insurance_amount: number | null;
-  prsi_amount: number | null;
-  usc_amount: number | null;
-  social_security_amount: number | null;
-  solidarity_amount: number | null;
-  church_tax_amount: number | null;
-  pension_amount: number | null;
-  student_loan_amount: number | null;
-  bonus_amount: number | null;
-  overtime_amount: number | null;
-  total_deductions: number | null;
-}
-
-interface ParsedExtraction extends Extraction {
-  pay_date: string | null;
-  pay_period_start: string | null;
-  pay_period_end: string | null;
-  employer_name: string | null;
-  country: "UK" | "Ireland" | null;
-  year_to_date: {
-    gross_pay: number | null;
-    tax: number | null;
-    ni: number | null;
-    pension: number | null;
-  } | null;
-  confidence: "high" | "medium" | "low";
-}
-
-const MAX_MONEY_VALUE = 10_000_000;
 const MAX_PROCESSING_ATTEMPTS = 3;
 const PROVIDER_REQUEST_TIMEOUT_MS = 30_000;
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
-}
-
-/**
- * Missing money fields are expected; non-numeric fields are not. Rejecting a
- * malformed response avoids persisting invented or string-coerced figures.
- */
-function nullableMoney(value: unknown): number | null | undefined {
-  if (value == null) return null;
-  if (typeof value !== "number" || !Number.isFinite(value) || Math.abs(value) > MAX_MONEY_VALUE) {
-    return undefined;
-  }
-  return value;
-}
-
-function nullableText(value: unknown, maxLength: number): string | null | undefined {
-  if (value == null) return null;
-  if (typeof value !== "string") return undefined;
-  const trimmed = value.trim();
-  if (trimmed.length === 0) return null;
-  return trimmed.length <= maxLength ? trimmed : undefined;
-}
-
-function nullableCountry(value: unknown): "UK" | "Ireland" | null | undefined {
-  if (value == null || value === "") return null;
-  if (value === "UK" || value === "Ireland") return value;
-  if (typeof value !== "string") return undefined;
-  return null;
-}
-
-function nullableConfidence(value: unknown): "high" | "medium" | "low" {
-  return value === "high" || value === "medium" || value === "low" ? value : "low";
-}
-
-function parseYearToDate(value: unknown): ParsedExtraction["year_to_date"] | undefined {
-  if (value == null) return null;
-  if (!isPlainObject(value)) return undefined;
-
-  const grossPay = nullableMoney(value.gross_pay);
-  const tax = nullableMoney(value.tax);
-  const ni = nullableMoney(value.ni);
-  const pension = nullableMoney(value.pension);
-  if ([grossPay, tax, ni, pension].some((amount) => amount === undefined)) {
-    return undefined;
-  }
-
-  return {
-    gross_pay: grossPay,
-    tax,
-    ni,
-    pension,
-  };
-}
-
-function parseExtraction(value: unknown): ParsedExtraction | null {
-  if (!isPlainObject(value)) return null;
-
-  const grossPay = nullableMoney(value.gross_pay);
-  const netPay = nullableMoney(value.net_pay);
-  const taxablePay = nullableMoney(value.taxable_pay);
-  const taxAmount = nullableMoney(value.tax_amount);
-  const nationalInsuranceAmount = nullableMoney(value.national_insurance_amount);
-  const prsiAmount = nullableMoney(value.prsi_amount);
-  const uscAmount = nullableMoney(value.usc_amount);
-  const socialSecurityAmount = nullableMoney(value.social_security_amount);
-  const solidarityAmount = nullableMoney(value.solidarity_amount);
-  const churchTaxAmount = nullableMoney(value.church_tax_amount);
-  const pensionAmount = nullableMoney(value.pension_amount);
-  const studentLoanAmount = nullableMoney(value.student_loan_amount);
-  const bonusAmount = nullableMoney(value.bonus_amount);
-  const overtimeAmount = nullableMoney(value.overtime_amount);
-  const totalDeductions = nullableMoney(value.total_deductions);
-  const payDate = nullableText(value.pay_date, 40);
-  const payPeriodStart = nullableText(value.pay_period_start, 40);
-  const payPeriodEnd = nullableText(value.pay_period_end, 40);
-  const employerName = nullableText(value.employer_name, 200);
-  const country = nullableCountry(value.country);
-  const yearToDate = parseYearToDate(value.year_to_date);
-
-  if ([
-    grossPay,
-    netPay,
-    taxablePay,
-    taxAmount,
-    nationalInsuranceAmount,
-    prsiAmount,
-    uscAmount,
-    socialSecurityAmount,
-    solidarityAmount,
-    churchTaxAmount,
-    pensionAmount,
-    studentLoanAmount,
-    bonusAmount,
-    overtimeAmount,
-    totalDeductions,
-    payDate,
-    payPeriodStart,
-    payPeriodEnd,
-    employerName,
-    country,
-    yearToDate,
-  ].some((field) => field === undefined)) {
-    return null;
-  }
-
-  return {
-    gross_pay: grossPay,
-    net_pay: netPay,
-    taxable_pay: taxablePay,
-    tax_amount: taxAmount,
-    national_insurance_amount: nationalInsuranceAmount,
-    prsi_amount: prsiAmount,
-    usc_amount: uscAmount,
-    social_security_amount: socialSecurityAmount,
-    solidarity_amount: solidarityAmount,
-    church_tax_amount: churchTaxAmount,
-    pension_amount: pensionAmount,
-    student_loan_amount: studentLoanAmount,
-    bonus_amount: bonusAmount,
-    overtime_amount: overtimeAmount,
-    total_deductions: totalDeductions,
-    pay_date: payDate,
-    pay_period_start: payPeriodStart,
-    pay_period_end: payPeriodEnd,
-    employer_name: employerName,
-    country,
-    year_to_date: yearToDate,
-    confidence: nullableConfidence(value.confidence),
-  };
 }
 
 function assistantContent(value: unknown): string | null {

@@ -144,6 +144,9 @@ describe("Dashboard demo mode", () => {
     const dialog = await screen.findByRole("dialog");
     expect(dialog).toHaveTextContent("Sample payslip check");
     expect(dialog).toHaveTextContent("Tax increased more than expected");
+    expect(dialog).toHaveTextContent("What the extractor found");
+    expect(dialog).toHaveTextContent("Basic pay");
+    expect(dialog).toHaveTextContent("Gross YTD");
     expect(dialog).toHaveTextContent("What to do next");
     expect(dialog).toHaveTextContent("Then turn confirmed pay into a payday plan");
     expect(screen.getByTestId("location")).toHaveTextContent("/dashboard");

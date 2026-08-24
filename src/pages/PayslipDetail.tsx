@@ -17,6 +17,18 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useUpdateAnomalyStatus } from '@/hooks/use-anomaly-status';
 import { AlertTriangle, ArrowLeft, CheckCircle, Eye, FileText, GitCompare, MessageSquare, RefreshCw, RotateCcw, Send } from 'lucide-react';
 
+function readableExtractionField(value: string): string {
+  return value
+    .replace(/_/g, ' ')
+    .replace(/\b\w/g, (character) => character.toUpperCase());
+}
+
+function readableLineItemKind(value: string): string {
+  return value === 'employer_contribution'
+    ? 'Employer contribution'
+    : value.charAt(0).toUpperCase() + value.slice(1);
+}
+
 const PayslipDetail = () => {
   const { id } = useParams();
   const { data: slip, isLoading, error: payslipError, refetch: refetchPayslip } = usePayslip(id);
@@ -119,6 +131,9 @@ const PayslipDetail = () => {
     ...(slip.overtime_amount ? [{ label: 'Overtime', value: formatCurrency(slip.overtime_amount) }] : []),
     { label: 'Total deductions', value: formatCurrency(slip.total_deductions) },
   ];
+  const lineItems = slip.extraction_line_items ?? [];
+  const fieldEvidence = slip.extraction_field_evidence ?? [];
+  const yearToDate = slip.year_to_date;
 
   return (
     <AppLayout>
@@ -165,6 +180,89 @@ const PayslipDetail = () => {
             </div>
           </CardContent>
         </Card>
+
+        {(lineItems.length > 0 || yearToDate || fieldEvidence.length > 0) && (
+          <Card className="border-0 shadow-sm">
+            <CardHeader className="pb-2">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <CardTitle className="text-base">Everything found on the payslip</CardTitle>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    These are transcribed figures and source snippets, not a payroll verdict. Check them against the original before relying on them.
+                  </p>
+                </div>
+                {slip.extraction_confidence && (
+                  <Badge variant="outline" className="capitalize">{slip.extraction_confidence} extraction confidence</Badge>
+                )}
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-5">
+              {yearToDate && (
+                <div>
+                  <h3 className="text-sm font-semibold text-foreground">Year to date</h3>
+                  <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                    {[
+                      { label: 'Gross pay', value: yearToDate.gross_pay },
+                      { label: 'Income tax', value: yearToDate.tax },
+                      { label: 'NI / PRSI', value: yearToDate.ni },
+                      { label: 'Pension', value: yearToDate.pension },
+                    ].map((item) => (
+                      <div key={item.label} className="flex items-center justify-between rounded-lg bg-muted/40 px-3 py-2 text-sm">
+                        <span className="text-muted-foreground">{item.label}</span>
+                        <span className="font-medium text-foreground">{item.value == null ? '—' : formatCurrency(item.value)}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {lineItems.length > 0 && (
+                <div>
+                  <h3 className="text-sm font-semibold text-foreground">Line items</h3>
+                  <div className="mt-3 divide-y divide-border rounded-lg border border-border">
+                    {lineItems.map((item, index) => (
+                      <div key={`${item.label}-${index}`} className="p-3">
+                        <div className="flex flex-wrap items-start justify-between gap-2 text-sm">
+                          <div>
+                            <p className="font-medium text-foreground">{item.label}</p>
+                            <p className="mt-1 text-xs text-muted-foreground">{readableLineItemKind(item.kind)} · {item.confidence} confidence</p>
+                          </div>
+                          <span className="font-semibold text-foreground">{item.amount == null ? '—' : formatCurrency(item.amount)}</span>
+                        </div>
+                        {item.year_to_date_amount != null && (
+                          <p className="mt-2 text-xs text-muted-foreground">Year to date: {formatCurrency(item.year_to_date_amount)}</p>
+                        )}
+                        {item.evidence && (
+                          <details className="mt-2 text-xs text-muted-foreground">
+                            <summary className="cursor-pointer select-none">Show source snippet</summary>
+                            <p className="mt-2 rounded bg-muted/40 px-2 py-1.5">“{item.evidence}”</p>
+                          </details>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {fieldEvidence.length > 0 && (
+                <details>
+                  <summary className="cursor-pointer text-sm font-semibold text-foreground">Show figure evidence ({fieldEvidence.length})</summary>
+                  <div className="mt-3 divide-y divide-border rounded-lg border border-border">
+                    {fieldEvidence.map((item, index) => (
+                      <div key={`${item.field}-${index}`} className="flex flex-wrap items-start justify-between gap-3 p-3 text-sm">
+                        <div>
+                          <p className="font-medium text-foreground">{readableExtractionField(item.field)}</p>
+                          {item.evidence && <p className="mt-1 text-xs text-muted-foreground">“{item.evidence}”</p>}
+                        </div>
+                        <Badge variant="secondary" className="text-xs capitalize">{item.confidence}</Badge>
+                      </div>
+                    ))}
+                  </div>
+                </details>
+              )}
+            </CardContent>
+          </Card>
+        )}
 
         {anomalies.length > 0 && (
           <Card className="border-0 shadow-sm">

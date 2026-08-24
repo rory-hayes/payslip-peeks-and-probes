@@ -21,6 +21,7 @@ Return a JSON object using this exact schema (use null for fields you cannot fin
   "pay_period_end": "YYYY-MM-DD or null",
   "employer_name": "string or null",
   "country": "UK or Ireland or null",
+  "currency": "GBP or EUR or null",
   "gross_pay": number or null,
   "net_pay": number or null,
   "taxable_pay": number or null,
@@ -42,6 +43,23 @@ Return a JSON object using this exact schema (use null for fields you cannot fin
     "ni": number or null,
     "pension": number or null
   },
+  "line_items": [
+    {
+      "label": "string",
+      "kind": "earning | deduction | employer_contribution | information",
+      "amount": number or null,
+      "year_to_date_amount": number or null,
+      "evidence": "short label-and-amount text or null",
+      "confidence": "high" | "medium" | "low"
+    }
+  ],
+  "field_evidence": [
+    {
+      "field": "canonical field name",
+      "evidence": "short exact label-and-amount text or null",
+      "confidence": "high" | "medium" | "low"
+    }
+  ],
   "confidence": "high" | "medium" | "low"
 }
 
@@ -58,6 +76,10 @@ UK and Ireland field mapping:
 - PRSI → prsi_amount; USC → usc_amount.
 - Employee pension contribution → pension_amount.
 - Student loan, bonus, overtime and total deductions should be recorded only where clearly shown.
+- Include every distinct earning, deduction, employer contribution, and other financial line that is visibly printed. Do not include names, addresses, bank details, tax codes, or other personal identifiers.
+- Keep line-item amounts positive and use the "kind" field to describe whether the row is an earning or deduction. Do not calculate missing amounts or totals.
+- The "evidence" field must be a short exact label-and-amount fragment from the document, never a personal identifier or a paragraph.
+- The "field_evidence" array should include only fields supported by visible text. Use the canonical field name from the schema, or "line_item" for a row-specific fragment.
 
 Rules:
 - All monetary values should be plain numbers (no currency symbols, no thousand separators)
@@ -92,6 +114,10 @@ export const PAYSLIP_PROVIDER_RESPONSE_FORMAT = {
           type: ["string", "null"],
           enum: ["UK", "Ireland", null],
         },
+        currency: {
+          type: ["string", "null"],
+          enum: ["GBP", "EUR", null],
+        },
         gross_pay: NULLABLE_MONEY_SCHEMA,
         net_pay: NULLABLE_MONEY_SCHEMA,
         taxable_pay: NULLABLE_MONEY_SCHEMA,
@@ -123,6 +149,44 @@ export const PAYSLIP_PROVIDER_RESPONSE_FORMAT = {
             { type: "null" },
           ],
         },
+        line_items: {
+          type: "array",
+          items: {
+            type: "object",
+            additionalProperties: false,
+            properties: {
+              label: { type: "string" },
+              kind: {
+                type: "string",
+                enum: ["earning", "deduction", "employer_contribution", "information"],
+              },
+              amount: NULLABLE_MONEY_SCHEMA,
+              year_to_date_amount: NULLABLE_MONEY_SCHEMA,
+              evidence: NULLABLE_TEXT_SCHEMA,
+              confidence: {
+                type: "string",
+                enum: ["high", "medium", "low"],
+              },
+            },
+            required: ["label", "kind", "amount", "year_to_date_amount", "evidence", "confidence"],
+          },
+        },
+        field_evidence: {
+          type: "array",
+          items: {
+            type: "object",
+            additionalProperties: false,
+            properties: {
+              field: { type: "string" },
+              evidence: NULLABLE_TEXT_SCHEMA,
+              confidence: {
+                type: "string",
+                enum: ["high", "medium", "low"],
+              },
+            },
+            required: ["field", "evidence", "confidence"],
+          },
+        },
         confidence: {
           type: "string",
           enum: ["high", "medium", "low"],
@@ -134,6 +198,7 @@ export const PAYSLIP_PROVIDER_RESPONSE_FORMAT = {
         "pay_period_end",
         "employer_name",
         "country",
+        "currency",
         "gross_pay",
         "net_pay",
         "taxable_pay",
@@ -150,6 +215,8 @@ export const PAYSLIP_PROVIDER_RESPONSE_FORMAT = {
         "overtime_amount",
         "total_deductions",
         "year_to_date",
+        "line_items",
+        "field_evidence",
         "confidence",
       ],
     },

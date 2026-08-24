@@ -70,6 +70,49 @@ const DemoPayslipPreview = ({ onOpenChange, onSignUp, preview }: DemoPayslipPrev
                 </dl>
               </section>
 
+              {(payslip.extraction_line_items?.length || payslip.year_to_date) ? (
+                <section className="pi-demo-preview__extraction" aria-labelledby="sample-extraction-heading">
+                  <div className="pi-demo-preview__section-heading">
+                    <span className="pi-demo-preview__check" aria-hidden="true"><FileText /></span>
+                    <div>
+                      <p className="pi-demo-preview__eyebrow">What the extractor found</p>
+                      <h3 id="sample-extraction-heading">Figures you can check against the original</h3>
+                    </div>
+                  </div>
+                  <p className="pi-demo-preview__plain-copy">
+                    Line items, year-to-date figures and short source snippets stay together so you can spot what needs checking before you confirm it.
+                  </p>
+                  {payslip.extraction_line_items?.length ? (
+                    <div className="pi-demo-preview__line-items" aria-label="Sample extracted line items">
+                      {payslip.extraction_line_items.map((item) => (
+                        <div key={item.label} className="pi-demo-preview__line-item">
+                          <div>
+                            <strong>{item.label}</strong>
+                            <span>{item.kind === 'employer_contribution' ? 'Employer contribution' : item.kind} · {item.confidence} confidence</span>
+                          </div>
+                          <b>{item.amount == null ? '—' : formatDemoCurrency(item.amount)}</b>
+                        </div>
+                      ))}
+                    </div>
+                  ) : null}
+                  {payslip.year_to_date ? (
+                    <div className="pi-demo-preview__ytd" aria-label="Sample year-to-date figures">
+                      {[
+                        ['Gross YTD', payslip.year_to_date.gross_pay],
+                        ['Tax YTD', payslip.year_to_date.tax],
+                        ['NI YTD', payslip.year_to_date.ni],
+                        ['Pension YTD', payslip.year_to_date.pension],
+                      ].map(([label, value]) => (
+                        <div key={label as string}>
+                          <span>{label}</span>
+                          <strong>{typeof value === 'number' ? formatDemoCurrency(value) : '—'}</strong>
+                        </div>
+                      ))}
+                    </div>
+                  ) : null}
+                </section>
+              ) : null}
+
               {anomaly ? (
                 <section className="pi-demo-preview__insight" aria-labelledby="sample-insight-heading">
                   <div className="pi-demo-preview__section-heading">

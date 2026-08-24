@@ -14,6 +14,7 @@ import { Upload, FileText, CheckCircle, AlertCircle, ClipboardCheck, ExternalLin
 import { useToast } from '@/hooks/use-toast';
 import { formatDate } from '@/lib/date-utils';
 import { useUsage } from '@/hooks/use-usage';
+import { normalizeExtractionDetails } from '@/lib/payslip-extraction-details';
 import {
   PAYSLIP_ALLOWED_FILE_TYPES,
   PAYSLIP_MAX_FILE_BYTES,
@@ -41,6 +42,18 @@ interface FieldMeta {
 }
 
 type RequiredReviewField = 'pay_date' | 'gross_pay' | 'net_pay';
+type ReviewExtractionDetails = ReturnType<typeof normalizeExtractionDetails>;
+
+function emptyReviewExtractionDetails(): ReviewExtractionDetails {
+  return normalizeExtractionDetails(null);
+}
+
+function formatReviewMoney(value: number, currency: 'GBP' | 'EUR'): string {
+  return new Intl.NumberFormat(currency === 'EUR' ? 'en-IE' : 'en-GB', {
+    currency,
+    style: 'currency',
+  }).format(value);
+}
 
 interface PayslipUploadProps {
   onUploadComplete?: (payslipId: string) => void;
@@ -81,6 +94,7 @@ const PayslipUpload = ({ onUploadComplete, resumeReviewId = null }: PayslipUploa
   const [fieldMeta, setFieldMeta] = useState<Record<string, FieldMeta>>({});
   const [reviewSaving, setReviewSaving] = useState(false);
   const [reviewErrors, setReviewErrors] = useState<Partial<Record<RequiredReviewField, string>>>({});
+  const [reviewExtraction, setReviewExtraction] = useState<ReviewExtractionDetails>(() => emptyReviewExtractionDetails());
   const reviewInputRefs = useRef<Partial<Record<RequiredReviewField, HTMLInputElement | null>>>({});
   const [originalPayslipUrl, setOriginalPayslipUrl] = useState<string | null>(null);
   const [originalPayslipState, setOriginalPayslipState] = useState<'idle' | 'loading' | 'ready' | 'unavailable'>('idle');
@@ -187,6 +201,7 @@ const PayslipUpload = ({ onUploadComplete, resumeReviewId = null }: PayslipUploa
         setReviewCountry(payslip.country || 'UK');
         setReviewFields(fields);
         setFieldMeta(meta);
+        setReviewExtraction(normalizeExtractionDetails(extraction));
         setReviewPayslipId(resumeReviewId);
         setFileName(payslip.file_name || 'Payslip');
         setState('review');
@@ -230,6 +245,7 @@ const PayslipUpload = ({ onUploadComplete, resumeReviewId = null }: PayslipUploa
     });
     setFieldMeta({});
     setReviewErrors({});
+    setReviewExtraction(emptyReviewExtractionDetails());
   };
 
   const updateField = (key: keyof ReviewFields, value: string) => {
@@ -326,6 +342,7 @@ const PayslipUpload = ({ onUploadComplete, resumeReviewId = null }: PayslipUploa
           total_deductions: ext.total_deductions != null ? String(ext.total_deductions) : '',
         };
         setReviewFields(fields);
+        setReviewExtraction(normalizeExtractionDetails(extraction));
 
         // Track which fields were auto-extracted
         const meta: Record<string, FieldMeta> = {};
@@ -535,6 +552,7 @@ const PayslipUpload = ({ onUploadComplete, resumeReviewId = null }: PayslipUploa
       setReviewCountry(payslip.country === 'Ireland' || profile?.country === 'Ireland' ? 'Ireland' : 'UK');
       setReviewFields(fields);
       setFieldMeta(meta);
+      setReviewExtraction(emptyReviewExtractionDetails());
       setReviewPayslipId(failedPayslipId);
       setFileName(payslip.file_name || 'Payslip');
       setFailedPayslipId(null);
@@ -656,6 +674,10 @@ const PayslipUpload = ({ onUploadComplete, resumeReviewId = null }: PayslipUploa
 
   // Determine which monetary fields to show based on country
   const isIreland = reviewCountry === 'Ireland';
+  const reviewLineItems = reviewExtraction.extraction_line_items ?? [];
+  const reviewFieldEvidence = reviewExtraction.extraction_field_evidence ?? [];
+  const reviewYearToDate = reviewExtraction.year_to_date;
+  const reviewCurrency = reviewExtraction.currency ?? (isIreland ? 'EUR' : 'GBP');
 
   const renderFieldStatus = (key: string) => {
     const meta = fieldMeta[key];
@@ -798,6 +820,65 @@ const PayslipUpload = ({ onUploadComplete, resumeReviewId = null }: PayslipUploa
                 <span className="pi-review-source-status">Original file unavailable — you can still enter the figures manually.</span>
               )}
             </div>
+
+            {(reviewLineItems.length > 0 || reviewYearToDate || reviewFieldEvidence.length > 0) && (
+              <section className="pi-review-extraction" aria-labelledby="review-extraction-heading">
+                <div className="pi-review-extraction-header">
+                  <div>
+                    <p className="pi-eyebrow">Transcription evidence</p>
+                    <h4 id="review-extraction-heading">What we found beyond the headline totals</h4>
+                  </div>
+                  {reviewExtraction.extraction_confidence && (
+                    <Badge variant="outline" className="pi-review-status">{reviewExtraction.extraction_confidence} confidence</Badge>
+                  )}
+                </div>
+                <p className="pi-review-extraction-note">
+                  These rows and snippets are AI-transcribed from the original. Use the private original above to verify them; they are not a payroll verdict.
+                </p>
+
+                {reviewLineItems.length > 0 && (
+                  <div className="pi-review-extraction-list" aria-label="Extracted payslip line items">
+                    {reviewLineItems.map((item, index) => (
+                      <div key={`${item.label}-${index}`} className="pi-review-extraction-item">
+                        <div>
+                          <strong>{item.label}</strong>
+                          <span>{item.kind === 'employer_contribution' ? 'Employer contribution' : item.kind} · {item.confidence} confidence</span>
+                          {item.evidence && <small>“{item.evidence}”</small>}
+                        </div>
+                        <b>{item.amount == null ? '—' : formatReviewMoney(item.amount, reviewCurrency)}</b>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {reviewYearToDate && (
+                  <div className="pi-review-extraction-ytd" aria-label="Extracted year-to-date figures">
+                    {[
+                      ['Gross YTD', reviewYearToDate.gross_pay],
+                      ['Tax YTD', reviewYearToDate.tax],
+                      ['NI / PRSI YTD', reviewYearToDate.ni],
+                      ['Pension YTD', reviewYearToDate.pension],
+                    ].map(([label, value]) => (
+                      <div key={label as string}>
+                        <span>{label}</span>
+                        <strong>{typeof value === 'number' ? formatReviewMoney(value, reviewCurrency) : '—'}</strong>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {reviewFieldEvidence.length > 0 && (
+                  <details className="pi-review-extraction-evidence">
+                    <summary>Show headline source snippets ({reviewFieldEvidence.length})</summary>
+                    <div>
+                      {reviewFieldEvidence.map((item, index) => (
+                        <p key={`${item.field}-${index}`}><strong>{item.field.replace(/_/g, ' ')}</strong>{item.evidence ? ` — “${item.evidence}”` : ''}</p>
+                      ))}
+                    </div>
+                  </details>
+                )}
+              </section>
+            )}
 
             <div className="pi-review-section">
               <div className="pi-review-section-heading">

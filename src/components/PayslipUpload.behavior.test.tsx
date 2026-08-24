@@ -157,6 +157,20 @@ describe('PayslipUpload processing failure', () => {
         net_pay: 1600,
         tax_amount: 400,
         total_deductions: 600,
+        confidence_score: 0.9,
+        year_to_date_json: { gross_pay: 6600, tax: 1200, ni: 360, pension: 150 },
+        normalized_json: {
+          confidence: 'high',
+          line_items: [{
+            label: 'Basic pay',
+            kind: 'earning',
+            amount: 2200,
+            year_to_date_amount: 6600,
+            evidence: 'Basic pay £2,200.00',
+            confidence: 'high',
+          }],
+          field_evidence: [{ field: 'gross_pay', evidence: 'Gross pay £2,200.00', confidence: 'high' }],
+        },
       },
       error: null,
     });
@@ -170,6 +184,9 @@ describe('PayslipUpload processing failure', () => {
     expect(await screen.findByRole('heading', { name: 'Check the details.' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Confirm my payslip' })).toBeInTheDocument();
     expect(screen.getByDisplayValue('1600')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'What we found beyond the headline totals' })).toBeInTheDocument();
+    expect(screen.getByText('Basic pay')).toBeInTheDocument();
+    expect(screen.getByText('Gross YTD')).toBeInTheDocument();
     expect(mocks.invoke).not.toHaveBeenCalledWith('process-payslip', expect.anything());
   });
 

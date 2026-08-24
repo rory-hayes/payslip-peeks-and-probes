@@ -1,8 +1,15 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import type { Payslip, AnomalyResult, PayTrend } from '@/lib/types';
+import type {
+  Payslip,
+  AnomalyResult,
+  PayTrend,
+} from '@/lib/types';
 import { formatMonth } from '@/lib/date-utils';
+import { normalizeExtractionDetails } from '@/lib/payslip-extraction-details';
+
+export { normalizeExtractionDetails } from '@/lib/payslip-extraction-details';
 
 type NumericField = number | string | null | undefined;
 type EmployerRow = { name?: string | null; payroll_email?: string | null };
@@ -22,6 +29,9 @@ type PayslipExtractionRow = {
   overtime_amount?: NumericField;
   total_deductions?: NumericField;
   taxable_pay?: NumericField;
+  confidence_score?: NumericField;
+  year_to_date_json?: unknown;
+  normalized_json?: unknown;
 };
 type PayslipRow = {
   id: string;
@@ -95,7 +105,8 @@ export function usePayslips() {
             gross_pay, net_pay, tax_amount, national_insurance_amount,
             prsi_amount, usc_amount, social_security_amount, solidarity_amount, church_tax_amount,
             pension_amount, student_loan_amount,
-            bonus_amount, overtime_amount, total_deductions, taxable_pay
+            bonus_amount, overtime_amount, total_deductions, taxable_pay,
+            confidence_score, year_to_date_json, normalized_json
           )
         `)
         .eq('user_id', user!.id)
@@ -120,6 +131,7 @@ export function usePayslips() {
       return rows.map((p) => {
         const ext = p.payslip_extractions?.[0] ?? {};
         const employer = firstRelation(p.employers);
+        const extractionDetails = normalizeExtractionDetails(ext);
         return {
           id: p.id,
           employer_name: employer?.name || 'Unknown',
@@ -144,6 +156,7 @@ export function usePayslips() {
           overtime_amount: optionalNumber(ext.overtime_amount),
           total_deductions: numberOrZero(ext.total_deductions),
           taxable_pay: optionalNumber(ext.taxable_pay),
+          ...extractionDetails,
           anomaly_count: countMap[p.id] || 0,
         } as Payslip;
       });

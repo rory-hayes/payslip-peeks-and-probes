@@ -95,6 +95,34 @@ describe('PayslipDetail comparison link', () => {
     expect(screen.queryByRole('link', { name: /compare to/i })).not.toBeInTheDocument();
   });
 
+  it('shows the extracted line items, year-to-date figures, and source evidence', () => {
+    state.slip = payslip({
+      extraction_confidence: 'medium',
+      extraction_line_items: [{
+        label: 'Basic pay',
+        kind: 'earning',
+        amount: 3_000,
+        year_to_date_amount: 9_000,
+        evidence: 'Basic pay £3,000.00',
+        confidence: 'high',
+      }],
+      extraction_field_evidence: [{
+        field: 'gross_pay',
+        evidence: 'Gross pay £3,000.00',
+        confidence: 'high',
+      }],
+      year_to_date: { gross_pay: 9_000, tax: 1_200, ni: 600, pension: 300 },
+    });
+
+    renderDetail();
+
+    expect(screen.getByRole('heading', { name: 'Everything found on the payslip' })).toBeInTheDocument();
+    expect(screen.getByText('Basic pay')).toBeInTheDocument();
+    expect(screen.getByText('Year to date: £9000.00')).toBeInTheDocument();
+    expect(screen.getByText('Show figure evidence (1)')).toBeInTheDocument();
+    expect(screen.getByText('medium extraction confidence')).toBeInTheDocument();
+  });
+
   it('does not report a transport failure as a missing payslip', () => {
     state.payslipError = true;
 
