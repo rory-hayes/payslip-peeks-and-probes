@@ -14,7 +14,7 @@ credential.
 ## Required secret locations
 
 - **Supabase Edge Function secrets:** `SUPABASE_SERVICE_ROLE_KEY`,
-  `LOVABLE_API_KEY` for the currently implemented document-extraction path,
+  `AI_GATEWAY_API_KEY` for the document-extraction path,
   Stripe secret keys, webhook secrets, cleanup-worker secrets, and any other
   server-only integration tokens.
 - **Hosting environment:** public `VITE_*` values only, plus no credentials that
@@ -25,9 +25,10 @@ credential.
 
 The current `process-payslip` Edge Function reads an uploaded PDF or image,
 encodes it as base64, and sends that document content to
-`https://ai.gateway.lovable.dev/v1/chat/completions` using the server-only
-`LOVABLE_API_KEY`. The configured model identifier in source is
-`google/gemini-2.5-flash`.
+`https://ai-gateway.vercel.sh/v1/chat/completions` using the server-only
+`AI_GATEWAY_API_KEY`. PDFs use file parts and images use high-detail image
+parts. The configured model identifier in source is `openai/gpt-5.4`, with a
+strict JSON Schema response contract and an independent server-side parser.
 
 That is a real external processor boundary. It is not an approval statement
 about provider terms, region, retention, training, or subprocessors. Before
@@ -36,15 +37,15 @@ must verify the provider agreement/DPA, applicable data location and retention
 terms, operational deletion path, and the exact public Privacy Policy wording.
 Do not describe this provider as having no access to documents.
 
-`OPENAI_API_KEY` is not used by the current extraction path. Add one only as
-part of a deliberate provider migration, with a reviewed code change and an
-updated provider disclosure.
+The gateway key is not a browser value and must be configured as a Supabase
+Edge Function secret. Never add it to a `VITE_*` variable, a checked-in
+environment file, or a client request.
 
 ## Before the first independent release
 
 1. Rotate every credential that was ever present in a tracked environment file:
    Supabase publishable and service-role keys, Stripe keys/webhook secret,
-   Lovable credentials, analytics keys, and any hosting token.
+   AI gateway credentials, analytics keys, and any hosting token.
 2. Replace local values in ignored environment files and configure the rotated
    values in the appropriate provider secret managers.
 3. Confirm `git ls-files -- .env .env.*` returns no tracked environment files.

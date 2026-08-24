@@ -1,8 +1,8 @@
 import type { SupportedPayslipMimeType } from "./payslip-file-validation.ts";
 import { PAYSLIP_MAX_FILE_BYTES } from "./payslip-storage-boundary.ts";
 
-export const PAYSLIP_PROVIDER_ENDPOINT = "https://ai.gateway.lovable.dev/v1/chat/completions";
-export const PAYSLIP_PROVIDER_MODEL = "google/gemini-2.5-flash";
+export const PAYSLIP_PROVIDER_ENDPOINT = "https://ai-gateway.vercel.sh/v1/chat/completions";
+export const PAYSLIP_PROVIDER_MODEL = "openai/gpt-5.4";
 
 const SUPPORTED_PROVIDER_MIME_TYPES = new Set<SupportedPayslipMimeType>([
   "application/pdf",
@@ -66,6 +66,96 @@ Rules:
 - Do not calculate, infer, or give tax advice. Only transcribe fields visible on the document.
 - Only return the JSON object, no other text`;
 
+const NULLABLE_MONEY_SCHEMA = { type: ["number", "null"] } as const;
+const NULLABLE_TEXT_SCHEMA = { type: ["string", "null"] } as const;
+
+/**
+ * The provider contract is deliberately kept beside the request builder. It
+ * is sent to the gateway as strict structured output, then independently
+ * validated by process-payslip before anything is saved.
+ */
+export const PAYSLIP_PROVIDER_RESPONSE_FORMAT = {
+  type: "json_schema",
+  json_schema: {
+    name: "payslip_extraction",
+    description: "The visible financial fields transcribed from one payslip.",
+    strict: true,
+    schema: {
+      type: "object",
+      additionalProperties: false,
+      properties: {
+        pay_date: NULLABLE_TEXT_SCHEMA,
+        pay_period_start: NULLABLE_TEXT_SCHEMA,
+        pay_period_end: NULLABLE_TEXT_SCHEMA,
+        employer_name: NULLABLE_TEXT_SCHEMA,
+        country: {
+          type: ["string", "null"],
+          enum: ["UK", "Ireland", null],
+        },
+        gross_pay: NULLABLE_MONEY_SCHEMA,
+        net_pay: NULLABLE_MONEY_SCHEMA,
+        taxable_pay: NULLABLE_MONEY_SCHEMA,
+        tax_amount: NULLABLE_MONEY_SCHEMA,
+        national_insurance_amount: NULLABLE_MONEY_SCHEMA,
+        prsi_amount: NULLABLE_MONEY_SCHEMA,
+        usc_amount: NULLABLE_MONEY_SCHEMA,
+        social_security_amount: NULLABLE_MONEY_SCHEMA,
+        solidarity_amount: NULLABLE_MONEY_SCHEMA,
+        church_tax_amount: NULLABLE_MONEY_SCHEMA,
+        pension_amount: NULLABLE_MONEY_SCHEMA,
+        student_loan_amount: NULLABLE_MONEY_SCHEMA,
+        bonus_amount: NULLABLE_MONEY_SCHEMA,
+        overtime_amount: NULLABLE_MONEY_SCHEMA,
+        total_deductions: NULLABLE_MONEY_SCHEMA,
+        year_to_date: {
+          anyOf: [
+            {
+              type: "object",
+              additionalProperties: false,
+              properties: {
+                gross_pay: NULLABLE_MONEY_SCHEMA,
+                tax: NULLABLE_MONEY_SCHEMA,
+                ni: NULLABLE_MONEY_SCHEMA,
+                pension: NULLABLE_MONEY_SCHEMA,
+              },
+              required: ["gross_pay", "tax", "ni", "pension"],
+            },
+            { type: "null" },
+          ],
+        },
+        confidence: {
+          type: "string",
+          enum: ["high", "medium", "low"],
+        },
+      },
+      required: [
+        "pay_date",
+        "pay_period_start",
+        "pay_period_end",
+        "employer_name",
+        "country",
+        "gross_pay",
+        "net_pay",
+        "taxable_pay",
+        "tax_amount",
+        "national_insurance_amount",
+        "prsi_amount",
+        "usc_amount",
+        "social_security_amount",
+        "solidarity_amount",
+        "church_tax_amount",
+        "pension_amount",
+        "student_loan_amount",
+        "bonus_amount",
+        "overtime_amount",
+        "total_deductions",
+        "year_to_date",
+        "confidence",
+      ],
+    },
+  },
+} as const;
+
 export interface PayslipProviderDispatchRequest {
   endpoint: string;
   init: RequestInit;
@@ -109,6 +199,22 @@ export function buildPayslipExtractionProviderRequest(input: {
     return null;
   }
 
+  const documentContent = input.mimeType === "application/pdf"
+    ? {
+        type: "file",
+        file: {
+          filename: "payslip.pdf",
+          file_data: `data:${input.mimeType};base64,${base64}`,
+        },
+      }
+    : {
+        type: "image_url",
+        image_url: {
+          url: `data:${input.mimeType};base64,${base64}`,
+          detail: "high",
+        },
+      };
+
   return {
     endpoint: PAYSLIP_PROVIDER_ENDPOINT,
     init: {
@@ -119,17 +225,14 @@ export function buildPayslipExtractionProviderRequest(input: {
       },
       body: JSON.stringify({
         model: PAYSLIP_PROVIDER_MODEL,
+        stream: false,
+        response_format: PAYSLIP_PROVIDER_RESPONSE_FORMAT,
         messages: [
           { role: "system", content: EXTRACTION_PROMPT },
           {
             role: "user",
             content: [
-              {
-                type: "image_url",
-                image_url: {
-                  url: `data:${input.mimeType};base64,${base64}`,
-                },
-              },
+              documentContent,
               {
                 type: "text",
                 text: "Extract all financial data from this payslip.",
