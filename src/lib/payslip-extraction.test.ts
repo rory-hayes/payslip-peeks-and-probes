@@ -104,4 +104,12 @@ describe('payslip extraction parser', () => {
       },
     }))).toBeNull();
   });
+
+  it('rejects invalid provider dates and unsupported evidence fields', () => {
+    expect(parseExtraction(validExtraction({ pay_date: '31 March 2026' }))).toBeNull();
+    expect(parseExtraction(validExtraction({ pay_date: '2026-02-31' }))).toBeNull();
+    expect(parseExtraction(validExtraction({
+      field_evidence: [{ field: 'employee_name', evidence: 'Alex Example', confidence: 'high' }],
+    }))).toBeNull();
+  });
 });

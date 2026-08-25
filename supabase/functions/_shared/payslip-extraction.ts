@@ -94,6 +94,47 @@ function nullableText(value: unknown, maxLength: number): string | null | undefi
   return trimmed.length <= maxLength ? trimmed : undefined;
 }
 
+function nullableIsoDate(value: unknown): string | null | undefined {
+  const text = nullableText(value, 10);
+  if (text === null || text === undefined) return text;
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(text)) return undefined;
+
+  const [year, month, day] = text.split("-").map(Number);
+  const date = new Date(Date.UTC(year, month - 1, day));
+  return date.getUTCFullYear() === year
+    && date.getUTCMonth() === month - 1
+    && date.getUTCDate() === day
+    ? text
+    : undefined;
+}
+
+const ALLOWED_EVIDENCE_FIELDS = new Set([
+  "pay_date",
+  "pay_period_start",
+  "pay_period_end",
+  "employer_name",
+  "country",
+  "currency",
+  "gross_pay",
+  "net_pay",
+  "taxable_pay",
+  "tax_amount",
+  "national_insurance_amount",
+  "prsi_amount",
+  "usc_amount",
+  "social_security_amount",
+  "solidarity_amount",
+  "church_tax_amount",
+  "pension_amount",
+  "student_loan_amount",
+  "bonus_amount",
+  "overtime_amount",
+  "total_deductions",
+  "year_to_date",
+  "document_context",
+  "line_item",
+]);
+
 export function nullableCountry(value: unknown): "UK" | "Ireland" | null | undefined {
   if (value == null || value === "") return null;
   if (value === "UK" || value === "Ireland") return value;
@@ -181,7 +222,7 @@ function parseFieldEvidence(value: unknown): ExtractionFieldEvidence[] | undefin
     if (!isPlainObject(item)) return undefined;
     const field = nullableText(item.field, 80);
     const evidence = nullableText(item.evidence, 300);
-    if (!field || evidence === undefined) return undefined;
+    if (!field || !ALLOWED_EVIDENCE_FIELDS.has(field) || evidence === undefined) return undefined;
     parsed.push({
       field,
       evidence,
@@ -229,9 +270,9 @@ export function parseExtraction(value: unknown): ParsedExtraction | null {
   const bonusAmount = nullableMoney(value.bonus_amount);
   const overtimeAmount = nullableMoney(value.overtime_amount);
   const totalDeductions = nullableMoney(value.total_deductions);
-  const payDate = nullableText(value.pay_date, 40);
-  const payPeriodStart = nullableText(value.pay_period_start, 40);
-  const payPeriodEnd = nullableText(value.pay_period_end, 40);
+  const payDate = nullableIsoDate(value.pay_date);
+  const payPeriodStart = nullableIsoDate(value.pay_period_start);
+  const payPeriodEnd = nullableIsoDate(value.pay_period_end);
   const employerName = nullableText(value.employer_name, 200);
   const country = nullableCountry(value.country);
   const currency = nullableCurrency(value.currency);
