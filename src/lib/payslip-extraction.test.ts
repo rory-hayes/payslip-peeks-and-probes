@@ -108,8 +108,32 @@ describe('payslip extraction parser', () => {
   it('rejects invalid provider dates and unsupported evidence fields', () => {
     expect(parseExtraction(validExtraction({ pay_date: '31 March 2026' }))).toBeNull();
     expect(parseExtraction(validExtraction({ pay_date: '2026-02-31' }))).toBeNull();
+    expect(parseExtraction(validExtraction({ country: 'Germany' }))).toBeNull();
     expect(parseExtraction(validExtraction({
       field_evidence: [{ field: 'employee_name', evidence: 'Alex Example', confidence: 'high' }],
+    }))).toBeNull();
+  });
+
+  it('rejects negative line-item amounts that contradict the provider contract', () => {
+    expect(parseExtraction(validExtraction({
+      line_items: [{
+        label: 'Basic pay',
+        kind: 'earning',
+        amount: -3000,
+        year_to_date_amount: 9000,
+        evidence: 'Basic pay £3,000.00',
+        confidence: 'high',
+      }],
+    }))).toBeNull();
+    expect(parseExtraction(validExtraction({
+      line_items: [{
+        label: 'Basic pay',
+        kind: 'earning',
+        amount: 3000,
+        year_to_date_amount: -9000,
+        evidence: 'Basic pay £3,000.00',
+        confidence: 'high',
+      }],
     }))).toBeNull();
   });
 });

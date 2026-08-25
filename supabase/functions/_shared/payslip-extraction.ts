@@ -139,7 +139,7 @@ export function nullableCountry(value: unknown): "UK" | "Ireland" | null | undef
   if (value == null || value === "") return null;
   if (value === "UK" || value === "Ireland") return value;
   if (typeof value !== "string") return undefined;
-  return null;
+  return undefined;
 }
 
 function nullableCurrency(value: unknown): "GBP" | "EUR" | null | undefined {
@@ -199,6 +199,8 @@ function parseLineItems(value: unknown): ExtractionLineItem[] | undefined {
       || amount === undefined
       || yearToDateAmount === undefined
       || evidence === undefined
+      || (amount !== null && amount < 0)
+      || (yearToDateAmount !== null && yearToDateAmount < 0)
     ) {
       return undefined;
     }
