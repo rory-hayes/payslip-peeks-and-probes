@@ -243,12 +243,14 @@
 
 @media (max-width: 720px) {
   .tax-helper { padding-bottom: 7rem; }
-  .tax-helper__hero { align-items: flex-start; border-radius: 1.5rem; padding: 1.5rem; }
-  .tax-helper__hero h1 { font-size: 2.7rem; }
-  .tax-helper__shield { height: 4rem; width: 4rem; }
-  .tax-helper__controls { align-items: stretch; flex-direction: column; }
+  .tax-helper__hero { align-items: flex-start; border-radius: 1.5rem; gap: 0.75rem; padding: 1.2rem; }
+  .tax-helper__hero h1 { font-size: 2.35rem; }
+  .tax-helper__eyebrow { margin-bottom: 0.65rem; }
+  .tax-helper__intro { font-size: 0.94rem; line-height: 1.5; margin-top: 0.85rem; }
+  .tax-helper__shield { border-width: 0.45rem; height: 3.2rem; width: 3.2rem; }
+  .tax-helper__controls { align-items: stretch; flex-direction: column; margin-top: 1rem; }
   .tax-helper__country { display: grid; grid-template-columns: 1fr 1fr; width: 100%; }
-  .tax-helper__readiness { align-items: flex-start; grid-template-columns: auto 1fr; }
+  .tax-helper__readiness { align-items: flex-start; grid-template-columns: auto 1fr; margin-top: 1rem; }
   .tax-helper__history-action { grid-column: 1 / -1; width: 100%; }
   .tax-helper__section-heading { align-items: flex-start; flex-direction: column; gap: 0.65rem; }
   .tax-helper__progress-copy { align-items: flex-start; text-align: left; }

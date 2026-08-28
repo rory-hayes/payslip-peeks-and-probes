@@ -19,7 +19,7 @@ import {
   Menu,
   MessageSquare,
   MessageSquareText,
-  TrendingUp,
+  ShieldCheck,
   Upload,
   X,
 } from 'lucide-react';
@@ -58,33 +58,27 @@ const STEPS = [
 const FEATURES = [
   {
     icon: FileCheck,
-    title: 'Review before you rely on it',
-    description: 'Check and edit extracted figures before a payslip becomes part of your history.',
-  },
-  {
-    icon: TrendingUp,
-    title: 'Track your pay over time',
-    description: 'Follow net pay, tax, and deductions from one confirmed payslip to the next.',
-  },
-  {
-    icon: AlertTriangle,
-    title: 'Notice unexpected changes',
-    description: 'Bring changes such as a new deduction or a tax jump into one clear review.',
+    eyebrow: 'Confirm',
+    title: 'A payslip record you reviewed',
+    description: 'Check, correct or leave out extracted figures before anything joins your confirmed history.',
   },
   {
     icon: BarChart3,
-    title: 'Compare without the spreadsheet',
-    description: 'See two confirmed payslips side by side when you want a closer look.',
+    eyebrow: 'Compare',
+    title: 'The changes behind your take-home pay',
+    description: 'Compare confirmed pay periods and bring tax, deduction and net-pay movements into focus.',
   },
   {
     icon: MessageSquareText,
-    title: 'Ask payroll clearly',
-    description: 'Turn a confirmed change into a concise question with the relevant figures attached.',
+    eyebrow: 'Ask',
+    title: 'A payroll question you can send',
+    description: 'Turn the change you checked into a concise message with the relevant figures and dates.',
   },
   {
     icon: Landmark,
-    title: 'Prepare for tax year-end',
-    description: 'Keep your payslips together and follow the right official Revenue or HMRC process.',
+    eyebrow: 'Finish',
+    title: 'An official-source tax-year checklist',
+    description: 'Bring your confirmed history together and follow the right Revenue or HMRC route.',
   },
 ] as const;
 
@@ -94,6 +88,7 @@ const FREE_FEATURES = [
   'Checks for changes worth reviewing',
   'Payslip comparison and history',
   '2 payroll-message drafts per calendar month',
+  'UK or Ireland tax-year checklist',
   'PDF export of your payslip history',
 ] as const;
 
@@ -127,6 +122,10 @@ const FAQ_ITEMS = [
   {
     question: 'What if the extraction gets something wrong?',
     answer: 'You can review and edit extracted values before confirming. If a figure is missing or does not match your original payslip, correct it or leave it blank before you save.',
+  },
+  {
+    question: 'Why not use a general AI chat?',
+    answer: 'A general chat can summarise one document. Payslip Insights keeps the source-review step, your confirmed pay history, month-to-month comparisons, payroll-question drafts and official UK or Ireland tax-year routes together. It is still a review tool, not a payroll or tax verdict.',
   },
 ] as const;
 
@@ -163,6 +162,12 @@ const Landing = () => {
     analytics.track('demo_started');
     enableDemo();
     navigate('/dashboard');
+  };
+
+  const handleTryTaxDemo = () => {
+    analytics.track('demo_started');
+    enableDemo();
+    navigate('/tax-helper');
   };
 
   return (
@@ -231,6 +236,7 @@ const Landing = () => {
               <div className="pi-landing__hero-notes" aria-label="Product highlights">
                 <span><Check aria-hidden="true" /> Review every extracted figure</span>
                 <span><Check aria-hidden="true" /> UK &amp; Ireland focused</span>
+                <span><Check aria-hidden="true" /> No bank connection</span>
               </div>
             </div>
 
@@ -270,17 +276,42 @@ const Landing = () => {
         <section id="features" className="pi-landing__feature-band">
           <div className="pi-landing__container pi-landing__feature-grid">
             <div className="pi-landing__feature-intro">
-              <h2>Built around the moment your pay lands.</h2>
-              <p>Not another generic budgeting dashboard. A focused place to understand what changed, keep the evidence, and decide what to do next.</p>
+              <p className="pi-landing__eyebrow">A real example</p>
+              <h2>From one payslip to a useful next step.</h2>
+              <p>Payslip Insights does more than produce a one-off summary. It keeps the figures you confirmed connected to the change, the evidence and the action.</p>
+              <article className="pi-landing__proof-card" aria-label="Sample payday result">
+                <div className="pi-landing__proof-topline">
+                  <div>
+                    <span>Sample net pay</span>
+                    <strong>£2,710.00</strong>
+                  </div>
+                  <span className="pi-landing__proof-change">£137.50 lower</span>
+                </div>
+                <div className="pi-landing__proof-evidence">
+                  <span><small>Gross pay</small><strong>Unchanged</strong></span>
+                  <span><small>Income tax</small><strong>£130 higher</strong></span>
+                </div>
+                <div className="pi-landing__proof-finding">
+                  <AlertTriangle aria-hidden="true" />
+                  <div>
+                    <strong>Change worth checking</strong>
+                    <p>Tax increased while gross pay stayed the same.</p>
+                  </div>
+                </div>
+                <button type="button" className="pi-landing__proof-action" onClick={handleTryDemo}>
+                  Explore the full sample <ArrowRight aria-hidden="true" />
+                </button>
+              </article>
               <Link to="/guides" className="pi-landing__text-link">
                 Explore payslip guides <ArrowRight aria-hidden="true" />
               </Link>
             </div>
             <div className="pi-landing__feature-list">
-              {FEATURES.map(({ icon: Icon, title, description }) => (
+              {FEATURES.map(({ icon: Icon, eyebrow, title, description }) => (
                 <article className="pi-landing__feature" key={title}>
                   <div className="pi-landing__feature-icon"><Icon aria-hidden="true" /></div>
                   <div>
+                    <span className="pi-landing__feature-eyebrow">{eyebrow}</span>
                     <h3>{title}</h3>
                     <p>{description}</p>
                   </div>
@@ -316,6 +347,52 @@ const Landing = () => {
                 <ChevronRight aria-hidden="true" />
               </article>
             </div>
+          </div>
+        </section>
+
+        <section className="pi-landing__tax-band">
+          <div className="pi-landing__container pi-landing__tax-grid">
+            <div className="pi-landing__tax-copy">
+              <p className="pi-landing__eyebrow">End of tax year</p>
+              <h2>A checklist, not a refund promise.</h2>
+              <p>
+                Choose Ireland or the UK, bring together the payslips you confirmed, and work through the correct official steps. We organise the review; Revenue or HMRC makes the decision.
+              </p>
+              <button type="button" className="pi-landing__secondary-action" onClick={handleTryTaxDemo}>
+                Explore the tax-year demo <ArrowRight aria-hidden="true" />
+              </button>
+            </div>
+            <article className="pi-landing__tax-preview" aria-label="Sample official-source tax-year checklist">
+              <div className="pi-landing__tax-preview-heading">
+                <div>
+                  <span>UK tax year 2025/26</span>
+                  <h3>Your year-end review</h3>
+                </div>
+                <Landmark aria-hidden="true" />
+              </div>
+              <div className="pi-landing__tax-progress-copy"><strong>0 of 5 reviewed</strong><span>Official-source checklist</span></div>
+              <div className="pi-landing__tax-progress" aria-hidden="true"><span /></div>
+              <ol>
+                <li><span>1</span><div><strong>Bring your confirmed pay together</strong><small>Your saved payslip history</small></div></li>
+                <li><span>2</span><div><strong>Check the official employment record</strong><small>HMRC or Revenue</small></div></li>
+                <li><span>3</span><div><strong>Follow the right claim or review route</strong><small>Official service makes the decision</small></div></li>
+              </ol>
+            </article>
+          </div>
+        </section>
+
+        <section className="pi-landing__control-strip" aria-labelledby="control-heading">
+          <div className="pi-landing__container pi-landing__control-grid">
+            <div>
+              <ShieldCheck aria-hidden="true" />
+              <h2 id="control-heading">You stay in control.</h2>
+            </div>
+            <ul>
+              <li><Check aria-hidden="true" />Upload only when you choose</li>
+              <li><Check aria-hidden="true" />Confirm figures before history</li>
+              <li><Check aria-hidden="true" />No bank account connection</li>
+              <li><Check aria-hidden="true" />Clear limits—not tax or payroll advice</li>
+            </ul>
           </div>
         </section>
 

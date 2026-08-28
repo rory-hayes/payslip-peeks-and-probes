@@ -81,6 +81,14 @@ describe('Landing', () => {
     expect(screen.getByText('2 automatic payslip checks total')).toBeInTheDocument();
     expect(screen.getByText('Your first real payslip comparison')).toBeInTheDocument();
     expect(screen.getByText('Check two payslips and see what changed.')).toBeInTheDocument();
+    expect(screen.getByText('UK or Ireland tax-year checklist')).toBeInTheDocument();
+    expect(screen.getByRole('article', { name: 'Sample payday result' })).toHaveTextContent('Tax increased while gross pay stayed the same.');
+    expect(screen.getByRole('heading', { name: 'A payroll question you can send' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'An official-source tax-year checklist' })).toBeInTheDocument();
+    expect(screen.getByRole('article', { name: 'Sample official-source tax-year checklist' })).toHaveTextContent('Official service makes the decision');
+    expect(screen.getByRole('heading', { name: 'You stay in control.' })).toBeInTheDocument();
+    expect(screen.getByText('No bank account connection')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Why not use a general AI chat?' })).toBeInTheDocument();
     expect(screen.getByText('Billed €19.99 yearly until you cancel.')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Billing terms' })).toHaveAttribute('href', '/terms');
     expect(screen.getByRole('link', { name: 'How it works' })).toHaveAttribute('href', '#how-it-works');
@@ -94,6 +102,15 @@ describe('Landing', () => {
     expect(state.enableDemo).toHaveBeenCalledOnce();
     expect(screen.getByTestId('location')).toHaveTextContent('/dashboard');
   }, 10_000);
+
+  it('opens the sample tax-year helper without asking a visitor to create an account', () => {
+    renderLanding();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Explore the tax-year demo' }));
+
+    expect(state.enableDemo).toHaveBeenCalledOnce();
+    expect(screen.getByTestId('location')).toHaveTextContent('/tax-helper');
+  });
 
   it('keeps UK prices and the selected GBP checkout intent together', () => {
     renderLanding();
