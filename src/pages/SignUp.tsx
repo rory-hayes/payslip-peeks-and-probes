@@ -10,7 +10,7 @@ import { CheckCircle } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { analytics } from '@/lib/analytics';
-import { BrandLockup } from '@/components/BrandLockup';
+import { AuthExperienceShell } from '@/components/AuthExperienceShell';
 import { CheckoutPlanSummary } from '@/components/CheckoutPlanSummary';
 import {
   getCheckoutPriceId,
@@ -98,19 +98,14 @@ const SignUp = () => {
   };
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-background px-4 py-8">
-      <div className="w-full max-w-md">
-        <div className="mb-8 text-center">
-          <Link to="/" className="inline-flex items-center gap-2 mb-6">
-            <BrandLockup />
-          </Link>
-        </div>
-        <Card className="border-0 shadow-lg">
-          <CardHeader className="text-center">
+    <AuthExperienceShell>
+        <Card className="border-0 shadow-none">
+          <CardHeader className="px-0 pt-0 text-left">
+            <p className="mb-1 text-xs font-bold uppercase tracking-[0.16em] text-primary">Start free · no card required</p>
             <h1 className="text-2xl font-semibold leading-none tracking-tight">Create your account</h1>
-            <CardDescription>Start checking your payslips in minutes</CardDescription>
+            <CardDescription className="text-sm leading-6">Use your two included checks to understand your first payslip and compare the next one.</CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="px-0 pb-0">
             <CheckoutPlanSummary
               checkoutPriceId={checkoutPriceId}
               description="Create your account first, then confirm the final total in secure checkout before you are charged."
@@ -174,10 +169,11 @@ const SignUp = () => {
                       I agree to the <Link to="/privacy" className="text-primary hover:underline">Privacy Policy</Link> and <Link to="/terms" className="text-primary hover:underline">Terms of Service</Link>. I understand Payslip Insights provides guidance, not formal tax or legal advice.
                     </label>
                   </div>
-                  <p className="text-xs text-muted-foreground" id="terms-help">You need to agree before creating an account.</p>
+                  <p className="sr-only" id="terms-help">Agree to the Privacy Policy and Terms of Service before continuing.</p>
                   <Button aria-describedby={!agreed ? 'terms-help' : undefined} type="submit" className="w-full" disabled={loading || !agreed}>
-                    {loading ? 'Creating account…' : 'Create account'}
+                    {loading ? 'Creating account…' : 'Create free account'}
                   </Button>
+                  {!checkoutPriceId ? <p className="text-center text-xs text-muted-foreground">No card required. Your first two automatic checks are included.</p> : null}
                 </form>
                 <p className="mt-6 text-center text-sm text-muted-foreground">
                   Already have an account? <Link to={signInPath} className="text-primary hover:underline font-medium">Sign in</Link>
@@ -186,8 +182,7 @@ const SignUp = () => {
             )}
           </CardContent>
         </Card>
-      </div>
-    </main>
+    </AuthExperienceShell>
   );
 };
 

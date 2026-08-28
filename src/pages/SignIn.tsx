@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader } from '@/components/ui/
 import { Separator } from '@/components/ui/separator';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
-import { BrandLockup } from '@/components/BrandLockup';
+import { AuthExperienceShell } from '@/components/AuthExperienceShell';
 import { CheckoutPlanSummary } from '@/components/CheckoutPlanSummary';
 import {
   checkoutPathForPrice,
@@ -88,19 +88,14 @@ const SignIn = () => {
   };
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-background px-4">
-      <div className="w-full max-w-md">
-        <div className="mb-8 text-center">
-          <Link to="/" className="inline-flex items-center gap-2 mb-6">
-            <BrandLockup />
-          </Link>
-        </div>
-        <Card className="border-0 shadow-lg">
-          <CardHeader className="text-center">
+    <AuthExperienceShell>
+        <Card className="border-0 shadow-none">
+          <CardHeader className="px-0 pt-0 text-left">
+            <p className="mb-1 text-xs font-bold uppercase tracking-[0.16em] text-primary">Your private pay history</p>
             <h1 className="text-2xl font-semibold leading-none tracking-tight">Welcome back</h1>
-            <CardDescription>Sign in to continue to Payslip Insights</CardDescription>
+            <CardDescription className="text-sm leading-6">Sign in to review your confirmed payslips and continue where you left off.</CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="px-0 pb-0">
             <CheckoutPlanSummary
               checkoutPriceId={checkoutPriceId}
               description="Sign in to continue to secure checkout. You will confirm the final total before you are charged."
@@ -144,8 +139,7 @@ const SignIn = () => {
             </p>
           </CardContent>
         </Card>
-      </div>
-    </main>
+    </AuthExperienceShell>
   );
 };
 

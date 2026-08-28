@@ -46,6 +46,8 @@ function fillRequiredFields() {
   fireEvent.click(screen.getByRole('checkbox'));
 }
 
+const createAccountButton = () => screen.getByRole('button', { name: 'Create free account' });
+
 describe('SignUp', () => {
   beforeEach(() => {
     state.navigate.mockReset();
@@ -60,7 +62,7 @@ describe('SignUp', () => {
     renderPage();
     fillRequiredFields();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Create account' }));
+    fireEvent.click(createAccountButton());
 
     await waitFor(() => {
       expect(screen.getByRole('heading', { name: 'Check your inbox' })).toBeInTheDocument();
@@ -74,7 +76,7 @@ describe('SignUp', () => {
     renderPage();
     fillRequiredFields();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Create account' }));
+    fireEvent.click(createAccountButton());
 
     await waitFor(() => {
       expect(state.navigate).toHaveBeenCalledWith('/onboarding');
@@ -86,7 +88,7 @@ describe('SignUp', () => {
     renderPage('/sign-up?checkout=plus_yearly');
     fillRequiredFields();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Create account' }));
+    fireEvent.click(createAccountButton());
 
     await waitFor(() => {
       expect(state.signUp).toHaveBeenCalledWith('alex@example.com', 'password123', 'Alex', 'plus_yearly');
@@ -107,7 +109,7 @@ describe('SignUp', () => {
     renderPage('/sign-up?checkout=plus_yearly');
     fillRequiredFields();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Create account' }));
+    fireEvent.click(createAccountButton());
 
     expect(await screen.findByRole('link', { name: 'Go to sign in' })).toHaveAttribute('href', '/sign-in?checkout=plus_yearly');
     expect(screen.getByRole('complementary', { name: 'Selected paid plan' })).toHaveTextContent('Plus · €19.99 / year');
@@ -123,6 +125,15 @@ describe('SignUp', () => {
     renderPage();
 
     expect(screen.getByRole('main')).toContainElement(screen.getByRole('heading', { level: 1, name: 'Create your account' }));
+  });
+
+  it('keeps the free offer and core outcome visible beside account creation', () => {
+    renderPage();
+
+    const productPromise = screen.getByRole('complementary', { name: 'Why people use Payslip Insights' });
+    expect(productPromise).toHaveTextContent('Two automatic checks are included on Free');
+    expect(productPromise).toHaveTextContent('See what changed');
+    expect(screen.getByText('No card required. Your first two automatic checks are included.')).toBeInTheDocument();
   });
 
   it('requires Terms and Privacy acknowledgement before starting Google sign-up', async () => {
@@ -151,14 +162,14 @@ describe('SignUp', () => {
     renderPage();
     fillRequiredFields();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Create account' }));
+    fireEvent.click(createAccountButton());
 
     await waitFor(() => expect(state.toast).toHaveBeenCalledWith({
       title: 'Sign up failed',
       description: 'We could not create your account. Please try again.',
       variant: 'destructive',
     }));
-    expect(screen.getByRole('button', { name: 'Create account' })).toBeEnabled();
+    expect(createAccountButton()).toBeEnabled();
     expect(state.navigate).not.toHaveBeenCalled();
   });
 });
