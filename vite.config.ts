@@ -21,9 +21,10 @@ export default defineConfig(({ mode }) => {
 
   return {
     build: {
-      // Sites serves the built browser bundle through the ASSETS binding and
-      // the worker entrypoint created by scripts/prepare-sites-build.mjs.
-      outDir: "dist/client",
+      // Keep Vite's conventional output for Lovable and other static hosts.
+      // scripts/prepare-sites-build.mjs derives the Sites client bundle from
+      // this exact artifact after the browser build has completed.
+      outDir: "dist",
     },
     server: {
       host: "::",

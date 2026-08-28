@@ -80,7 +80,7 @@ Configure the selected production host to build the paid web release with:
 npm run release:web:build:paid
 ```
 
-That command runs the paid launch gate before Vite creates the browser bundle. The plain `npm run build` command also prepares the Cloudflare/Sites worker archive for local and CI verification, but it does not deploy or prove that the external backend, provider, billing, or legal gates are complete. `npm run preview` reconstructs a temporary Vite preview from the prepared bundle; the Sites artifact keeps route documents under `dist/client/__pages` so the Worker can add response headers before serving them.
+That command runs the paid launch gate before Vite creates the browser bundle. The plain `npm run build` command leaves Lovable's conventional static artifact at the `dist` root and derives the Cloudflare/Sites worker archive from that same output for local and CI verification, but it does not deploy or prove that the external backend, provider, billing, or legal gates are complete. `npm run preview` reconstructs a temporary Vite preview from the prepared bundle; the Sites artifact keeps route documents under `dist/client/__pages` so the Worker can add response headers before serving them.
 
 The checked-in `.openai/hosting.json`, `worker/index.js`, and
 `scripts/prepare-sites-build.mjs` make the exact web artifact deployable to the
