@@ -15,15 +15,9 @@ concurrency:
 
 jobs:
   verify:
-    name: Typecheck, test, lint, and build
+    name: Typecheck, test, lint, and Lovable-parity build
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    env:
-      # These are intentionally non-secret placeholders. The production build
-      # refuses an empty public Supabase configuration, and CI should exercise
-      # that same build path without receiving any customer environment values.
-      VITE_SUPABASE_URL: https://ci-placeholder.supabase.co
-      VITE_SUPABASE_PUBLISHABLE_KEY: ci-placeholder-publishable-key
 
     steps:
       - name: Check out the repository
@@ -41,7 +35,11 @@ jobs:
       - name: Check production dependencies for known vulnerabilities
         run: npm audit --omit=dev --audit-level=high
 
-      - name: Verify the web release artifact
+      # Lovable's GitHub builder does not reliably provide VITE_* values from
+      # the connected backend. Keep this job free of Supabase build variables
+      # so every push proves the reviewed low-privilege browser fallback and
+      # the conventional dist/ artifact under the same condition.
+      - name: Verify the web release artifact without host variables
         run: npm run verify
 
   verify-mobile:

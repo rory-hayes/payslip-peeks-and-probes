@@ -18,6 +18,12 @@ production Lovable Cloud project. Values from `.env.example` can override it
 for another owned environment. Supabase publishable/legacy anon keys are public
 browser identifiers; secret and service-role keys remain server-only.
 
+The root GitHub verification job deliberately supplies no `VITE_SUPABASE_URL`
+or `VITE_SUPABASE_PUBLISHABLE_KEY`. That reproduces Lovable's GitHub production
+builder and prevents a placeholder-filled CI build from hiding a hosting
+regression. The same job still verifies the conventional static output at
+`dist/` that Lovable publishes.
+
 ```text
 npm install
 npm run dev
