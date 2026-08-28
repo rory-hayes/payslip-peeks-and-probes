@@ -16,7 +16,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useDemo } from '@/contexts/DemoContext';
 import { useToast } from '@/hooks/use-toast';
 import VerifyEmailBanner from '@/components/VerifyEmailBanner';
-import brandMark from '@/assets/payslip-insights-mark.png';
+import { BRAND_MARK_PATH } from '@/lib/brand-assets';
 
 const primaryNavItems = [
   { label: 'Payday', icon: Home, path: '/dashboard' },
@@ -104,7 +104,7 @@ const AppLayout = ({ children }: { children: ReactNode }) => {
     <div className="pi-app-shell">
       <aside className="pi-sidebar" role="navigation" aria-label="Main navigation">
         <Link className="pi-brand pi-brand--sidebar" to="/dashboard">
-          <img alt="" aria-hidden="true" className="pi-brand-mark" src={brandMark} />
+          <img alt="" aria-hidden="true" className="pi-brand-mark" src={BRAND_MARK_PATH} />
           <span className="pi-brand-copy"><strong>Payslip</strong><small>Insights</small></span>
         </Link>
 
@@ -138,7 +138,7 @@ const AppLayout = ({ children }: { children: ReactNode }) => {
         <VerifyEmailBanner />
         <header className="pi-mobile-header">
           <Link className="pi-brand" to="/dashboard">
-            <img alt="" aria-hidden="true" className="pi-brand-mark" src={brandMark} />
+            <img alt="" aria-hidden="true" className="pi-brand-mark" src={BRAND_MARK_PATH} />
             <span className="pi-brand-copy"><strong>Payslip</strong><small>Insights</small></span>
           </Link>
           <Sheet open={open} onOpenChange={setOpen}>
@@ -151,7 +151,7 @@ const AppLayout = ({ children }: { children: ReactNode }) => {
               <SheetTitle className="sr-only">Navigation menu</SheetTitle>
               <SheetDescription className="sr-only">Navigate your payslip tools or sign out.</SheetDescription>
               <div className="pi-mobile-menu-brand">
-                <img alt="" aria-hidden="true" className="pi-brand-mark" src={brandMark} />
+                <img alt="" aria-hidden="true" className="pi-brand-mark" src={BRAND_MARK_PATH} />
                 <span className="pi-brand-copy"><strong>Payslip</strong><small>Insights</small></span>
               </div>
               <nav className="mt-8" aria-label="Menu navigation">

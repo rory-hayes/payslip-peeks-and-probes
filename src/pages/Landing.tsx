@@ -7,6 +7,7 @@ import { applySeo } from '@/lib/seo';
 import { marketingSeoFor } from '@/lib/marketing-seo-data';
 import { signUpPathForCheckout } from '@/lib/checkout-price';
 import { CUSTOMER_PRICING, pricingPathForCurrency, type PriceCurrency } from '@/lib/customer-pricing';
+import { BRAND_MARK_PATH } from '@/lib/brand-assets';
 import {
   AlertTriangle,
   ArrowRight,
@@ -30,7 +31,6 @@ import {
   AccordionTrigger,
 } from '@/components/ui/accordion';
 import payslipCheckHero from '@/assets/option-one-payslip-check-hero-v1.webp';
-import payslipMark from '@/assets/payslip-insights-mark.png';
 import aquaCorner from '@/assets/option-one-aqua-corner-v2.webp';
 import './Landing.css';
 
@@ -176,7 +176,7 @@ const Landing = () => {
       <header className="pi-landing__nav-wrap">
         <nav className="pi-landing__nav" aria-label="Primary navigation">
           <Link to="/" className="pi-landing__brand" aria-label="Payslip Insights home">
-            <img src={payslipMark} alt="" className="pi-landing__brand-mark" />
+            <img src={BRAND_MARK_PATH} alt="" className="pi-landing__brand-mark" />
             <span>payslip insights</span>
           </Link>
 
@@ -499,7 +499,7 @@ const Landing = () => {
       <footer className="pi-landing__footer">
         <div className="pi-landing__container pi-landing__footer-inner">
           <Link to="/" className="pi-landing__brand" aria-label="Payslip Insights home">
-            <img src={payslipMark} alt="" className="pi-landing__brand-mark" />
+            <img src={BRAND_MARK_PATH} alt="" className="pi-landing__brand-mark" />
             <span>payslip insights</span>
           </Link>
           <div className="pi-landing__footer-links">

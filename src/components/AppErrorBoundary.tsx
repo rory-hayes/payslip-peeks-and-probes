@@ -1,5 +1,5 @@
 import { Component, type ErrorInfo, type ReactNode } from 'react';
-import brandMark from '@/assets/payslip-insights-mark.png';
+import { BRAND_MARK_PATH } from '@/lib/brand-assets';
 
 type AppErrorBoundaryProps = { children: ReactNode };
 type AppErrorBoundaryState = { hasError: boolean };
@@ -34,7 +34,7 @@ export default class AppErrorBoundary extends Component<AppErrorBoundaryProps, A
     return (
       <main className="flex min-h-screen items-center justify-center bg-background px-5 py-10 text-center">
         <section className="w-full max-w-md rounded-3xl border border-border bg-card p-8 shadow-sm">
-          <img alt="Payslip Insights" className="mx-auto h-10 w-10" src={brandMark} />
+          <img alt="Payslip Insights" className="mx-auto h-10 w-10" src={BRAND_MARK_PATH} />
           <h1 className="mt-6 text-2xl font-semibold tracking-tight text-foreground">Let&apos;s get you back on track.</h1>
           <p className="mt-3 text-sm leading-6 text-muted-foreground">
             This page did not load as expected. Your payslip details have not been shown here. Refresh the page, or return home and try again.

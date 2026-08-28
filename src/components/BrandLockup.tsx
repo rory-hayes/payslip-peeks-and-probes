@@ -1,4 +1,4 @@
-import brandMark from "@/assets/payslip-insights-mark.png";
+import { BRAND_MARK_PATH } from "@/lib/brand-assets";
 import { cn } from "@/lib/utils";
 
 type BrandLockupProps = {
@@ -16,7 +16,7 @@ export function BrandLockup({ size = "md", className }: BrandLockupProps) {
         alt=""
         aria-hidden="true"
         className={isSmall ? "h-7 w-7" : "h-8 w-8"}
-        src={brandMark}
+        src={BRAND_MARK_PATH}
       />
       <span className={isSmall ? "text-base font-bold text-foreground" : "text-xl font-bold text-foreground"}>
         Payslip Insights

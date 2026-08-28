@@ -6,7 +6,8 @@
   --pi-cyan: #20c8df;
   --pi-cyan-soft: #eafbfd;
   --pi-orange: #ff5a08;
-  --pi-orange-dark: #e84b00;
+  --pi-orange-hover: #ff6a25;
+  --pi-orange-dark: #cc3e00;
   --pi-line: #e6e5f2;
   --pi-paper: #ffffff;
   --pi-radius: 1.5rem;
@@ -194,15 +195,15 @@
   transition: transform 160ms ease, box-shadow 160ms ease, border-color 160ms ease, background-color 160ms ease;
 }
 
-.pi-landing__button {
+.pi-landing .pi-landing__button {
   gap: 0.55rem;
   background: var(--pi-orange);
-  color: #ffffff;
+  color: var(--pi-ink);
   box-shadow: 0 11px 20px rgba(255, 90, 8, 0.2);
 }
 
 .pi-landing__button:hover {
-  background: var(--pi-orange-dark);
+  background: var(--pi-orange-hover);
   box-shadow: 0 14px 24px rgba(255, 90, 8, 0.28);
   transform: translateY(-1px);
 }
@@ -623,7 +624,7 @@
 }
 
 .pi-landing__text-link:hover {
-  color: var(--pi-orange);
+  color: var(--pi-orange-dark);
 }
 
 .pi-landing__feature-list {
