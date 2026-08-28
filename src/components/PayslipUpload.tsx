@@ -74,6 +74,7 @@ const PayslipUpload = ({ onUploadComplete, resumeReviewId = null }: PayslipUploa
     canUpload,
     uploadsRemaining,
     uploadLimit,
+    uploadQuotaScope,
     isPremium,
     refetchAccess,
   } = useUsage();
@@ -403,7 +404,7 @@ const PayslipUpload = ({ onUploadComplete, resumeReviewId = null }: PayslipUploa
     if (!canUpload) {
       setErrorMsg(isPremium
         ? `You've reached your ${uploadLimit} automatic-check limit for this calendar month. It resets at the start of the next calendar month.`
-        : `You've reached your Free plan automatic-check limit this calendar month. See Plus options for up to ${uploadLimit} automatic checks per calendar month.`);
+        : `You've used the ${uploadLimit} automatic checks included with Free. Upgrade to Plus for up to 6 automatic checks per calendar month.`);
       setState('error');
       return;
     }
@@ -730,7 +731,7 @@ const PayslipUpload = ({ onUploadComplete, resumeReviewId = null }: PayslipUploa
             <p className="pi-upload-body">
               {accessError
                 ? 'Check your connection, then try again before uploading a payslip.'
-                : 'We’re confirming your account and monthly allowance before you upload.'}
+                : 'We’re confirming your account and included checks before you upload.'}
             </p>
             {accessError ? <Button className="pi-upload-action" onClick={() => void refetchAccess()}>Try again</Button> : null}
           </>
@@ -745,14 +746,18 @@ const PayslipUpload = ({ onUploadComplete, resumeReviewId = null }: PayslipUploa
             <p className="pi-upload-body">
               {isPremium
                 ? `You've used all ${uploadLimit} included automatic checks this calendar month. It resets at the start of the next calendar month.`
-                : `You've used all ${uploadLimit} Free automatic checks this calendar month. See Plus options for up to 6 automatic checks per calendar month.`}
+                : `You've used the ${uploadLimit} automatic checks included with Free. Upgrade to Plus for up to 6 automatic checks per calendar month.`}
             </p>
             {!isPremium && (
               <Button asChild className="pi-upload-action">
                 <Link to="/pricing">See Plus</Link>
               </Button>
             )}
-            <p className="pi-upload-note">Limits reset at the start of each calendar month (Ireland time)</p>
+            <p className="pi-upload-note">
+              {isPremium
+                ? 'Your paid allowance resets at the start of each calendar month (Ireland time).'
+                : 'The Free automatic-check allowance does not renew.'}
+            </p>
           </>
         )}
 
@@ -766,7 +771,7 @@ const PayslipUpload = ({ onUploadComplete, resumeReviewId = null }: PayslipUploa
             <Button className="pi-upload-action" onClick={() => fileInputRef.current?.click()}>Choose a file</Button>
             <p className="pi-upload-note">PDF, PNG, JPG up to 10 MB</p>
             <p className="pi-upload-note pi-upload-note--allowance">
-              {uploadsRemaining} of {uploadLimit} automatic check{uploadLimit !== 1 ? 's' : ''} remaining this calendar month
+              {uploadsRemaining} of {uploadLimit} automatic check{uploadLimit !== 1 ? 's' : ''} remaining {uploadQuotaScope === 'lifetime' ? 'on Free' : 'this calendar month'}
             </p>
             <div className="pi-upload-trust">
               <p>Only upload a payslip you are entitled to use. You’ll review the extracted figures before saving them.</p>

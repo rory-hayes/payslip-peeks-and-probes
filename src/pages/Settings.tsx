@@ -73,7 +73,7 @@ const Settings = () => {
   const navigate = useNavigate();
   const { user, signOut } = useAuth();
   const { subscription } = useSubscription();
-  const { uploadsRemaining, draftsRemaining, isPremium, limits, uploadLimit, draftLimit } = useUsage();
+  const { automaticChecksUsed, uploadsRemaining, draftsRemaining, isPremium, limits, uploadLimit, draftLimit } = useUsage();
   const [firstName, setFirstName] = useState('');
   const [country, setCountry] = useState<LaunchCountryCode | ''>('UK');
   const [annualSalary, setAnnualSalary] = useState('');
@@ -387,7 +387,7 @@ const Settings = () => {
                         : `Up to ${uploadLimit} automatic checks and ${draftLimit} payroll-message drafts per calendar month`
                     : needsBillingReview
                       ? 'We found an existing billing record. Manage it while we finish checking the account.'
-                      : '3 automatic checks and 2 payroll-message drafts per calendar month'}
+                      : '2 automatic checks total and 2 payroll-message drafts per calendar month'}
                 </p>
               </div>
               <div className="flex flex-wrap gap-2">
@@ -415,19 +415,19 @@ const Settings = () => {
                 <div>
                   <div className="flex justify-between text-xs text-muted-foreground mb-1">
                     <span>Automatic checks</span>
-                    <span>{limits.uploads_per_month - uploadsRemaining}/{limits.uploads_per_month} used</span>
+                    <span>{automaticChecksUsed}/{uploadLimit} used</span>
                   </div>
                   <div
-                    aria-label="Automatic checks used this month"
-                    aria-valuemax={limits.uploads_per_month}
+                    aria-label="Automatic checks used on the Free plan"
+                    aria-valuemax={uploadLimit}
                     aria-valuemin={0}
-                    aria-valuenow={limits.uploads_per_month - uploadsRemaining}
+                    aria-valuenow={automaticChecksUsed}
                     className="h-2 rounded-full bg-muted overflow-hidden"
                     role="progressbar"
                   >
                     <div
                       className={`h-full rounded-full transition-all ${uploadsRemaining === 0 ? 'bg-destructive' : 'bg-primary'}`}
-                      style={{ width: `${((limits.uploads_per_month - uploadsRemaining) / limits.uploads_per_month) * 100}%` }}
+                      style={{ width: `${(automaticChecksUsed / uploadLimit) * 100}%` }}
                     />
                   </div>
                 </div>

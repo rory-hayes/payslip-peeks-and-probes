@@ -686,10 +686,10 @@ serve(async (req) => {
       payslip = retryPayslip;
     }
 
-    // This RPC is the only paid/free claim path. It locks the account's
-    // calendar-month allowance, reserves every automatic check, creates a
-    // fencing token, and prepares extraction state before any private document
-    // reaches the provider.
+    // This RPC is the only paid/free claim path. It locks the account's scoped
+    // allowance (lifetime for Free, calendar month for paid), reserves every
+    // automatic check, creates a fencing token, and prepares extraction state
+    // before any private document reaches the provider.
     const { data: claimResult, error: claimError } = await supabase.rpc("reserve_and_claim_secure_payslip_processing", {
       p_payslip_id: payslipId,
       p_user_id: user.id,
@@ -704,9 +704,12 @@ serve(async (req) => {
     const claim = isPlainObject(claimResult) ? claimResult : null;
     const claimStatus = typeof claim?.status === "string" ? claim.status : null;
     const claimTier = typeof claim?.tier === "string" ? claim.tier : "free";
-    const claimMonthlyLimit = typeof claim?.monthly_limit === "number" && Number.isInteger(claim.monthly_limit)
-      ? claim.monthly_limit
-      : null;
+    const claimLimit = typeof claim?.quota_limit === "number" && Number.isInteger(claim.quota_limit)
+      ? claim.quota_limit
+      : typeof claim?.monthly_limit === "number" && Number.isInteger(claim.monthly_limit)
+        ? claim.monthly_limit
+        : null;
+    const claimQuotaScope = claim?.quota_scope === "lifetime" ? "lifetime" : "month";
     const processingToken = typeof claim?.processing_token === "string" && isUuid(claim.processing_token)
       ? claim.processing_token
       : null;
@@ -734,13 +737,15 @@ serve(async (req) => {
     }
     if (claimStatus === "quota_exceeded") {
       const paidTier = claimTier === "plus" || claimTier === "lifetime";
-      const limitLabel = claimMonthlyLimit ? `${claimMonthlyLimit} automatic checks` : "automatic-check";
+      const limitLabel = claimLimit ? `${claimLimit} automatic checks` : "automatic checks";
       return new Response(
         JSON.stringify({
-          error: paidTier
+          error: !paidTier && claimQuotaScope === "lifetime"
+            ? `You've used the ${limitLabel} included with Free. Upgrade to Plus for up to 6 automatic checks per calendar month.`
+            : paidTier
             ? `Your ${limitLabel} limit for this calendar month has been reached. It resets at the start of the next Ireland calendar month.`
             : `Your Free plan ${limitLabel} limit for this calendar month has been reached. Upgrade for up to 6 automatic checks per calendar month.`,
-          code: "monthly_automatic_check_limit_reached",
+          code: "automatic_check_limit_reached",
         }),
         {
           status: paidTier ? 429 : 402,

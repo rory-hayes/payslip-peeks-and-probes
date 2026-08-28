@@ -3,8 +3,9 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSubscription } from './use-subscription';
 
-// Mirrors the server-owned cap in
-// 20260804110000_cap_paid_payslip_checks.sql. The server remains authoritative.
+// Mirrors the server-owned caps in the latest payslip-check quota migration.
+// The server remains authoritative.
+export const FREE_AUTOMATIC_CHECKS_LIFETIME = 2;
 export const PAID_UPLOADS_PER_MONTH = 6;
 export const PAID_DRAFTS_PER_MONTH = 12;
 
@@ -17,13 +18,14 @@ export function payrollMessageDraftLimit(isPremium: boolean, freeLimit: number):
 }
 
 export interface Usage {
+  automaticChecksLifetime: number;
   automaticChecksThisMonth: number;
   draftsThisMonth: number;
 }
 
-// The server reserves the automatic-check allowance by the Ireland calendar
-// month. Keep the browser display/pre-flight on the same boundary rather than
-// using a person's device timezone or the old browser-created-at heuristic.
+// Paid automatic checks and all draft allowances use the Ireland calendar
+// month. Free automatic checks are counted across the account's lifetime.
+// Keep monthly browser display/pre-flight on the server's Dublin boundary.
 export function dublinMonthPeriod(value: Date | string): string {
   const now = typeof value === 'string' ? new Date(value) : value;
   if (!Number.isFinite(now.getTime())) throw new Error('Invalid date for monthly usage');
@@ -51,7 +53,12 @@ export function useUsage() {
   const query = useQuery({
     queryKey: ['usage', user?.id, period],
     queryFn: async (): Promise<Usage> => {
-      const [uploadResult, draftResult] = await Promise.all([
+      const [lifetimeFreeUploadResult, monthlyUploadResult, draftResult] = await Promise.all([
+        supabase
+          .from('payslip_check_reservations')
+          .select('*', { count: 'exact', head: true })
+          .eq('user_id', user!.id)
+          .eq('tier_at_reservation', 'free'),
         supabase
           .from('payslip_check_reservations')
           .select('*', { count: 'exact', head: true })
@@ -63,12 +70,13 @@ export function useUsage() {
           .eq('user_id', user!.id)
       ]);
 
-      if (uploadResult.error || draftResult.error) {
-        throw uploadResult.error ?? draftResult.error;
+      if (lifetimeFreeUploadResult.error || monthlyUploadResult.error || draftResult.error) {
+        throw lifetimeFreeUploadResult.error ?? monthlyUploadResult.error ?? draftResult.error;
       }
 
       return {
-        automaticChecksThisMonth: uploadResult.count ?? 0,
+        automaticChecksLifetime: lifetimeFreeUploadResult.count ?? 0,
+        automaticChecksThisMonth: monthlyUploadResult.count ?? 0,
         draftsThisMonth: draftResult.data?.filter((draft) => dublinMonthPeriod(draft.created_at) === period).length ?? 0,
       };
     },
@@ -76,7 +84,7 @@ export function useUsage() {
     staleTime: 30_000,
   });
 
-  const usage = query.data ?? { automaticChecksThisMonth: 0, draftsThisMonth: 0 };
+  const usage = query.data ?? { automaticChecksLifetime: 0, automaticChecksThisMonth: 0, draftsThisMonth: 0 };
   // Usage and entitlement data are cost-control inputs. Do not present an
   // optimistic zero-usage free tier while either query is still loading or
   // has failed; the server remains authoritative either way.
@@ -84,12 +92,16 @@ export function useUsage() {
   const accessError = Boolean(user) && (query.isError || subscriptionQuery.isError);
   const accessPending = Boolean(user) && !accessReady && !accessError;
 
-  const uploadLimit = automaticCheckLimit(subscription.isPremium, limits.uploads_per_month);
+  const uploadLimit = automaticCheckLimit(subscription.isPremium, limits.automatic_checks_lifetime);
   const draftLimit = payrollMessageDraftLimit(subscription.isPremium, limits.drafts_per_month);
-  const canUpload = accessReady && usage.automaticChecksThisMonth < uploadLimit;
+  const automaticChecksUsed = subscription.isPremium
+    ? usage.automaticChecksThisMonth
+    : usage.automaticChecksLifetime;
+  const uploadQuotaScope = subscription.isPremium ? 'month' as const : 'lifetime' as const;
+  const canUpload = accessReady && automaticChecksUsed < uploadLimit;
   const canDraft = accessReady && usage.draftsThisMonth < draftLimit;
 
-  const uploadsRemaining = Math.max(0, uploadLimit - usage.automaticChecksThisMonth);
+  const uploadsRemaining = Math.max(0, uploadLimit - automaticChecksUsed);
   const draftsRemaining = Math.max(0, draftLimit - usage.draftsThisMonth);
 
   return {
@@ -98,10 +110,12 @@ export function useUsage() {
     accessReady,
     accessPending,
     accessError,
+    automaticChecksUsed,
     canUpload,
     canDraft,
     uploadsRemaining,
     uploadLimit,
+    uploadQuotaScope,
     draftsRemaining,
     draftLimit,
     isPremium: subscription.isPremium,

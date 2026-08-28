@@ -43,10 +43,12 @@ const Dashboard = () => {
     accessError,
     accessPending,
     accessReady,
+    automaticChecksUsed,
     draftsRemaining,
     isPremium,
     limits,
     refetchAccess,
+    uploadLimit,
     uploadsRemaining,
   } = useUsage();
   const [demoPreview, setDemoPreview] = useState<DemoPayslipPreviewState | null>(null);
@@ -426,7 +428,7 @@ const Dashboard = () => {
                 <div className="pi-dashboard__usage-heading">
                   <div>
                     <h2>Checking your account access</h2>
-                    <p>We’re confirming your plan and monthly allowance before showing usage or upgrade options.</p>
+                    <p>We’re confirming your plan and included usage before showing upgrade options.</p>
                   </div>
                 </div>
               </section>
@@ -447,11 +449,11 @@ const Dashboard = () => {
             )}
 
             {showFreeUsage && (
-              <section className="pi-dashboard__usage" aria-label="Free plan usage this month">
+              <section className="pi-dashboard__usage" aria-label="Free plan usage">
                 <div className="pi-dashboard__usage-heading">
                   <div>
                     <h2>Free plan usage</h2>
-                    <p>Keep an eye on the checks and drafts included this month.</p>
+                    <p>Your two automatic checks are a one-time Free allowance. Payroll-message drafts renew monthly.</p>
                   </div>
                   <Button asChild className="pi-dashboard__quiet-action" variant="outline">
                     <Link to="/pricing">Upgrade</Link>
@@ -459,13 +461,13 @@ const Dashboard = () => {
                 </div>
                 <div className="pi-dashboard__usage-bars">
                   <UsageBar
-                    label="Automatic checks"
-                    used={limits.uploads_per_month - uploadsRemaining}
-                    limit={limits.uploads_per_month}
+                    label="Automatic checks · Free total"
+                    used={automaticChecksUsed}
+                    limit={uploadLimit}
                     depleted={uploadsRemaining === 0}
                   />
                   <UsageBar
-                    label="Drafts"
+                    label="Drafts · this month"
                     used={limits.drafts_per_month - draftsRemaining}
                     limit={limits.drafts_per_month}
                     depleted={draftsRemaining === 0}

@@ -24,6 +24,10 @@ type BeginSessionResult = {
   session_id?: unknown;
   object_path?: unknown;
   expires_at?: unknown;
+  tier?: unknown;
+  quota_limit?: unknown;
+  quota_scope?: unknown;
+  monthly_limit?: unknown;
 };
 
 async function clearExpiredSessionsForUser(userId: string) {
@@ -120,7 +124,18 @@ serve(async (request) => {
       return jsonResponse({ error: "Your account deletion is being safely completed, so new uploads are unavailable." }, 409);
     }
     if (status === "quota_exceeded") {
-      return jsonResponse({ error: "Your included automatic-check limit for this calendar month has been reached." }, 429);
+      const tier = session.tier === "plus" || session.tier === "lifetime" ? session.tier : "free";
+      const limit = typeof session.quota_limit === "number"
+        ? session.quota_limit
+        : typeof session.monthly_limit === "number"
+          ? session.monthly_limit
+          : null;
+      const scope = session.quota_scope === "lifetime" ? "lifetime" : "month";
+      const paidTier = tier === "plus" || tier === "lifetime";
+      const error = !paidTier && scope === "lifetime"
+        ? `You've used the ${limit ?? 2} automatic checks included with Free. Upgrade to continue automatic checks each payday.`
+        : `Your ${limit ? `${limit} ` : ""}automatic-check limit for this calendar month has been reached.`;
+      return jsonResponse({ error, code: "automatic_check_limit_reached" }, paidTier ? 429 : 402);
     }
     if (
       status !== "issued"

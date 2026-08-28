@@ -38,11 +38,13 @@ vi.mock("@/hooks/use-usage", () => ({
     accessError: state.accessError,
     accessPending: state.accessPending,
     accessReady: state.accessReady,
+    automaticChecksUsed: 0,
     draftsRemaining: 2,
     isPremium: state.isPremium,
-    limits: { drafts_per_month: 2, uploads_per_month: 3 },
+    limits: { automatic_checks_lifetime: 2, drafts_per_month: 2 },
     refetchAccess: state.refetchAccess,
-    uploadsRemaining: 3,
+    uploadLimit: state.isPremium ? 6 : 2,
+    uploadsRemaining: state.isPremium ? 6 : 2,
   }),
 }));
 
@@ -283,7 +285,8 @@ describe("Dashboard demo mode", () => {
 
     expect(screen.getByRole('heading', { name: 'Free plan usage' })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Upgrade' })).toHaveAttribute('href', '/pricing');
-    expect(screen.getByLabelText('Automatic checks: 0 of 3 used')).toBeInTheDocument();
+    expect(screen.getByText('Your two automatic checks are a one-time Free allowance. Payroll-message drafts renew monthly.')).toBeInTheDocument();
+    expect(screen.getByLabelText('Automatic checks · Free total: 0 of 2 used')).toBeInTheDocument();
   });
 
   it("links a real user from a usual-pay insight to the closest confirmed comparison", () => {

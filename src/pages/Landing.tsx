@@ -89,7 +89,8 @@ const FEATURES = [
 ] as const;
 
 const FREE_FEATURES = [
-  '3 automatic payslip checks per calendar month',
+  '2 automatic payslip checks total',
+  'Your first real payslip comparison',
   'Checks for changes worth reviewing',
   'Payslip comparison and history',
   '2 payroll-message drafts per calendar month',
@@ -351,8 +352,8 @@ const Landing = () => {
               <article className="pi-landing__price-card">
                 <div>
                   <h3>Free</h3>
-                  <p className="pi-landing__price"><strong>{selectedPricing.symbol}0</strong><span>/month</span></p>
-                  <p className="pi-landing__price-intro">Great for getting started.</p>
+                  <p className="pi-landing__price"><strong>{selectedPricing.symbol}0</strong><span>forever</span></p>
+                  <p className="pi-landing__price-intro">Check two payslips and see what changed.</p>
                 </div>
                 <ul>
                   {FREE_FEATURES.map((feature) => (

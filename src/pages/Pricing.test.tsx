@@ -80,6 +80,15 @@ describe('Pricing', () => {
     expect(pdfExport.closest('div[class*="p-8"]')).toHaveTextContent('Free');
   });
 
+  it('uses a bounded Free trial that proves the first comparison without renewing automatic checks', () => {
+    renderPricing();
+
+    expect(screen.getByText('2 automatic payslip checks total')).toBeInTheDocument();
+    expect(screen.getByText('Enough to unlock your first real comparison')).toBeInTheDocument();
+    expect(screen.getByRole('row', { name: /Automatic payslip checks 2 total 6 \/ calendar month 6 \/ calendar month/i })).toBeInTheDocument();
+    expect(screen.queryByText('3 automatic payslip checks per calendar month')).not.toBeInTheDocument();
+  });
+
   it('keeps the pricing decision inside a labelled main landmark', () => {
     renderPricing();
 

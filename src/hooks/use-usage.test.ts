@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   automaticCheckLimit,
   dublinMonthPeriod,
+  FREE_AUTOMATIC_CHECKS_LIFETIME,
   PAID_DRAFTS_PER_MONTH,
   PAID_UPLOADS_PER_MONTH,
   payrollMessageDraftLimit,
@@ -21,8 +22,9 @@ describe('dublinMonthPeriod', () => {
   });
 
   it('keeps the paid upload allowance finite in the browser pre-flight', () => {
-    expect(automaticCheckLimit(false, 3)).toBe(3);
-    expect(automaticCheckLimit(true, 3)).toBe(PAID_UPLOADS_PER_MONTH);
+    expect(automaticCheckLimit(false, FREE_AUTOMATIC_CHECKS_LIFETIME)).toBe(2);
+    expect(automaticCheckLimit(true, FREE_AUTOMATIC_CHECKS_LIFETIME)).toBe(PAID_UPLOADS_PER_MONTH);
+    expect(FREE_AUTOMATIC_CHECKS_LIFETIME).toBe(2);
     expect(PAID_UPLOADS_PER_MONTH).toBe(6);
   });
 

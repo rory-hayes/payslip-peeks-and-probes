@@ -22,7 +22,8 @@ import {
 } from '@/lib/customer-pricing';
 
 const freeFeatures = [
-  '3 automatic payslip checks per calendar month',
+  '2 automatic payslip checks total',
+  'Enough to unlock your first real comparison',
   'Review, track, and compare confirmed payslips',
   '2 payroll-message drafts per calendar month',
   'PDF export of your payslip history',
@@ -232,7 +233,7 @@ const Pricing = () => {
           <div className="text-center space-y-4">
             <h1 className="text-3xl font-bold text-foreground md:text-4xl">Simple, transparent pricing</h1>
             <p className="text-muted-foreground max-w-md mx-auto">
-              Start with the Free plan. Choose a paid plan for up to 6 automatic checks and 12 payroll-message drafts each calendar month.
+              Use Free to check two payslips and see your first comparison. Choose a paid plan for continued payday checks and payroll-message drafts.
             </p>
 
             {/* Currency toggle */}
@@ -278,10 +279,10 @@ const Pricing = () => {
                 <h3 className="text-lg font-semibold text-foreground">Free</h3>
                 <div className="mt-4">
                   <span className="text-4xl font-bold text-foreground">{pricing.symbol}0</span>
-                  <span className="text-muted-foreground">/month</span>
+                  <span className="text-muted-foreground"> forever</span>
                 </div>
                 <p className="mt-2 text-sm text-muted-foreground">
-                  Great for getting started and checking occasional payslips.
+                  Prove the value with your first payslip and first comparison.
                 </p>
                 <ul className="mt-6 space-y-3 text-sm text-muted-foreground flex-1">
                   {freeFeatures.map((f, i) => (
@@ -469,7 +470,7 @@ const Pricing = () => {
                   </thead>
                   <tbody>
                     {[
-                      { feature: 'Automatic payslip checks', free: '3 / calendar month', plus: '6 / calendar month', lifetime: '6 / calendar month' },
+                      { feature: 'Automatic payslip checks', free: '2 total', plus: '6 / calendar month', lifetime: '6 / calendar month' },
                       { feature: 'Payslip review', free: 'Included', plus: 'Included', lifetime: 'Included' },
                       { feature: 'Payslip comparison & trends', free: 'Included', plus: 'Included', lifetime: 'Included' },
                       { feature: 'Payroll-message drafts', free: '2 / calendar month', plus: '12 / calendar month', lifetime: '12 / calendar month' },

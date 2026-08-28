@@ -227,11 +227,13 @@ function PendingPayslipState({
 }) {
   const isReview = payslip.status === 'needs_review';
   const isFailed = payslip.status === 'failed';
-  const title = isReview ? 'Your review is ready' : isFailed ? (payslip.processing_failure_code === 'monthly_upload_limit' ? 'Checks used for this month' : 'That check needs another try') : 'Still checking your payslip';
+  const reachedAutomaticCheckLimit = payslip.processing_failure_code === 'automatic_check_limit'
+    || payslip.processing_failure_code === 'monthly_upload_limit';
+  const title = isReview ? 'Your review is ready' : isFailed ? (reachedAutomaticCheckLimit ? 'Automatic-check limit reached' : 'That check needs another try') : 'Still checking your payslip';
   const body = isReview
     ? 'Compare the extracted figures before this payslip joins your pay history.'
     : isFailed
-      ? (payslip.processing_failure_code === 'monthly_upload_limit' ? 'This file is saved. Open Payslips to add the figures yourself or remove the upload.' : 'Your file is still saved. Open Payslips to retry it, add the figures yourself, or remove the upload.')
+      ? (reachedAutomaticCheckLimit ? 'This file is saved. Open Payslips to add the figures yourself or remove the upload.' : 'Your file is still saved. Open Payslips to retry it, add the figures yourself, or remove the upload.')
       : 'Your saved upload stays here. Open Payslips to refresh its status or retry it if it remains waiting.';
   const icon = isReview ? 'create-outline' : isFailed ? 'alert-circle-outline' : 'time-outline';
   // The processor has no client-side background queue. Let people return to

@@ -71,7 +71,7 @@ export function hasRecurringBillingIssue<T extends SubscriptionEntitlement>(subs
 }
 
 const FREE_LIMITS = {
-  uploads_per_month: 3,
+  automatic_checks_lifetime: 2,
   drafts_per_month: 2,
   comparison_months: 1,
 };

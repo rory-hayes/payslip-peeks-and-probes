@@ -96,8 +96,9 @@ employee will pay Payslip Insights.
 
 The current offer is intentionally low-friction:
 
-- Free: 3 automatic checks and 2 payroll-message drafts per calendar month,
-  with confirmed history, comparison, and export.
+- Free: 2 automatic checks for the lifetime of the account, enough to complete
+  the first real comparison, plus 2 payroll-message drafts per calendar month,
+  confirmed history, comparison, and export.
 - Plus: €3.49/month or €19.99/year in Ireland; £2.99/month or £17.99/year in
   the UK, with higher monthly allowances.
 - Lifetime: €34.99 or £29.99 once, only as an explicit early-adopter test.

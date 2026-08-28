@@ -620,9 +620,11 @@ function pendingDetails(payslip: Payslip) {
     return { title: 'Your review is ready', body: 'Check the extracted figures before they join your pay history.', icon: 'create-outline' as const, color: colors.violet, surface: colors.lavender };
   }
   if (payslip.status === 'failed') {
+    const reachedAutomaticCheckLimit = payslip.processing_failure_code === 'automatic_check_limit'
+      || payslip.processing_failure_code === 'monthly_upload_limit';
     return {
-      title: payslip.processing_failure_code === 'monthly_upload_limit' ? 'Checks used for this month' : 'That check needs another try',
-      body: payslip.processing_failure_code === 'monthly_upload_limit'
+      title: reachedAutomaticCheckLimit ? 'Automatic-check limit reached' : 'That check needs another try',
+      body: reachedAutomaticCheckLimit
         ? 'This file is saved. You can add the figures you see yourself, or remove the upload.'
         : 'Your file is still saved. Retry it, add the figures yourself, or remove the upload.',
       icon: 'alert-circle-outline' as const,
@@ -638,11 +640,11 @@ function formatLastChecked(date: Date): string {
 }
 
 function canRetryFailure(code: string | null | undefined): boolean {
-  return code !== 'monthly_upload_limit' && code !== 'processing_attempt_limit';
+  return code !== 'automatic_check_limit' && code !== 'monthly_upload_limit' && code !== 'processing_attempt_limit';
 }
 
 function failureMessage(code: string | null | undefined): string {
-  if (code === 'monthly_upload_limit') return 'You’ve used the checks included in your current plan this month. You can add the figures you see yourself, or keep this file for later.';
+  if (code === 'automatic_check_limit' || code === 'monthly_upload_limit') return 'You’ve used the automatic checks currently included with your plan. You can add the figures you see yourself, upgrade when available, or keep this file for later.';
   if (code === 'processing_stalled_after_dispatch') return 'That automatic check took longer than expected. You can add the figures you see, remove this upload, or choose to try the automatic check again.';
   if (code === 'rate_limited') return 'We need to pause new checks for a little while. Your file is still saved, so try again later.';
   if (code === 'processing_attempt_limit') return 'We could not read that file after several tries. You can add the figures you see, upload a clearer copy, or remove this upload.';

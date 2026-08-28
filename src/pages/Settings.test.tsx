@@ -42,11 +42,13 @@ vi.mock('@/hooks/use-subscription', () => ({
 
 vi.mock('@/hooks/use-usage', () => ({
   useUsage: () => ({
-    uploadsRemaining: 3,
+    automaticChecksUsed: 0,
+    uploadsRemaining: 2,
     draftsRemaining: 2,
     isPremium: mocks.subscription.isPremium,
-    limits: { uploads_per_month: 3, drafts_per_month: 2 },
-    uploadLimit: 3,
+    limits: { automatic_checks_lifetime: 2, drafts_per_month: 2 },
+    uploadLimit: mocks.subscription.isPremium ? 6 : 2,
+    draftLimit: mocks.subscription.isPremium ? 12 : 2,
   }),
 }));
 
@@ -176,7 +178,7 @@ describe('Settings', () => {
     expect(screen.getByRole('switch', { name: 'Student loan' })).toHaveAttribute('aria-checked', 'false');
     expect(screen.getByRole('slider', { name: 'Change threshold' })).toHaveValue('5');
     expect(screen.getByRole('button', { name: 'How anomaly sensitivity works' })).toBeInTheDocument();
-    expect(screen.getByRole('progressbar', { name: 'Automatic checks used this month' })).toHaveAttribute('aria-valuenow', '0');
+    expect(screen.getByRole('progressbar', { name: 'Automatic checks used on the Free plan' })).toHaveAttribute('aria-valuenow', '0');
     expect(screen.getByRole('progressbar', { name: 'Payroll-message drafts used this month' })).toHaveAttribute('aria-valuemax', '2');
   });
 

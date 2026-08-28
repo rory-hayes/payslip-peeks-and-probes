@@ -78,6 +78,9 @@ describe('Landing', () => {
       .toBe('Upload a payslip, confirm its figures, compare pay changes, prepare payroll questions, and follow official UK or Ireland tax-year steps.');
     expect(screen.getByRole('link', { name: /check a payslip/i })).toHaveAttribute('href', '/sign-up');
     expect(screen.getByRole('link', { name: 'Choose Plus' })).toHaveAttribute('href', '/sign-up?checkout=plus_yearly');
+    expect(screen.getByText('2 automatic payslip checks total')).toBeInTheDocument();
+    expect(screen.getByText('Your first real payslip comparison')).toBeInTheDocument();
+    expect(screen.getByText('Check two payslips and see what changed.')).toBeInTheDocument();
     expect(screen.getByText('Billed €19.99 yearly until you cancel.')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Billing terms' })).toHaveAttribute('href', '/terms');
     expect(screen.getByRole('link', { name: 'How it works' })).toHaveAttribute('href', '#how-it-works');
