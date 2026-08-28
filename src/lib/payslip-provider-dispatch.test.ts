@@ -15,10 +15,10 @@ function validRequest() {
 }
 
 describe("payslip provider dispatch boundary", () => {
-  it("uses the Vercel gateway, strict structured output, and a server-derived PDF file part", () => {
+  it("uses the direct OpenAI API, strict structured output, and a server-derived PDF file part", () => {
     const request = validRequest();
     expect(request).not.toBeNull();
-    expect(request?.endpoint).toBe("https://ai-gateway.vercel.sh/v1/chat/completions");
+    expect(request?.endpoint).toBe("https://api.openai.com/v1/chat/completions");
     expect(request?.endpoint).toBe(PAYSLIP_PROVIDER_ENDPOINT);
     expect(request?.init.method).toBe("POST");
     expect(request?.init.headers).toMatchObject({
@@ -28,6 +28,7 @@ describe("payslip provider dispatch boundary", () => {
 
     const body = JSON.parse(String(request?.init.body));
     expect(body.model).toBe(PAYSLIP_PROVIDER_MODEL);
+    expect(body.model).toBe("gpt-5.4");
     expect(body.stream).toBe(false);
     expect(body.response_format).toEqual(PAYSLIP_PROVIDER_RESPONSE_FORMAT);
     expect(body.response_format.type).toBe("json_schema");

@@ -5,6 +5,7 @@ import { ArrowLeft } from 'lucide-react';
 import { BrandLockup } from '@/components/BrandLockup';
 import { applySeo } from '@/lib/seo';
 import { marketingSeoFor } from '@/lib/marketing-seo-data';
+import { publicLegalDetails } from '@/lib/public-legal-details';
 
 const Terms = () => {
   useEffect(() => {
@@ -83,7 +84,11 @@ const Terms = () => {
 
         <section className="space-y-3">
           <h2 className="text-lg font-semibold text-foreground">11. Legal information</h2>
-          <p>Before a public paid launch, we will publish the operating entity, contact details, and the governing-law terms that apply to the live service. Nothing in these terms removes consumer protections that apply where you live.</p>
+          {publicLegalDetails.configured ? (
+            <p>Payslip Insights is operated by <strong className="text-foreground">{publicLegalDetails.operatorName}</strong>, at {publicLegalDetails.operatorAddress}. These terms are governed by {publicLegalDetails.governingLaw}. Nothing in these terms removes mandatory consumer protections or rights that apply where you live.</p>
+          ) : (
+            <p className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-amber-950" data-release-blocker="legal-operator">This is a pre-release build. The operator, address, and governing-law details are not configured, so it must not be offered as a public paid service.</p>
+          )}
         </section>
 
         <section className="space-y-3">

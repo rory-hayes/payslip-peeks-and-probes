@@ -3,9 +3,9 @@
 ## Current implementation
 
 The payslip processor now sends a private document request from the
-`process-payslip` Supabase Edge Function through Vercel AI Gateway. The gateway
-request uses `openai/gpt-5.4`, a strict JSON Schema response, PDF file parts,
-and high-detail image parts. The browser never receives the gateway key.
+`process-payslip` Supabase Edge Function directly to the OpenAI API. The request
+uses `gpt-5.4`, a strict JSON Schema response, PDF file parts,
+and high-detail image parts. The browser never receives the OpenAI key.
 
 The server still treats the model as an untrusted transcription service:
 
@@ -46,12 +46,13 @@ correctly.
 2. Compare extracted values against human-labelled ground truth at field and
    line-item level. Track false positives, missed deductions, wrong signs,
    wrong currency, and unsupported-country classification.
-3. Require a live redacted fixture run after `AI_GATEWAY_API_KEY` is configured
+3. Require a live redacted fixture run after `OPENAI_API_KEY` is configured
    in the target Supabase project. Confirm both PDF and image requests, a
    provider error, malformed output, retry behavior, and account isolation.
-4. Decide whether the provider’s data-processing terms, region, retention,
-   deletion, and subprocessor disclosures are acceptable before real customer
-   payslips are accepted.
+4. Execute or confirm the OpenAI DPA and verify the exact production project's
+   data controls, region, retention, deletion, and subprocessor disclosures
+   before real customer payslips are accepted. Do not claim Zero Data Retention
+   unless it is approved and active on that project.
 5. Add a deliberate follow-up workflow for users who want to correct a line
    item itself. The current confirmation RPC confirms headline figures; the
    detailed line-item transcript remains source evidence rather than a second

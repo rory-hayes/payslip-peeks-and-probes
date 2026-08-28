@@ -550,7 +550,7 @@ serve(async (req) => {
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
     const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
     const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const AI_GATEWAY_API_KEY = Deno.env.get("AI_GATEWAY_API_KEY");
+    const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
 
     // Authenticate the caller
     const authHeader = req.headers.get("authorization")?.replace("Bearer ", "");
@@ -640,7 +640,7 @@ serve(async (req) => {
         }
       );
     }
-    if (!AI_GATEWAY_API_KEY) {
+    if (!OPENAI_API_KEY) {
       return new Response(
         JSON.stringify({ error: "Payslip checking is not configured yet. Please try again later." }),
         { status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" } },
@@ -830,7 +830,7 @@ serve(async (req) => {
     // dispatch. The builder accepts only verified bytes and MIME, and never
     // receives customer metadata such as an ID, filename or storage path.
     const providerDispatch = buildPayslipExtractionProviderRequest({
-      apiKey: AI_GATEWAY_API_KEY,
+      apiKey: OPENAI_API_KEY,
       mimeType,
       fileBytes,
     });
@@ -850,7 +850,7 @@ serve(async (req) => {
       );
     }
 
-    // 4. Call the configured model through Vercel AI Gateway. A timeout is treated as a
+    // 4. Call the configured model directly through OpenAI's API. A timeout is treated as a
     // dispatched failure: delivery is uncertain after provider_started_at, so
     // the existing quota reservation is intentionally retained.
     const providerRequest = await fetchProviderJsonWithTimeout(

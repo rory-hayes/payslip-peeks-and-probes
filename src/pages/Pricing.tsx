@@ -9,6 +9,7 @@ import { type Subscription, useSubscription } from '@/hooks/use-subscription';
 import { PaymentTestModeBanner } from '@/components/PaymentTestModeBanner';
 import { analytics } from '@/lib/analytics';
 import { isPaymentsClientConfigured } from '@/lib/stripe';
+import { acceptsRealPayslips } from '@/lib/public-legal-details';
 import { applySeo } from '@/lib/seo';
 import { marketingSeoFor } from '@/lib/marketing-seo-data';
 import { BrandLockup } from '@/components/BrandLockup';
@@ -164,9 +165,10 @@ const Pricing = () => {
 
   const isLoggedIn = !!user;
   const paymentsConfigured = isPaymentsClientConfigured();
+  const checkoutAvailable = paymentsConfigured && acceptsRealPayslips;
   const subscriptionActionState: SubscriptionActionState = !isLoggedIn
-    ? 'ready'
-    : !paymentsConfigured
+    ? checkoutAvailable ? 'ready' : 'unavailable'
+    : !checkoutAvailable
       ? 'unavailable'
       : isSubscriptionError
         ? 'error'
@@ -175,7 +177,7 @@ const Pricing = () => {
           : 'checking';
 
   const handleCheckout = (priceId: CheckoutPriceId) => {
-    if (!paymentsConfigured || (isLoggedIn && subscriptionActionState !== 'ready')) return;
+    if (!checkoutAvailable || (isLoggedIn && subscriptionActionState !== 'ready')) return;
     analytics.track('pricing_cta_clicked');
     if (!isLoggedIn) {
       navigate(signUpPathForCheckout(priceId));
@@ -371,11 +373,11 @@ const Pricing = () => {
                 ) : (
                   <Button
                     className="w-full mt-8"
-                    disabled={!paymentsConfigured}
-                    aria-describedby={paymentsConfigured ? undefined : 'checkout-availability'}
+                    disabled={!checkoutAvailable}
+                    aria-describedby={checkoutAvailable ? undefined : 'checkout-availability'}
                     onClick={() => handleCheckout(plusPrice.checkoutPriceId)}
                   >
-                    {paymentsConfigured ? 'Choose Plus' : 'Checkout unavailable'}
+                    {checkoutAvailable ? 'Choose Plus' : 'Checkout unavailable'}
                   </Button>
                 )}
               </CardContent>
@@ -412,22 +414,24 @@ const Pricing = () => {
                   <Button
                     variant="outline"
                     className="w-full mt-8 border-amber-300 text-amber-700 hover:bg-amber-50"
-                    disabled={!paymentsConfigured}
-                    aria-describedby={paymentsConfigured ? undefined : 'checkout-availability'}
+                    disabled={!checkoutAvailable}
+                    aria-describedby={checkoutAvailable ? undefined : 'checkout-availability'}
                     onClick={() => handleCheckout(pricing.lifetime.checkoutPriceId)}
                   >
-                    {paymentsConfigured ? 'Choose Lifetime' : 'Checkout unavailable'}
+                    {checkoutAvailable ? 'Choose Lifetime' : 'Checkout unavailable'}
                   </Button>
                 )}
               </CardContent>
             </Card>
           </div>
 
-          {!paymentsConfigured && (
+          {!checkoutAvailable && (
             <p id="checkout-availability" role="status" className="text-center text-sm text-muted-foreground">
-              {isLoggedIn
-                ? 'Online checkout is unavailable right now, so we cannot confirm your billing status in this browser.'
-                : 'Online checkout is unavailable right now. You can still create a Free account.'}
+              {!acceptsRealPayslips
+                ? 'Checkout and real payslip uploads remain closed until the service operator and public legal details are complete.'
+                : isLoggedIn
+                  ? 'Online checkout is unavailable right now, so we cannot confirm your billing status in this browser.'
+                  : 'Online checkout is unavailable right now. You can still create a Free account.'}
             </p>
           )}
 

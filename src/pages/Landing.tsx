@@ -8,6 +8,7 @@ import { marketingSeoFor } from '@/lib/marketing-seo-data';
 import { signUpPathForCheckout } from '@/lib/checkout-price';
 import { CUSTOMER_PRICING, pricingPathForCurrency, type PriceCurrency } from '@/lib/customer-pricing';
 import { BRAND_MARK_PATH } from '@/lib/brand-assets';
+import { acceptsRealPayslips } from '@/lib/public-legal-details';
 import {
   AlertTriangle,
   ArrowRight,
@@ -105,7 +106,7 @@ const FAQ_ITEMS = [
   },
   {
     question: 'How is my payslip data handled?',
-    answer: 'We use your payslip to provide review, comparison, history, and payroll-message features. We may use service providers for hosting and document extraction. Read the Privacy Policy before uploading for the current details.',
+    answer: 'Your document is stored privately with Supabase and sent from our server to the OpenAI API for an AI-assisted first transcription. You review the result before it becomes confirmed history. We do not sell payslip data. Read the Privacy Policy before uploading for the full provider and retention details.',
   },
   {
     question: 'Which payslip formats do you support?',
@@ -454,7 +455,11 @@ const Landing = () => {
                 <p className="pi-landing__billing-note">
                   Billed {selectedPricing.symbol}{selectedPricing.plus.yearly.display} yearly until you cancel. <Link to="/terms">Billing terms</Link>
                 </p>
-                <Link to={signUpPathForCheckout(selectedPricing.plus.yearly.checkoutPriceId)} className="pi-landing__button" onClick={() => analytics.track('pricing_cta_clicked')}>Choose Plus <ArrowRight aria-hidden="true" /></Link>
+                {acceptsRealPayslips ? (
+                  <Link to={signUpPathForCheckout(selectedPricing.plus.yearly.checkoutPriceId)} className="pi-landing__button" onClick={() => analytics.track('pricing_cta_clicked')}>Choose Plus <ArrowRight aria-hidden="true" /></Link>
+                ) : (
+                  <Link to="/pricing" className="pi-landing__button">View Plus details <ArrowRight aria-hidden="true" /></Link>
+                )}
               </article>
             </div>
             <div className="pi-landing__pricing-link-wrap">

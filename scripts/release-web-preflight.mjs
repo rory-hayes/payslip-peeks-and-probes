@@ -76,6 +76,17 @@ if (!publishableKey || isPlaceholder(publishableKey) || /service[_-]?role|secret
   blockers.push("Set VITE_SUPABASE_PUBLISHABLE_KEY to a non-secret browser key for the intended production project.");
 }
 
+for (const [name, description] of [
+  ["VITE_LEGAL_OPERATOR_NAME", "the public legal name of the service operator"],
+  ["VITE_LEGAL_OPERATOR_ADDRESS", "the operator's public geographic address"],
+  ["VITE_LEGAL_GOVERNING_LAW", "the governing-law wording used by the Terms"],
+]) {
+  const value = environmentValue(name);
+  if (!value || isPlaceholder(value)) {
+    blockers.push(`Set ${name} to ${description}.`);
+  }
+}
+
 if (paidLaunch) {
   const stripeKey = environmentValue("VITE_PAYMENTS_CLIENT_TOKEN");
   if (!stripeKey.startsWith("pk_live_") || isPlaceholder(stripeKey)) {
@@ -106,8 +117,28 @@ if (sourceHas("src/pages/Privacy.tsx", "Before a public paid launch, we will pub
   blockers.push("Finish the provider, retention, analytics, and cookie disclosures in the Privacy Policy.");
 }
 
+if (!sourceHas("src/pages/Privacy.tsx", "OpenAI API")
+  || !sourceHas("src/pages/Privacy.tsx", "Supabase")
+  || !sourceHas("src/pages/Privacy.tsx", "Plausible")
+  || !sourceHas("src/pages/Privacy.tsx", "Stripe")) {
+  blockers.push("Keep the current document, storage, analytics, and billing providers named in the Privacy Policy.");
+}
+
+if (sourceHas("supabase/functions/_shared/payslip-provider-dispatch.ts", "ai-gateway.vercel.sh")
+  || sourceHas("supabase/functions/process-payslip/index.ts", "AI_GATEWAY_API_KEY")
+  || !sourceHas("supabase/functions/_shared/payslip-provider-dispatch.ts", "https://api.openai.com/v1/chat/completions")
+  || !sourceHas("supabase/functions/process-payslip/index.ts", "OPENAI_API_KEY")) {
+  blockers.push("Send private payslips directly to the reviewed OpenAI API project; do not route them through Vercel AI Gateway.");
+}
+
 if (sourceHas("src/pages/Terms.tsx", "Before a public paid launch, we will publish")) {
   blockers.push("Finish the operating-entity, contact, and governing-law details in the Terms of Service.");
+}
+
+if (!sourceHas("src/pages/Privacy.tsx", "publicLegalDetails")
+  || !sourceHas("src/pages/Terms.tsx", "publicLegalDetails")
+  || !sourceHas("src/components/PayslipUpload.tsx", "acceptsRealPayslips")) {
+  blockers.push("Keep the configured operator details visible and fail closed before unconfigured production uploads.");
 }
 
 if (!sourceHas("public/_headers", "X-Frame-Options: DENY")

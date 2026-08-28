@@ -19,6 +19,7 @@ import {
 } from '@/lib/checkout-price';
 import { isGoogleOAuthEnabled } from '@/lib/oauth-config';
 import { applySeo } from '@/lib/seo';
+import { acceptsRealPayslips } from '@/lib/public-legal-details';
 
 const SignUp = () => {
   const navigate = useNavigate();
@@ -32,7 +33,7 @@ const SignUp = () => {
   const [googleLoading, setGoogleLoading] = useState(false);
   const [agreed, setAgreed] = useState(false);
   const [confirmationEmail, setConfirmationEmail] = useState<string | null>(null);
-  const checkoutPriceId = getCheckoutPriceId(searchParams.get('checkout'));
+  const checkoutPriceId = acceptsRealPayslips ? getCheckoutPriceId(searchParams.get('checkout')) : null;
   const onboardingPath = onboardingPathForCheckout(checkoutPriceId);
   const signInPath = signInPathForCheckout(checkoutPriceId);
   const googleOAuthEnabled = isGoogleOAuthEnabled();

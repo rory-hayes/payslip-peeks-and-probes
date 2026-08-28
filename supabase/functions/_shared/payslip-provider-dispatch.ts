@@ -1,8 +1,8 @@
 import type { SupportedPayslipMimeType } from "./payslip-file-validation.ts";
 import { PAYSLIP_MAX_FILE_BYTES } from "./payslip-storage-boundary.ts";
 
-export const PAYSLIP_PROVIDER_ENDPOINT = "https://ai-gateway.vercel.sh/v1/chat/completions";
-export const PAYSLIP_PROVIDER_MODEL = "openai/gpt-5.4";
+export const PAYSLIP_PROVIDER_ENDPOINT = "https://api.openai.com/v1/chat/completions";
+export const PAYSLIP_PROVIDER_MODEL = "gpt-5.4";
 
 const SUPPORTED_PROVIDER_MIME_TYPES = new Set<SupportedPayslipMimeType>([
   "application/pdf",
@@ -102,7 +102,7 @@ const NULLABLE_TEXT_SCHEMA = { type: ["string", "null"] } as const;
 
 /**
  * The provider contract is deliberately kept beside the request builder. It
- * is sent to the gateway as strict structured output, then independently
+ * is sent to the provider as strict structured output, then independently
  * validated by process-payslip before anything is saved.
  */
 export const PAYSLIP_PROVIDER_RESPONSE_FORMAT = {

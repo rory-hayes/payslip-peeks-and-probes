@@ -5,6 +5,7 @@ import { getStripe, getStripeEnvironment, isPaymentsClientConfigured } from "@/l
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { parseEmbeddedCheckoutResponse } from '@/lib/embedded-checkout-response';
+import { acceptsRealPayslips } from '@/lib/public-legal-details';
 
 interface StripeEmbeddedCheckoutProps {
   priceId: string;
@@ -87,6 +88,15 @@ export function StripeEmbeddedCheckout({ priceId }: StripeEmbeddedCheckoutProps)
   const [stripeReady, setStripeReady] = useState(false);
 
   const fetchClientSecret = useCallback(async (): Promise<string> => {
+    if (!acceptsRealPayslips) {
+      const detail = {
+        code: "legal_release_incomplete",
+        message: "Online checkout is unavailable until the service operator and public legal details are complete. You have not been charged.",
+      };
+      setCheckoutError(detail);
+      throw new Error(detail.message);
+    }
+
     const browserEnvironment = getStripeEnvironment();
     if (!browserEnvironment) {
       const detail = {
@@ -146,7 +156,7 @@ export function StripeEmbeddedCheckout({ priceId }: StripeEmbeddedCheckoutProps)
   }, [priceId]);
 
   useEffect(() => {
-    if (!isPaymentsClientConfigured()) return;
+    if (!acceptsRealPayslips || !isPaymentsClientConfigured()) return;
 
     let active = true;
     void getStripe()
@@ -166,6 +176,17 @@ export function StripeEmbeddedCheckout({ priceId }: StripeEmbeddedCheckoutProps)
       active = false;
     };
   }, []);
+
+  if (!acceptsRealPayslips) {
+    return (
+      <CheckoutProblem
+        error={{
+          code: "legal_release_incomplete",
+          message: "Online checkout is unavailable until the service operator and public legal details are complete. You have not been charged.",
+        }}
+      />
+    );
+  }
 
   if (checkoutError) return <CheckoutProblem error={checkoutError} />;
 

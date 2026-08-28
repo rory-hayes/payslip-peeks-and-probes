@@ -141,8 +141,8 @@ describe('PayslipUpload processing failure', () => {
       </MemoryRouter>,
     );
 
-    expect(screen.getByText('Only upload a payslip you are entitled to use. You’ll review the extracted figures before saving them.')).toBeInTheDocument();
-    expect(screen.getByText(/your document may be processed by our configured service providers/i)).toBeInTheDocument();
+    expect(screen.getByText(/OpenAI provides the AI-assisted first transcription/i)).toBeInTheDocument();
+    expect(screen.getByText(/stored privately with Supabase and sent directly from our server to the OpenAI API/i)).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'How we handle your information' })).toHaveAttribute('href', '/privacy');
   });
 

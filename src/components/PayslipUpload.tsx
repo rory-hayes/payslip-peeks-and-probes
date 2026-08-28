@@ -24,6 +24,7 @@ import {
   PAYSLIP_MAX_FILE_BYTES,
   parseIssuedPayslipUpload,
 } from '@/lib/payslip-upload';
+import { acceptsRealPayslips } from '@/lib/public-legal-details';
 
 type UploadState = 'idle' | 'uploading' | 'processing' | 'opening_review' | 'review' | 'success' | 'error';
 
@@ -712,6 +713,21 @@ const PayslipUpload = ({ onUploadComplete, resumeReviewId = null }: PayslipUploa
         onDragLeave={() => setDragOver(false)}
         onDrop={handleDrop}
       >
+        {!acceptsRealPayslips ? (
+          <div className="pi-upload-state" data-release-blocker="legal-operator">
+            <div className="pi-upload-icon">
+              <AlertCircle aria-hidden="true" />
+            </div>
+            <h3 className="pi-upload-title">Uploads are not open yet</h3>
+            <p className="pi-upload-body">This production build is waiting for its public operator and legal details. No real payslip can be uploaded until those details are complete.</p>
+            <Button asChild variant="outline" className="pi-upload-action">
+              <Link to="/privacy">Read the privacy details</Link>
+            </Button>
+          </div>
+        ) : null}
+
+        {acceptsRealPayslips && (
+        <>
         <input
           ref={fileInputRef}
           type="file"
@@ -774,9 +790,9 @@ const PayslipUpload = ({ onUploadComplete, resumeReviewId = null }: PayslipUploa
               {uploadsRemaining} of {uploadLimit} automatic check{uploadLimit !== 1 ? 's' : ''} remaining {uploadQuotaScope === 'lifetime' ? 'on Free' : 'this calendar month'}
             </p>
             <div className="pi-upload-trust">
-              <p>Only upload a payslip you are entitled to use. You’ll review the extracted figures before saving them.</p>
+              <p>Only upload a payslip you are entitled to use. OpenAI provides the AI-assisted first transcription, and you’ll review the extracted figures before saving them.</p>
               <p>
-                To create that review, your document may be processed by our configured service providers.{' '}
+                Your document is stored privately with Supabase and sent directly from our server to the OpenAI API for that review.{' '}
                 <Link to="/privacy">How we handle your information</Link>
               </p>
             </div>
@@ -1154,6 +1170,8 @@ const PayslipUpload = ({ onUploadComplete, resumeReviewId = null }: PayslipUploa
               </Button>
             </div>
           </>
+        )}
+        </>
         )}
       </CardContent>
     </Card>
