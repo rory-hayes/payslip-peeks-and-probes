@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { isDateInTaxYear, taxYearWindow } from './tax-helper';
+import { isDateInTaxYear, TAX_REVIEW_TOPICS, taxYearWindow } from './tax-helper';
 
 describe('tax year helper', () => {
   it('uses a calendar year for Ireland', () => {
@@ -30,5 +30,25 @@ describe('tax year helper', () => {
     const window = taxYearWindow('Ireland', new Date('2026-08-28T12:00:00Z'));
     expect(isDateInTaxYear(null, window)).toBe(false);
     expect(isDateInTaxYear('not-a-date', window)).toBe(false);
+  });
+
+  it('keeps the relief scan short and routes every topic to its official source', () => {
+    expect(TAX_REVIEW_TOPICS.Ireland).toHaveLength(4);
+    expect(TAX_REVIEW_TOPICS.UK).toHaveLength(4);
+
+    for (const topic of TAX_REVIEW_TOPICS.Ireland) {
+      expect(new URL(topic.href).hostname).toBe('www.revenue.ie');
+      expect(topic.source).toBe('Revenue');
+    }
+
+    for (const topic of TAX_REVIEW_TOPICS.UK) {
+      expect(new URL(topic.href).hostname).toBe('www.gov.uk');
+      expect(topic.source).toBe('GOV.UK');
+    }
+  });
+
+  it('only marks pension topics as having a payslip-derived signal', () => {
+    const signalled = Object.values(TAX_REVIEW_TOPICS).flat().filter((topic) => topic.payslipSignal);
+    expect(signalled.map((topic) => topic.id)).toEqual(['ie-pension', 'uk-pension']);
   });
 });

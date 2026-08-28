@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router';
-import { ArrowRight, Check, CheckCircle2, ExternalLink, FileCheck2, Landmark, ShieldCheck } from 'lucide-react';
+import { ArrowRight, Check, CheckCircle2, ExternalLink, FileCheck2, Landmark, ReceiptText, ShieldCheck, Sparkles } from 'lucide-react';
 import AppLayout from '@/components/layout/AppLayout';
 import { Button } from '@/components/ui/button';
 import { usePayslips } from '@/hooks/use-payslip-data';
@@ -11,6 +11,7 @@ import { DEMO_PAYSLIPS } from '@/lib/demo-data';
 import {
   isDateInTaxYear,
   OFFICIAL_TAX_STEPS,
+  TAX_REVIEW_TOPICS,
   taxYearWindow,
   type OfficialTaxStep,
   type TaxHelperCountry,
@@ -160,6 +161,11 @@ const TaxHelper = () => {
   const confirmedThisYear = availablePayslips.filter(
     (payslip) => payslip.status === 'confirmed' && payslip.country === country && isDateInTaxYear(payslip.pay_date, window),
   );
+  const hasPensionEvidence = confirmedThisYear.some((payslip) => (payslip.pension_amount ?? 0) > 0);
+  const reviewTopics = [...TAX_REVIEW_TOPICS[country]].sort((first, second) => {
+    if (!hasPensionEvidence) return 0;
+    return Number(second.payslipSignal === 'pension') - Number(first.payslipSignal === 'pension');
+  });
   const historyPath = isDemo ? '/dashboard#pay-history-heading' : '/vault';
 
   return (
@@ -205,6 +211,39 @@ const TaxHelper = () => {
           <Button asChild className="tax-helper__history-action" variant="outline">
             <Link to={historyPath}>Open payslip history <ArrowRight aria-hidden="true" /></Link>
           </Button>
+        </section>
+
+        <section className="tax-helper__scan" aria-labelledby="tax-scan-heading">
+          <div className="tax-helper__section-heading tax-helper__section-heading--scan">
+            <div>
+              <p className="tax-helper__eyebrow">Five-minute scan</p>
+              <h2 id="tax-scan-heading">Could any of these apply to you?</h2>
+              <p className="tax-helper__section-intro">
+                Open only the topics that sound familiar. These prompts do not decide eligibility or estimate a refund—the official rules do.
+              </p>
+            </div>
+            <div className="tax-helper__scan-note"><ReceiptText aria-hidden="true" /> {reviewTopics.length} common areas</div>
+          </div>
+
+          <div className="tax-helper__topic-grid">
+            {reviewTopics.map((topic) => {
+              const hasSignal = hasPensionEvidence && topic.payslipSignal === 'pension';
+              return (
+                <article className={hasSignal ? 'tax-helper__topic is-signalled' : 'tax-helper__topic'} key={topic.id}>
+                  <div className="tax-helper__topic-meta">
+                    <span><Landmark aria-hidden="true" /> {topic.source}</span>
+                    {hasSignal ? <strong><Sparkles aria-hidden="true" /> Seen in your payslips</strong> : null}
+                  </div>
+                  <h3>{topic.title}</h3>
+                  <p className="tax-helper__topic-prompt">{topic.prompt}</p>
+                  <p className="tax-helper__topic-description">{topic.description}</p>
+                  <a href={topic.href} rel="noreferrer" target="_blank">
+                    {topic.action} <ExternalLink aria-hidden="true" />
+                  </a>
+                </article>
+              );
+            })}
+          </div>
         </section>
 
         <TaxChecklist

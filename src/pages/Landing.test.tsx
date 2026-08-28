@@ -84,7 +84,7 @@ describe('Landing', () => {
     expect(screen.getByText('UK or Ireland tax-year checklist')).toBeInTheDocument();
     expect(screen.getByRole('article', { name: 'Sample payday result' })).toHaveTextContent('Tax increased while gross pay stayed the same.');
     expect(screen.getByRole('heading', { name: 'A payroll question you can send' })).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: 'An official-source tax-year checklist' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'A tax-year review built on official sources' })).toBeInTheDocument();
     expect(screen.getByRole('article', { name: 'Sample official-source tax-year checklist' })).toHaveTextContent('Official service makes the decision');
     expect(screen.getByRole('heading', { name: 'You stay in control.' })).toBeInTheDocument();
     expect(screen.getByText('No bank account connection')).toBeInTheDocument();

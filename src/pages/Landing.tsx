@@ -77,8 +77,8 @@ const FEATURES = [
   {
     icon: Landmark,
     eyebrow: 'Finish',
-    title: 'An official-source tax-year checklist',
-    description: 'Bring your confirmed history together and follow the right Revenue or HMRC route.',
+    title: 'A tax-year review built on official sources',
+    description: 'Scan common reliefs and expenses, bring your confirmed history together, then follow the right Revenue or HMRC route.',
   },
 ] as const;
 
@@ -356,7 +356,7 @@ const Landing = () => {
               <p className="pi-landing__eyebrow">End of tax year</p>
               <h2>A checklist, not a refund promise.</h2>
               <p>
-                Choose Ireland or the UK, bring together the payslips you confirmed, and work through the correct official steps. We organise the review; Revenue or HMRC makes the decision.
+                Choose Ireland or the UK, scan common reliefs and expenses, bring together the payslips you confirmed, and follow the correct official steps. We organise the review; Revenue or HMRC makes the decision.
               </p>
               <button type="button" className="pi-landing__secondary-action" onClick={handleTryTaxDemo}>
                 Explore the tax-year demo <ArrowRight aria-hidden="true" />

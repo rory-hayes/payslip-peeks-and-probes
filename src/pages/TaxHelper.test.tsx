@@ -56,6 +56,9 @@ describe('TaxHelper', () => {
     expect(screen.getByRole('button', { name: 'Last completed' })).toHaveAttribute('aria-pressed', 'true');
     expect(screen.getByRole('heading', { name: '3 confirmed payslips ready' })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Your 2025/26 review' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Could any of these apply to you?' })).toBeInTheDocument();
+    expect(screen.getByText('Seen in your payslips')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /check pension-relief rules/i })).toHaveAttribute('href', 'https://www.gov.uk/tax-on-your-private-pension/pension-tax-relief');
     expect(screen.getByRole('link', { name: /open payslip history/i })).toHaveAttribute('href', '/dashboard#pay-history-heading');
     expect(screen.getByRole('link', { name: /open your official account/i })).toHaveAttribute('href', 'https://www.gov.uk/personal-tax-account');
   });
@@ -67,8 +70,22 @@ describe('TaxHelper', () => {
 
     expect(screen.getByRole('heading', { name: 'Your 2026/27 review' })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: '0 confirmed payslips ready' })).toBeInTheDocument();
+    expect(screen.queryByText('Seen in your payslips')).not.toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Guidance, not a refund calculation' })).toBeInTheDocument();
     expect(screen.getByText(/does not calculate your final liability/i)).toBeInTheDocument();
+  });
+
+  it('switches the relief scan to Revenue sources for Ireland', () => {
+    render(<MemoryRouter><TaxHelper /></MemoryRouter>);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Ireland' }));
+
+    expect(screen.getByRole('heading', { name: 'Rent you paid' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /check rent tax credit rules/i })).toHaveAttribute(
+      'href',
+      'https://www.revenue.ie/en/personal-tax-credits-reliefs-and-exemptions/land-and-property/rent-credit/index.aspx',
+    );
+    expect(screen.queryByRole('heading', { name: 'Marriage Allowance' })).not.toBeInTheDocument();
   });
 
   it('tracks checklist progress only after an explicit review action', () => {

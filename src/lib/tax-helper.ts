@@ -9,6 +9,17 @@ export interface OfficialTaxStep {
   source: 'Revenue' | 'GOV.UK';
 }
 
+export interface TaxReviewTopic {
+  id: string;
+  title: string;
+  prompt: string;
+  description: string;
+  action: string;
+  href: string;
+  source: 'Revenue' | 'GOV.UK';
+  payslipSignal?: 'pension';
+}
+
 export interface TaxYearWindow {
   label: string;
   start: Date;
@@ -97,6 +108,92 @@ export const OFFICIAL_TAX_STEPS: Record<TaxHelperCountry, OfficialTaxStep[]> = {
       description: 'Save the official calculation or response with the payslips and documents you used. Payslip Insights does not file a claim for you.',
       action: 'View HMRC response times',
       href: 'https://www.gov.uk/guidance/check-when-you-can-expect-a-reply-from-hmrc',
+      source: 'GOV.UK',
+    },
+  ],
+};
+
+/**
+ * A deliberately short discovery scan. These prompts never infer eligibility
+ * or estimate a refund; they route a user to the current official rules for
+ * areas PAYE employees commonly need to remember themselves.
+ */
+export const TAX_REVIEW_TOPICS: Record<TaxHelperCountry, TaxReviewTopic[]> = {
+  Ireland: [
+    {
+      id: 'ie-rent',
+      title: 'Rent you paid',
+      prompt: 'Did you pay rent for your home or other potentially qualifying accommodation?',
+      description: 'Revenue applies conditions and calculates any Rent Tax Credit from the rent and Income Tax you paid.',
+      action: 'Check Rent Tax Credit rules',
+      href: 'https://www.revenue.ie/en/personal-tax-credits-reliefs-and-exemptions/land-and-property/rent-credit/index.aspx',
+      source: 'Revenue',
+    },
+    {
+      id: 'ie-health',
+      title: 'Health costs not repaid',
+      prompt: 'Did you pay qualifying health or dental costs that insurance, the HSE or another source did not repay?',
+      description: 'Revenue says qualifying unreimbursed costs may be claimable, subject to its rules and the four-year limit.',
+      action: 'Check health-expense rules',
+      href: 'https://www.revenue.ie/en/personal-tax-credits-reliefs-and-exemptions/health-and-age/health-expenses/index.aspx',
+      source: 'Revenue',
+    },
+    {
+      id: 'ie-work-costs',
+      title: 'Work costs you covered',
+      prompt: 'Does your occupation require you to cover tools, uniforms or registration fees yourself?',
+      description: 'Revenue lists the occupations and conditions covered by Flat Rate Expense allowances.',
+      action: 'Check Flat Rate Expenses',
+      href: 'https://www.revenue.ie/en/personal-tax-credits-reliefs-and-exemptions/income-and-employment/flat-rate-expenses/index.aspx',
+      source: 'Revenue',
+    },
+    {
+      id: 'ie-pension',
+      title: 'Pension or AVC contributions',
+      prompt: 'Did you make pension, PRSA or AVC contributions without receiving all relief through payroll?',
+      description: 'Revenue explains when PAYE workers need to claim separately and what evidence is required. Contribution limits apply.',
+      action: 'Check pension-relief rules',
+      href: 'https://www.revenue.ie/en/jobs-and-pensions/pension/relief/how-to-claim.aspx',
+      source: 'Revenue',
+      payslipSignal: 'pension',
+    },
+  ],
+  UK: [
+    {
+      id: 'uk-work-costs',
+      title: 'Job costs you paid yourself',
+      prompt: 'Did you pay required work-only costs without being fully reimbursed by your employer?',
+      description: 'HMRC covers qualifying items such as uniforms, tools, professional fees, business travel and some equipment.',
+      action: 'Check employee-expense rules',
+      href: 'https://www.gov.uk/tax-relief-for-employees',
+      source: 'GOV.UK',
+    },
+    {
+      id: 'uk-pension',
+      title: 'Pension contributions',
+      prompt: 'Did you pay above 20% Income Tax or contribute without receiving automatic pension tax relief?',
+      description: 'HMRC says some people need to claim additional relief themselves; the route depends on the pension scheme and tax rate.',
+      action: 'Check pension-relief rules',
+      href: 'https://www.gov.uk/tax-on-your-private-pension/pension-tax-relief',
+      source: 'GOV.UK',
+      payslipSignal: 'pension',
+    },
+    {
+      id: 'uk-marriage',
+      title: 'Marriage Allowance',
+      prompt: 'Are you married or in a civil partnership where one partner has income below their Personal Allowance?',
+      description: 'HMRC sets income, tax-rate and relationship conditions. Its official checker shows whether a transfer could help as a couple.',
+      action: 'Check Marriage Allowance',
+      href: 'https://www.gov.uk/marriage-allowance',
+      source: 'GOV.UK',
+    },
+    {
+      id: 'uk-gift-aid',
+      title: 'Gift Aid donations',
+      prompt: 'Did you use Gift Aid while paying Income Tax above the basic rate?',
+      description: 'HMRC explains when higher- or additional-rate taxpayers can claim the difference and what donation records to keep.',
+      action: 'Check Gift Aid relief',
+      href: 'https://www.gov.uk/donating-to-charity/gift-aid',
       source: 'GOV.UK',
     },
   ],
