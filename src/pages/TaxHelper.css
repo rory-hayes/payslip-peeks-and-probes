@@ -193,9 +193,11 @@
   display: flex;
   font-size: 0.85rem;
   font-weight: 900;
-  height: 2.55rem;
+  height: 2.75rem;
   justify-content: center;
-  width: 2.55rem;
+  min-height: 2.75rem;
+  min-width: 2.75rem;
+  width: 2.75rem;
 }
 
 .tax-helper__check[aria-pressed='true'] { background: #087a4b; border-color: #087a4b; color: white; }
