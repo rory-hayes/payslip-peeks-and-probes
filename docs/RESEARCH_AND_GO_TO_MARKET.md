@@ -122,9 +122,9 @@ require sales calls.
 
 The web app is the paid candidate. The Expo/React Native app in `apps/mobile`
 is the companion: it shares the same user-owned Supabase data boundary and
-core review/plan loop, but it must not be marketed as a paid native release
-until native checkout, subscription management, signing, installation, and
-device-flow evidence exist.
+core payslip-review, question-drafting, and tax-year loop, but it must not be
+marketed as a paid native release until native checkout, subscription
+management, signing, installation, and device-flow evidence exist.
 
 Before accepting real payslips, the live release still needs owner-controlled
 evidence for the configured document provider, retention, legal entity/contact,

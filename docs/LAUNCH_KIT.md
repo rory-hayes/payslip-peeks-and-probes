@@ -7,7 +7,8 @@ README and `RESEARCH_AND_GO_TO_MARKET.md` are complete.
 ## One-line offer
 
 Payslip Insights helps UK and Ireland employees review a payslip, see what
-changed from their confirmed history, and decide what to ask payroll next.
+changed from their confirmed history, decide what to ask payroll next, and
+organise a tax-year review around official Revenue or HMRC steps.
 
 ## Who it is for
 
@@ -30,8 +31,8 @@ customer payslip in a marketing recording.
 
 1. Open the public site and choose **Try the demo**.
 2. Point out that the sample figures are labelled and read-only.
-3. Show net pay, the “what changed?” panel, the payday plan, history, and a
-   sample issue worth checking.
+3. Show net pay, the “what changed?” panel, confirmed history, a sample issue
+   worth checking, and the official-source tax-year checklist.
 4. Open the privacy and terms links before showing the upload CTA.
 5. End on **Sign up to upload** and the Free/Plus comparison.
 
@@ -40,7 +41,8 @@ Suggested 45-second voiceover:
 > Your payslip is the source of truth, but it is not always easy to understand
 > what changed. Payslip Insights lets you upload it, review the figures before
 > they are saved, compare confirmed pay over time, and prepare a clear payroll
-> question when something is worth checking. It is not tax advice and the
+> question when something is worth checking. It also keeps an official-source
+> tax-year checklist organised without calculating or promising a refund. The
 > sample dashboard is read-only. Start free with the payslip you already have.
 
 ## Acquisition tests
@@ -55,6 +57,7 @@ starts, paid purchases, and second-payslip use.
 | Variable-pay guide | Hourly, retail, hospitality, healthcare, and agency workers | “See overtime, pension, tax, NI/PRSI, and USC changes in one review.” | Continue if 3 people use a second payslip within 30 days. |
 | Payroll-question demo | Search and community readers who are already asking why pay changed | “Turn a confusing change into a question you can take to payroll.” | Continue if 3 people copy or export a draft and 1 pays. |
 | Annual record/export | People changing employer or payroll portal | “Keep a personal, confirmed pay history you control.” | Continue only if people explicitly value the record, not just the free checker. |
+| Tax-year review | UK PAYE and Irish PAYE employees approaching or just past year end | “Bring confirmed payslips together, then follow the right official Revenue or HMRC review steps.” | Continue if 5 people open the checklist, 2 return to it, and 1 says it materially improved their year-end process. |
 
 Never imply that the tool proves an error, guarantees a tax result, or replaces
 HMRC, Revenue, an employer, payroll, or a professional adviser.

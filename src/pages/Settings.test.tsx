@@ -2,6 +2,11 @@ import { fireEvent, render, screen, waitFor, within } from '@testing-library/rea
 import type { ReactNode } from 'react';
 import { MemoryRouter, useLocation } from 'react-router';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import {
+  browserTaxReviewProgressStorage,
+  exportTaxReviewProgress,
+  writeTaxReviewProgress,
+} from '@/lib/tax-review-progress';
 import Settings from './Settings';
 
 const mocks = vi.hoisted(() => ({
@@ -83,6 +88,19 @@ function renderSettings() {
 
 const CurrentLocation = () => <output data-testid="location">{useLocation().pathname}</output>;
 
+function installLocalStorage() {
+  const values = new Map<string, string>();
+  Object.defineProperty(window, 'localStorage', {
+    configurable: true,
+    value: {
+      clear: () => values.clear(),
+      getItem: (key: string) => values.get(key) ?? null,
+      removeItem: (key: string) => { values.delete(key); },
+      setItem: (key: string, value: string) => { values.set(key, String(value)); },
+    },
+  });
+}
+
 function configureExportQueries(failingTable?: string) {
   const responseFor = (table: string) => Promise.resolve({
     data: table === 'profiles'
@@ -139,6 +157,7 @@ function configureExportQueries(failingTable?: string) {
 
 describe('Settings', () => {
   beforeEach(() => {
+    installLocalStorage();
     mocks.signOut.mockReset();
     mocks.toast.mockReset();
     mocks.portalInvoke.mockReset();
@@ -209,6 +228,7 @@ describe('Settings', () => {
 
     expect(screen.getByLabelText(/Type DELETE to confirm/i)).toHaveAttribute('id', 'delete-account-confirmation');
     expect(screen.getByRole('button', { name: 'Delete my account' })).toBeDisabled();
+    expect(screen.getByText('Tax-review progress saved on this browser')).toBeInTheDocument();
   });
 
   it('opens the external billing portal without giving it access to the app tab', async () => {
@@ -245,6 +265,14 @@ describe('Settings', () => {
   it('exports complete payday plan data, including its saved allocations', async () => {
     mocks.user = { id: 'user-1', email: 'rory@example.com' };
     configureExportQueries();
+    writeTaxReviewProgress(
+      browserTaxReviewProgressStorage(),
+      'user-1',
+      'UK',
+      '2025/26',
+      ['uk-gather'],
+      ['uk-gather'],
+    );
     let downloadedJson = '';
     class CapturingBlob {
       constructor(parts: unknown[]) {
@@ -272,6 +300,11 @@ describe('Settings', () => {
       payday_plans: [{
         id: 'plan-1',
         payday_plan_allocations: [{ category: 'essential_bills', amount: 900 }],
+      }],
+      tax_review_progress: [{
+        country: 'UK',
+        reviewedStepIds: ['uk-gather'],
+        taxYearLabel: '2025/26',
       }],
     });
 
@@ -363,6 +396,14 @@ describe('Settings', () => {
     mocks.user = { id: 'user-1', email: 'rory@example.com' };
     mocks.deleteCurrentUserAccount.mockResolvedValue({ billingReviewRequired: false });
     mocks.signOut.mockRejectedValue(new Error('network unavailable'));
+    writeTaxReviewProgress(
+      browserTaxReviewProgressStorage(),
+      'user-1',
+      'UK',
+      '2025/26',
+      ['uk-gather'],
+      ['uk-gather'],
+    );
 
     render(
       <MemoryRouter initialEntries={['/settings']}>
@@ -378,6 +419,7 @@ describe('Settings', () => {
     await waitFor(() => expect(mocks.deleteCurrentUserAccount).toHaveBeenCalledTimes(1));
     await waitFor(() => expect(screen.getByTestId('location')).toHaveTextContent('/'));
     expect(mocks.toast).not.toHaveBeenCalledWith(expect.objectContaining({ title: 'Deletion failed' }));
+    expect(exportTaxReviewProgress(browserTaxReviewProgressStorage(), 'user-1')).toEqual([]);
   });
 
   it('leaves the app after a confirmed deletion and clearly reports a billing follow-up', async () => {

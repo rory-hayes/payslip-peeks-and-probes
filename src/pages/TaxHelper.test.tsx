@@ -3,6 +3,21 @@ import { MemoryRouter } from 'react-router';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import TaxHelper from './TaxHelper';
 
+const state = vi.hoisted(() => ({ isDemo: true }));
+
+function installLocalStorage() {
+  const values = new Map<string, string>();
+  Object.defineProperty(window, 'localStorage', {
+    configurable: true,
+    value: {
+      clear: () => values.clear(),
+      getItem: (key: string) => values.get(key) ?? null,
+      removeItem: (key: string) => { values.delete(key); },
+      setItem: (key: string, value: string) => { values.set(key, String(value)); },
+    },
+  });
+}
+
 vi.mock('@/components/layout/AppLayout', () => ({
   default: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
 }));
@@ -16,11 +31,17 @@ vi.mock('@/hooks/use-payslip-data', () => ({
 }));
 
 vi.mock('@/contexts/DemoContext', () => ({
-  useDemo: () => ({ isDemo: true }),
+  useDemo: () => ({ isDemo: state.isDemo }),
+}));
+
+vi.mock('@/contexts/AuthContext', () => ({
+  useAuth: () => ({ user: { id: 'user-1' } }),
 }));
 
 describe('TaxHelper', () => {
   beforeEach(() => {
+    state.isDemo = true;
+    installLocalStorage();
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2026-08-28T12:00:00.000Z'));
   });
@@ -57,5 +78,25 @@ describe('TaxHelper', () => {
 
     expect(screen.getByRole('progressbar')).toHaveAttribute('aria-valuenow', '1');
     expect(screen.getByText('1 of 5 reviewed')).toBeInTheDocument();
+  });
+
+  it('keeps real-account progress on this browser and separates each tax year', () => {
+    state.isDemo = false;
+    const firstVisit = render(<MemoryRouter><TaxHelper /></MemoryRouter>);
+
+    fireEvent.click(screen.getByRole('button', { name: /mark as reviewed: bring your confirmed pay together/i }));
+    expect(screen.getByText('Saved on this browser')).toBeInTheDocument();
+    expect(screen.getByRole('progressbar')).toHaveAttribute('aria-valuenow', '1');
+    firstVisit.unmount();
+
+    render(<MemoryRouter><TaxHelper /></MemoryRouter>);
+    expect(screen.getByRole('progressbar')).toHaveAttribute('aria-valuenow', '1');
+    expect(screen.getByRole('button', { name: /mark as not reviewed: bring your confirmed pay together/i })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Current year' }));
+    expect(screen.getByRole('progressbar')).toHaveAttribute('aria-valuenow', '0');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Last completed' }));
+    expect(screen.getByRole('progressbar')).toHaveAttribute('aria-valuenow', '1');
   });
 });

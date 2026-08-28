@@ -2,9 +2,9 @@
 
 Payslip Insights is a focused UK and Ireland payday product:
 
-`upload payslip → review the extracted figures → see what changed → plan until next payday`
+`upload payslip → review the extracted figures → see what changed → take a clear next step`
 
-It helps a person understand a payslip and make a clear plan from confirmed pay. It does not link bank accounts, make a tax/payroll verdict, provide tax or financial advice, manage investments, or handle shared accounts.
+It helps a person understand a payslip, prepare a clear payroll question, and organise an official-source tax-year review from confirmed pay. It does not link bank accounts, make a tax/payroll verdict, file a return, provide tax or financial advice, manage investments, or handle shared accounts.
 
 ## Apps in this repository
 

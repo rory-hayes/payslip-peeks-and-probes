@@ -40,6 +40,11 @@ import {
 } from '@/lib/countries';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { openCookiePreferences } from '@/lib/cookie-preferences';
+import {
+  browserTaxReviewProgressStorage,
+  clearTaxReviewProgress,
+  exportTaxReviewProgress,
+} from '@/lib/tax-review-progress';
 
 const STUDENT_LOAN_PLANS = [
   { value: 'plan1', label: 'Plan 1', desc: 'Started before Sep 2012 (England/Wales)' },
@@ -289,6 +294,10 @@ const Settings = () => {
         notes: notes ?? [],
         issue_drafts: drafts ?? [],
         payday_plans: paydayPlans ?? [],
+        tax_review_progress: exportTaxReviewProgress(
+          browserTaxReviewProgressStorage(),
+          user.id,
+        ),
       };
 
       const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
@@ -326,6 +335,8 @@ const Settings = () => {
       setDeleteOpen(false);
       return;
     }
+
+    clearTaxReviewProgress(browserTaxReviewProgressStorage(), user.id);
 
     if (billingReviewRequired) {
       toast({
@@ -894,6 +905,7 @@ const Settings = () => {
                           <li>All uploaded payslips and extracted data</li>
                           <li>All anomaly results and issue drafts</li>
                           <li>Your employer records</li>
+                          <li>Tax-review progress saved on this browser</li>
                         </ul>
                         <p className="font-medium text-destructive">Once completed, this action cannot be undone.</p>
                         <Label htmlFor="delete-account-confirmation" className="text-sm text-foreground">
