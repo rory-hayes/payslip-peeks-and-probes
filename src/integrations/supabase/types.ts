@@ -10,7 +10,7 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "14.17"
+    PostgrestVersion: "14.5"
   }
   public: {
     Tables: {
@@ -221,6 +221,7 @@ export type Database = {
           payslip_id: string
           pension_amount: number | null
           prsi_amount: number | null
+          processing_token: string | null
           raw_extraction_json: Json | null
           social_security_amount: number | null
           solidarity_amount: number | null
@@ -247,6 +248,7 @@ export type Database = {
           payslip_id: string
           pension_amount?: number | null
           prsi_amount?: number | null
+          processing_token?: string | null
           raw_extraction_json?: Json | null
           social_security_amount?: number | null
           solidarity_amount?: number | null
@@ -273,6 +275,7 @@ export type Database = {
           payslip_id?: string
           pension_amount?: number | null
           prsi_amount?: number | null
+          processing_token?: string | null
           raw_extraction_json?: Json | null
           social_security_amount?: number | null
           solidarity_amount?: number | null
@@ -294,9 +297,125 @@ export type Database = {
           },
         ]
       }
+      payslip_check_reservations: {
+        Row: {
+          created_at: string
+          id: string
+          payslip_id: string | null
+          period: string
+          provider_started_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          payslip_id?: string | null
+          period: string
+          provider_started_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          payslip_id?: string | null
+          period?: string
+          provider_started_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      payday_plan_allocations: {
+        Row: {
+          amount: number
+          category: string
+          created_at: string
+          id: string
+          plan_id: string
+          updated_at: string
+        }
+        Insert: {
+          amount: number
+          category: string
+          created_at?: string
+          id?: string
+          plan_id: string
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          category?: string
+          created_at?: string
+          id?: string
+          plan_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payday_plan_allocations_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "payday_plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      payday_plans: {
+        Row: {
+          created_at: string
+          currency: string
+          everyday_checked_in_at: string | null
+          everyday_remaining: number | null
+          id: string
+          net_pay: number
+          next_payday: string
+          pay_date: string
+          payslip_id: string | null
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          currency: string
+          everyday_checked_in_at?: string | null
+          everyday_remaining?: number | null
+          id?: string
+          net_pay: number
+          next_payday: string
+          pay_date: string
+          payslip_id?: string | null
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          currency?: string
+          everyday_checked_in_at?: string | null
+          everyday_remaining?: number | null
+          id?: string
+          net_pay?: number
+          next_payday?: string
+          pay_date?: string
+          payslip_id?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payday_plans_payslip_id_fkey"
+            columns: ["payslip_id"]
+            isOneToOne: false
+            referencedRelation: "payslips"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       payslips: {
         Row: {
           country: string | null
+          cleanup_requested_at: string | null
           created_at: string
           employer_id: string | null
           file_name: string | null
@@ -305,11 +424,14 @@ export type Database = {
           pay_date: string | null
           pay_period_end: string | null
           pay_period_start: string | null
+          processing_token: string | null
+          provider_started_at: string | null
           status: string | null
           user_id: string
         }
         Insert: {
           country?: string | null
+          cleanup_requested_at?: string | null
           created_at?: string
           employer_id?: string | null
           file_name?: string | null
@@ -318,11 +440,14 @@ export type Database = {
           pay_date?: string | null
           pay_period_end?: string | null
           pay_period_start?: string | null
+          processing_token?: string | null
+          provider_started_at?: string | null
           status?: string | null
           user_id: string
         }
         Update: {
           country?: string | null
+          cleanup_requested_at?: string | null
           created_at?: string
           employer_id?: string | null
           file_name?: string | null
@@ -331,6 +456,8 @@ export type Database = {
           pay_date?: string | null
           pay_period_end?: string | null
           pay_period_start?: string | null
+          processing_token?: string | null
+          provider_started_at?: string | null
           status?: string | null
           user_id?: string
         }
@@ -440,6 +567,81 @@ export type Database = {
         }
         Relationships: []
       }
+      recurring_bills: {
+        Row: {
+          amount: number
+          created_at: string
+          due_day: number | null
+          frequency: string
+          id: string
+          is_active: boolean
+          is_essential: boolean
+          name: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          due_day?: number | null
+          frequency?: string
+          id?: string
+          is_active?: boolean
+          is_essential?: boolean
+          name: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          due_day?: number | null
+          frequency?: string
+          id?: string
+          is_active?: boolean
+          is_essential?: boolean
+          name?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      savings_goals: {
+        Row: {
+          created_at: string
+          currency: string
+          current_amount: number
+          id: string
+          is_primary: boolean
+          name: string
+          target_amount: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          currency: string
+          current_amount?: number
+          id?: string
+          is_primary?: boolean
+          name: string
+          target_amount: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          currency?: string
+          current_amount?: number
+          id?: string
+          is_primary?: boolean
+          name?: string
+          target_amount?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       subscriptions: {
         Row: {
           cancel_at_period_end: boolean | null
@@ -535,6 +737,43 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      begin_manual_payslip_review: {
+        Args: { p_payslip_id: string }
+        Returns: undefined
+      }
+      confirm_payslip_review: {
+        Args: {
+          p_country?: string | null
+          p_payslip_id: string
+          p_pay_date: string
+          p_gross_pay: number
+          p_net_pay: number
+          p_tax_amount: number | null
+          p_national_insurance_amount: number | null
+          p_prsi_amount: number | null
+          p_usc_amount: number | null
+          p_pension_amount: number | null
+          p_total_deductions: number | null
+        }
+        Returns: undefined
+      }
+      save_payday_plan: {
+        Args: {
+          p_buffer: number
+          p_essential_bills: number
+          p_everyday_spending: number
+          p_next_payday: string
+          p_payslip_id: string
+        }
+        Returns: Database["public"]["Tables"]["payday_plans"]["Row"]
+      }
+      save_payday_check_in: {
+        Args: {
+          p_everyday_remaining: number
+          p_plan_id: string
+        }
+        Returns: Database["public"]["Tables"]["payday_plans"]["Row"]
+      }
       has_active_subscription: {
         Args: { check_env?: string; user_uuid: string }
         Returns: boolean
