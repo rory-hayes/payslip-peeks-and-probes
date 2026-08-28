@@ -8,7 +8,7 @@ It helps a person understand a payslip and make a clear plan from confirmed pay.
 
 ## Apps in this repository
 
-- `apps/mobile` — the Option 1 Expo / React Native companion build. It is not yet a paid native release surface: it has no native checkout or subscription-management path, so it must not be marketed as one until those flows are built and verified.
+- `apps/mobile` — the Expo / React Native free-companion v1 candidate. It deliberately has no native checkout, pricing link, or outside-app purchase prompt. See [`docs/IOS_APP_STORE_RELEASE.md`](docs/IOS_APP_STORE_RELEASE.md) for the release decision, review notes, privacy source of truth, and remaining manual gates.
 - The repository root — the current web release candidate. It owns the reviewed browser checkout and billing-entitlement path, subject to the external release gates below.
 
 ## Run locally

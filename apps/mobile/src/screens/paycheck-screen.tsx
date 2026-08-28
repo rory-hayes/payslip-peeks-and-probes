@@ -644,7 +644,7 @@ function canRetryFailure(code: string | null | undefined): boolean {
 }
 
 function failureMessage(code: string | null | undefined): string {
-  if (code === 'automatic_check_limit' || code === 'monthly_upload_limit') return 'You’ve used the automatic checks currently included with your plan. You can add the figures you see yourself, upgrade when available, or keep this file for later.';
+  if (code === 'automatic_check_limit' || code === 'monthly_upload_limit') return 'You’ve used the automatic checks currently included with this account. You can add the figures you see yourself or keep this file for later.';
   if (code === 'processing_stalled_after_dispatch') return 'That automatic check took longer than expected. You can add the figures you see, remove this upload, or choose to try the automatic check again.';
   if (code === 'rate_limited') return 'We need to pause new checks for a little while. Your file is still saved, so try again later.';
   if (code === 'processing_attempt_limit') return 'We could not read that file after several tries. You can add the figures you see, upload a clearer copy, or remove this upload.';

@@ -34,6 +34,12 @@ do not replace a signed-device or TestFlight pass; treat signing, real-device
 document selection, deep links, and release-configuration verification as the
 remaining native release gates.
 
+Run `npm run release:ios:preflight` from the repository root before generating
+or archiving the native project. The first App Store build is intentionally a
+free companion: it has no checkout, pricing link, or prompt to purchase outside
+the app. The release decision and App Review handoff are recorded in
+[`docs/IOS_APP_STORE_RELEASE.md`](../../docs/IOS_APP_STORE_RELEASE.md).
+
 ## Auth redirect configuration
 
 The mobile client sends signup-confirmation links to `payslipinsights://auth/callback` and password-recovery links to `payslipinsights://reset-password`, both matching the public `scheme` in `app.json`. The native Supabase client uses PKCE, and the parser rejects implicit-flow access or refresh tokens from the custom scheme; an intercepted URL therefore contains only a one-time code that cannot be exchanged without the verifier held in this app's SecureStore. Before sending real emails, add both URLs (or the constrained `payslipinsights://**` pattern) to the Supabase Auth redirect allow-list. A release build is required for a stable native app scheme; Expo Go URLs are not suitable for production links. A later store release should add verified HTTPS Universal Links/App Links for phishing-resistant routing and denial-of-service resistance.
