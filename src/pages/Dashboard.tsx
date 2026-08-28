@@ -415,7 +415,7 @@ const Dashboard = () => {
                 <div>
                   <p className="pi-dashboard__next-kicker">Official-source guide</p>
                   <h2>Keep your tax year on track.</h2>
-                  <p>Bring confirmed payslips together and follow the right Revenue or HMRC steps—without refund promises.</p>
+                  <p>Scan common topics, bring confirmed payslips together, and follow the right Revenue or HMRC steps—without refund promises.</p>
                 </div>
                 <Link className="pi-dashboard__next-link" to="/tax-helper">
                   Open tax-year helper <ArrowRight aria-hidden="true" />

@@ -80,6 +80,14 @@ describe('Pricing', () => {
     expect(pdfExport.closest('div[class*="p-8"]')).toHaveTextContent('Free');
   });
 
+  it('includes the official-source tax-year review on every plan', () => {
+    renderPricing();
+
+    const feature = screen.getByText('UK or Ireland relief scan and tax-year checklist');
+    expect(feature.closest('div[class*="p-8"]')).toHaveTextContent('Free');
+    expect(screen.getByRole('row', { name: /Tax-year relief scan & official checklist Included Included Included/i })).toBeInTheDocument();
+  });
+
   it('uses a bounded Free trial that proves the first comparison without renewing automatic checks', () => {
     renderPricing();
 

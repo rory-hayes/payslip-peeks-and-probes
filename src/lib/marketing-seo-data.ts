@@ -17,7 +17,7 @@ export const INDEXABLE_MARKETING_PAGES: readonly MarketingPageSeo[] = [
   {
     path: '/',
     title: 'Payslip Insights — Understand and compare your pay',
-    description: 'Upload a payslip, confirm its figures, compare pay changes, prepare payroll questions, and follow official UK or Ireland tax-year steps.',
+    description: 'Upload a payslip, confirm its figures, compare pay changes, prepare payroll questions, and review common UK or Ireland tax topics through official sources.',
     jsonLd: {
       '@context': 'https://schema.org',
       '@type': 'WebSite',
@@ -28,7 +28,7 @@ export const INDEXABLE_MARKETING_PAGES: readonly MarketingPageSeo[] = [
   {
     path: '/pricing',
     title: 'Pricing | Payslip Insights',
-    description: 'Compare Free, Plus, and Lifetime plans for Payslip Insights. Review payslips, track confirmed pay, compare changes, and prepare payroll questions.',
+    description: 'Compare Free, Plus, and Lifetime plans for Payslip Insights, including payslip review, comparison, payroll questions, and the official-source tax-year helper.',
     jsonLd: {
       '@context': 'https://schema.org',
       '@type': 'WebPage',

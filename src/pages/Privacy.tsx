@@ -43,7 +43,7 @@ const Privacy = () => {
 
         <section className="space-y-3">
           <h2 className="text-lg font-semibold text-foreground">3. Why we use it</h2>
-          <p>We use this information to operate the features you request: extracting and presenting payslip figures, showing changes over time, preparing payroll questions, and keeping your tax-year checklist. We may also use limited account and service information to provide support, prevent misuse, and meet applicable legal obligations.</p>
+          <p>We use this information to operate the features you request: extracting and presenting payslip figures, showing changes over time, preparing payroll questions, and keeping your tax-year review progress. We may also use limited account and service information to provide support, prevent misuse, and meet applicable legal obligations.</p>
         </section>
 
         <section className="space-y-3">

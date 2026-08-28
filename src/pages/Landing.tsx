@@ -88,7 +88,7 @@ const FREE_FEATURES = [
   'Checks for changes worth reviewing',
   'Payslip comparison and history',
   '2 payroll-message drafts per calendar month',
-  'UK or Ireland tax-year checklist',
+  'UK or Ireland relief scan and tax-year checklist',
   'PDF export of your payslip history',
 ] as const;
 

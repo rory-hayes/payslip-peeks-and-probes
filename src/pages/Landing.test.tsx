@@ -75,13 +75,13 @@ describe('Landing', () => {
 
     expect(document.title).toBe('Payslip Insights — Understand and compare your pay');
     expect(document.head.querySelector('meta[name="description"]')?.getAttribute('content'))
-      .toBe('Upload a payslip, confirm its figures, compare pay changes, prepare payroll questions, and follow official UK or Ireland tax-year steps.');
+      .toBe('Upload a payslip, confirm its figures, compare pay changes, prepare payroll questions, and review common UK or Ireland tax topics through official sources.');
     expect(screen.getByRole('link', { name: /check a payslip/i })).toHaveAttribute('href', '/sign-up');
     expect(screen.getByRole('link', { name: 'Choose Plus' })).toHaveAttribute('href', '/sign-up?checkout=plus_yearly');
     expect(screen.getByText('2 automatic payslip checks total')).toBeInTheDocument();
     expect(screen.getByText('Your first real payslip comparison')).toBeInTheDocument();
     expect(screen.getByText('Check two payslips and see what changed.')).toBeInTheDocument();
-    expect(screen.getByText('UK or Ireland tax-year checklist')).toBeInTheDocument();
+    expect(screen.getByText('UK or Ireland relief scan and tax-year checklist')).toBeInTheDocument();
     expect(screen.getByRole('article', { name: 'Sample payday result' })).toHaveTextContent('Tax increased while gross pay stayed the same.');
     expect(screen.getByRole('heading', { name: 'A payroll question you can send' })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'A tax-year review built on official sources' })).toBeInTheDocument();
