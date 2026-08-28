@@ -11,6 +11,7 @@ import YearToDateSummary from '@/components/YearToDateSummary';
 import UpgradePrompt from '@/components/UpgradePrompt';
 import { useCurrency, useProfile } from '@/hooks/use-profile';
 import { formatDate } from '@/lib/date-utils';
+import { ANOMALY_PRIORITY_LABELS } from '@/lib/anomaly-priority';
 import { deriveUsualPayBaseline } from '@/lib/pay-baseline';
 import { getTaxEstimateAvailability } from '@/lib/tax-estimate-availability';
 import type { DeductionOptions } from '@/lib/tax-calculator';
@@ -550,7 +551,9 @@ const Dashboard = () => {
                           <p>{anomaly.title}</p>
                           <span>{formatDate(anomaly.payslip_date)}</span>
                         </div>
-                        <Badge variant="outline" className="pi-dashboard__severity">{anomaly.severity}</Badge>
+                        <Badge variant="outline" className="pi-dashboard__severity">
+                          {ANOMALY_PRIORITY_LABELS[anomaly.severity]}
+                        </Badge>
                       </DemoReadOnlyLink>
                     ))}
                   </div>

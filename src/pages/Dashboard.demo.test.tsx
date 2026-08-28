@@ -130,17 +130,33 @@ describe("Dashboard demo mode", () => {
     const dialog = await screen.findByRole("dialog");
     expect(dialog).toHaveTextContent("Sample payslip check");
     expect(dialog).toHaveTextContent("Tax increased more than expected");
-    expect(dialog).toHaveTextContent("What the extractor found");
+    expect(dialog).toHaveTextContent("What was reviewed");
+    expect(dialog).toHaveTextContent("Figures checked against the original");
     expect(dialog).toHaveTextContent("Basic pay");
     expect(dialog).toHaveTextContent("Gross YTD");
     expect(dialog).toHaveTextContent("What to do next");
     expect(dialog).toHaveTextContent("Then build a useful pay history");
     expect(dialog).toHaveTextContent("prepare a clear payroll question");
+    expect(dialog).toHaveTextContent("another valid payroll adjustment");
+    expect(dialog).not.toHaveTextContent("updated incorrectly");
     expect(screen.getByTestId("location")).toHaveTextContent("/dashboard");
     expect(container.querySelector("a[href^='/payslip/']")).toBeNull();
 
     fireEvent.click(screen.getByRole("button", { name: "Keep exploring" }));
     await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+  });
+
+  it("uses calm customer-facing priority labels instead of internal severity values", () => {
+    render(
+      <MemoryRouter initialEntries={["/dashboard"]}>
+        <Dashboard />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByText("High priority")).toBeInTheDocument();
+    expect(screen.getByText("Worth checking")).toBeInTheDocument();
+    expect(screen.queryByText(/^high$/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/^medium$/i)).not.toBeInTheDocument();
   });
 
   it("keeps extracted figures out of the dashboard until the user confirms them", () => {

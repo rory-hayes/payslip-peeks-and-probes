@@ -63,6 +63,7 @@ describe('Anomalies accessibility', () => {
     );
 
     expect(screen.getByRole('group', { name: 'Filter flagged items' })).toBeInTheDocument();
+    expect(screen.getByText('Worth checking')).toBeInTheDocument();
     const allFilter = screen.getByRole('button', { name: 'All (1)' });
     const newFilter = screen.getByRole('button', { name: 'New (1)' });
     expect(allFilter).toHaveAttribute('aria-pressed', 'true');

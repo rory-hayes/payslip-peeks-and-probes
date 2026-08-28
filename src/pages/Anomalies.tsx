@@ -9,6 +9,7 @@ import AnomalyExplanation from '@/components/AnomalyExplanation';
 import { useAnomalies } from '@/hooks/use-payslip-data';
 import { useUpdateAnomalyStatus } from '@/hooks/use-anomaly-status';
 import { formatDate } from '@/lib/date-utils';
+import { ANOMALY_PRIORITY_LABELS } from '@/lib/anomaly-priority';
 import type { AnomalyStatus } from '@/lib/types';
 import { AlertTriangle, CheckCircle, ChevronDown, ChevronUp, Eye, MessageSquare, RotateCcw, Send } from 'lucide-react';
 
@@ -18,12 +19,6 @@ const statusLabels: Record<AnomalyStatus, string> = {
   raised: 'Raised with payroll',
   resolved: 'Resolved',
 };
-
-const priorityLabels = {
-  high: 'High priority',
-  medium: 'Worth checking',
-  low: 'For awareness',
-} as const;
 
 const Anomalies = () => {
   const [filter, setFilter] = useState<AnomalyStatus | 'all'>('all');
@@ -113,7 +108,7 @@ const Anomalies = () => {
                             anomaly.severity === 'high' ? 'border-destructive text-destructive' :
                             anomaly.severity === 'medium' ? 'border-anomaly text-anomaly' :
                             'border-warning text-warning'
-                          }`}>{priorityLabels[anomaly.severity]}</Badge>
+                          }`}>{ANOMALY_PRIORITY_LABELS[anomaly.severity]}</Badge>
                           <Badge variant="secondary" className="text-xs capitalize">{statusLabels[anomaly.status]}</Badge>
                         </div>
                       </div>

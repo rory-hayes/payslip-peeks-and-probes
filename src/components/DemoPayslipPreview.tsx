@@ -82,12 +82,12 @@ const DemoPayslipPreview = ({ onOpenChange, onSignUp, preview }: DemoPayslipPrev
                   <div className="pi-demo-preview__section-heading">
                     <span className="pi-demo-preview__check" aria-hidden="true"><FileText /></span>
                     <div>
-                      <p className="pi-demo-preview__eyebrow">What the extractor found</p>
-                      <h3 id="sample-extraction-heading">Figures you can check against the original</h3>
+                      <p className="pi-demo-preview__eyebrow">What was reviewed</p>
+                      <h3 id="sample-extraction-heading">Figures checked against the original</h3>
                     </div>
                   </div>
                   <p className="pi-demo-preview__plain-copy">
-                    Line items, payroll context, year-to-date figures and short source snippets stay together so you can spot what needs checking before you confirm it.
+                    Line items, payroll context, year-to-date figures and short source snippets stay together so you can see what was checked before this sample joined the pay history.
                   </p>
                   {payslip.extraction_line_items?.length ? (
                     <div className="pi-demo-preview__line-items" aria-label="Sample extracted line items">

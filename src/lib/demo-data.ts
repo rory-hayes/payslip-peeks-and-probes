@@ -129,10 +129,10 @@ export const DEMO_ANOMALIES: AnomalyResult[] = [
     confidence: 'high',
     title: 'Tax increased more than expected',
     description:
-      "What changed: Your income tax jumped from \u00a3510.00 to \u00a3640.00 \u2014 a \u00a3130.00 increase (25.5%) \u2014 while your gross pay stayed the same.\n\nWhy it matters: This could indicate a tax code change. It's worth checking your tax code hasn't been updated incorrectly.",
+      'What changed: Your income tax moved from \u00a3510.00 to \u00a3640.00 \u2014 a \u00a3130.00 increase (25.5%) \u2014 while your gross pay stayed the same.\n\nWhy it matters: This can happen after a tax-code change or another valid payroll adjustment, but the reason should be clear in your records.',
     status: 'new',
     suggested_action:
-      "Check the tax code on this payslip against your HMRC personal tax account. If the code changed, confirm it's correct.",
+      'Compare the tax code on this payslip with your HMRC personal tax account. If the reason for the change is not clear, ask payroll to explain the calculation.',
   },
   {
     id: 'demo-a2',
