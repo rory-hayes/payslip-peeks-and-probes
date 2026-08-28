@@ -18,7 +18,7 @@ import {
 
 const RELEASE_SHA = '0123456789abcdef0123456789abcdef01234567';
 const RELEASE_ORIGIN = 'https://payslipinsights.com';
-const EXPECTED_TITLE = 'Payslip Insights — Understand your payslip, plan your payday';
+const EXPECTED_TITLE = 'Payslip Insights — Understand and compare your pay';
 
 function cleanManifest(overrides = {}) {
   return {

@@ -30,7 +30,7 @@ export function ProfileSetupScreen({
 
   const save = async () => {
     if (!country) {
-      Alert.alert('Choose your pay country', 'Select UK or Ireland to set the right currency for your payday plan.');
+      Alert.alert('Choose your pay country', 'Select UK or Ireland to set the right currency and tax-year guidance.');
       return;
     }
 
@@ -52,7 +52,7 @@ export function ProfileSetupScreen({
       <View style={styles.body}>
         <Text style={styles.kicker}>{firstName?.trim() ? `Nice to meet you, ${firstName.trim()}.` : 'A quick setup, then you’re in.'}</Text>
         <Text style={styles.title}>Where do you get paid?</Text>
-        <Text style={styles.subtitle}>This sets the currency for your payslip and payday plan. We currently support the UK and Ireland.</Text>
+        <Text style={styles.subtitle}>This sets the currency and tax-year guidance for your payslips. We currently support the UK and Ireland.</Text>
 
         <View style={styles.countryChoices}>
           <CountryChoice country="UK" currency="GBP (£)" selected={country === 'UK'} onPress={() => setCountry('UK')} />

@@ -49,7 +49,7 @@ const CalculatorIndex = () => {
             <div className="flex items-start gap-3">
               <FileCheck2 className="mt-0.5 h-6 w-6 shrink-0 text-primary" aria-hidden="true" />
               <div>
-                <h2 className="text-xl font-bold text-foreground">Build your plan from confirmed figures</h2>
+                <h2 className="text-xl font-bold text-foreground">Keep calculations tied to confirmed figures</h2>
                 <p className="mt-2 text-muted-foreground leading-relaxed">
                   Payslip Insights is still ready to help you review a payslip, track your confirmed pay, compare pay periods, and spot changes worth checking with payroll.
                 </p>

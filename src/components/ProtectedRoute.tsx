@@ -18,11 +18,13 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { data: profile, isLoading: profileLoading, isError: profileError, refetch: refetchProfile } = useProfile();
   const { isDemo } = useDemo();
 
-  // Demo mode only grants an unauthenticated visitor access to the dashboard.
+  // Demo mode grants an unauthenticated visitor access only to the sample
+  // dashboard and the official-source tax helper. Every account-owned route
+  // remains behind authentication.
   // A real signed-in user takes precedence over a stale demo flag so sign-up
   // and onboarding cannot be redirected back into the demo.
   if (isDemo && !user) {
-    if (location.pathname === '/dashboard') return <>{children}</>;
+    if (location.pathname === '/dashboard' || location.pathname === '/tax-helper') return <>{children}</>;
     return <Navigate to="/dashboard" replace />;
   }
 

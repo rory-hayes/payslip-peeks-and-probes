@@ -33,17 +33,17 @@ const Privacy = () => {
       <div className="prose prose-sm max-w-none text-muted-foreground space-y-6">
         <section className="space-y-3">
           <h2 className="text-lg font-semibold text-foreground">1. Scope</h2>
-          <p>Payslip Insights is a payslip review, tracking, and planning service for employees in the United Kingdom and Ireland. This policy explains how the service handles personal data when you use it. It does not make claims about payroll, tax, or legal outcomes.</p>
+          <p>Payslip Insights is a payslip review, comparison, record-keeping, and payroll-question service for employees in the United Kingdom and Ireland. This policy explains how the service handles personal data when you use it. It does not make claims about payroll, tax, or legal outcomes.</p>
         </section>
 
         <section className="space-y-3">
           <h2 className="text-lg font-semibold text-foreground">2. What we handle</h2>
-          <p>To provide the service, we handle the account details you provide, uploaded payslips, figures extracted from those documents, figures you confirm or edit, and any planning choices you save. A payslip can contain sensitive personal and financial information, so only upload documents you are entitled to use.</p>
+          <p>To provide the service, we handle the account details you provide, uploaded payslips, figures extracted from those documents, figures you confirm or edit, and any payroll messages or legacy planning choices you save. A payslip can contain sensitive personal and financial information, so only upload documents you are entitled to use.</p>
         </section>
 
         <section className="space-y-3">
           <h2 className="text-lg font-semibold text-foreground">3. Why we use it</h2>
-          <p>We use this information to operate the features you request: extracting and presenting payslip figures, showing changes over time, and helping you make a payday plan. We may also use limited account and service information to provide support, prevent misuse, and meet applicable legal obligations.</p>
+          <p>We use this information to operate the features you request: extracting and presenting payslip figures, showing changes over time, preparing payroll questions, and keeping your tax-year checklist. We may also use limited account and service information to provide support, prevent misuse, and meet applicable legal obligations.</p>
         </section>
 
         <section className="space-y-3">

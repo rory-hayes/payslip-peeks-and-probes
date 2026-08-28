@@ -383,7 +383,7 @@ const Onboarding = () => {
                       />
                     </div>
                     <p className="text-xs text-muted-foreground leading-relaxed">
-                      Helps put your confirmed pay history in context and plan around paydays. You can add this later in Settings; it is not a tax or payroll verdict.
+                      Helps put your confirmed pay history in context. You can add this later in Settings; it is not a tax or payroll verdict.
                     </p>
                   </div>
                 </div>

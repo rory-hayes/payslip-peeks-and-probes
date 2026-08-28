@@ -10,36 +10,26 @@ import ExpectedVsActual from '@/components/ExpectedVsActual';
 import YearToDateSummary from '@/components/YearToDateSummary';
 import UpgradePrompt from '@/components/UpgradePrompt';
 import { useCurrency, useProfile } from '@/hooks/use-profile';
-import { useActivePaydayPlan } from '@/hooks/use-payday-plan';
 import { formatDate } from '@/lib/date-utils';
-import { calendarDaysUntilIsoDate } from '@/lib/payday-plan-utils';
 import { deriveUsualPayBaseline } from '@/lib/pay-baseline';
 import { getTaxEstimateAvailability } from '@/lib/tax-estimate-availability';
 import type { DeductionOptions } from '@/lib/tax-calculator';
 import { useDemo } from '@/contexts/DemoContext';
 import DemoPayslipPreview, { type DemoPayslipPreviewState } from '@/components/DemoPayslipPreview';
 import DemoReadOnlyLink from '@/components/DemoReadOnlyLink';
-import PaydayPlanPulse from '@/components/PaydayPlanPulse';
 import { DEMO_PAYSLIPS, DEMO_ANOMALIES, DEMO_TRENDS } from '@/lib/demo-data';
 import type { Payslip, AnomalyResult, PayTrend } from '@/lib/types';
 import payslipCheckHero from '@/assets/option-one-payslip-check-hero-v1.webp';
 import aquaCorner from '@/assets/option-one-aqua-corner-v2.webp';
 import {
   Upload, TrendingUp, TrendingDown, AlertTriangle, FileText, ArrowRight, Download,
-  Shield, Sparkles, X, GitCompareArrows,
+  Shield, Sparkles, X, GitCompareArrows, MessageSquareText, Landmark,
 } from 'lucide-react';
 import './Dashboard.css';
 
 const ExpectedVsActualChart = lazy(() => import('@/components/ExpectedVsActualChart'));
 const NetPayTrendChart = lazy(() => import('@/components/NetPayTrendChart'));
 const YearToDateChart = lazy(() => import('@/components/YearToDateChart'));
-
-function formatPlanCurrency(amount: number, currency: 'GBP' | 'EUR'): string {
-  return new Intl.NumberFormat(currency === 'EUR' ? 'en-IE' : 'en-GB', {
-    currency,
-    style: 'currency',
-  }).format(amount);
-}
 
 const Dashboard = () => {
   const { isDemo, disableDemo } = useDemo();
@@ -59,12 +49,6 @@ const Dashboard = () => {
     refetchAccess,
     uploadsRemaining,
   } = useUsage();
-  const {
-    data: activePaydayPlan,
-    isError: paydayPlanError,
-    isLoading: paydayPlanLoading,
-    refetch: refetchPaydayPlan,
-  } = useActivePaydayPlan();
   const [demoPreview, setDemoPreview] = useState<DemoPayslipPreviewState | null>(null);
 
   const isLoading = isDemo ? false : loadingSlips || loadingAnomalies;
@@ -80,24 +64,6 @@ const Dashboard = () => {
 
   const latest = confirmedPayslips.length > 0 ? confirmedPayslips[confirmedPayslips.length - 1] : null;
   const previous = confirmedPayslips.length > 1 ? confirmedPayslips[confirmedPayslips.length - 2] : null;
-  const hasPaydayPlanError = !isDemo && paydayPlanError;
-  const isPaydayPlanLoading = !isDemo && paydayPlanLoading;
-  const planForLatestPayslip = !isDemo
-    && !hasPaydayPlanError
-    && latest
-    && activePaydayPlan?.payslipId === latest.id
-    && activePaydayPlan.payDate === latest.pay_date
-    ? activePaydayPlan
-    : null;
-  const daysUntilNextPayday = planForLatestPayslip
-    ? calendarDaysUntilIsoDate(planForLatestPayslip.nextPayday)
-    : null;
-  const hasCurrentPlanPayday = daysUntilNextPayday !== null && daysUntilNextPayday >= 0;
-  const nextPaydayLabel = hasCurrentPlanPayday
-    ? daysUntilNextPayday === 0
-      ? 'Today'
-      : `${daysUntilNextPayday} ${daysUntilNextPayday === 1 ? 'day' : 'days'}`
-    : 'Check date';
   const netChange = latest && previous ? latest.net_pay - previous.net_pay : 0;
   const usualPayBaseline = deriveUsualPayBaseline(confirmedPayslips);
   const hasUsualPayBaseline = usualPayBaseline.status === 'ready'
@@ -193,7 +159,7 @@ const Dashboard = () => {
               {isDemo
                 ? 'Explore a sample payslip check and the next steps it can unlock.'
                 : isEmpty
-                  ? 'Start with a payslip. We will help you understand the important bits before you make a plan.'
+                  ? 'Start with a payslip. We will help you understand the important bits before you rely on them.'
                   : isAwaitingReview
                     ? 'Your latest payslip is ready for a quick confirmation before it appears in your dashboard.'
                     : isCheckingPayslip
@@ -297,9 +263,9 @@ const Dashboard = () => {
           <section className="pi-dashboard__empty" aria-labelledby="review-pending-heading">
             <div className="pi-dashboard__empty-copy">
               <div className="pi-dashboard__empty-icon" aria-hidden="true"><FileText className="h-7 w-7" /></div>
-              <h2 id="review-pending-heading">Confirm your payslip before you plan.</h2>
+              <h2 id="review-pending-heading">Confirm your payslip before it joins your history.</h2>
               <p>
-                The extracted figures are waiting for your review. Check them against your original payslip before they appear in your pay history or payday plan.
+                The extracted figures are waiting for your review. Check them against your original payslip before they appear in your pay history or comparisons.
               </p>
               <Button asChild className="pi-dashboard__primary-action pi-dashboard__primary-action--roomy">
                 <Link to={`/vault?review=${encodeURIComponent(pendingReview.id)}`}>
@@ -336,7 +302,7 @@ const Dashboard = () => {
             <div className="pi-dashboard__empty-promises">
               <div><Shield className="h-5 w-5" aria-hidden="true" /><span>Figures stay unconfirmed</span></div>
               <div><AlertTriangle className="h-5 w-5" aria-hidden="true" /><span>Review comes next</span></div>
-              <div><TrendingUp className="h-5 w-5" aria-hidden="true" /><span>Plan after confirmation</span></div>
+              <div><TrendingUp className="h-5 w-5" aria-hidden="true" /><span>Compare after confirmation</span></div>
             </div>
           </section>
         ) : null}
@@ -423,102 +389,37 @@ const Dashboard = () => {
               <img className="pi-dashboard__check-art" src={payslipCheckHero} alt="" aria-hidden="true" />
             </section>
 
-            <section id="payday-plan" className="pi-dashboard__plan" aria-labelledby="payday-plan-heading">
-              <div className="pi-dashboard__plan-copy">
-                <h2 id="payday-plan-heading">Plan until payday</h2>
-                <p>
-                  {hasPaydayPlanError
-                    ? 'We couldn’t check whether you have a saved plan. Your existing plan has not been changed.'
-                    : isPaydayPlanLoading
-                      ? 'We’re checking whether you already have a saved plan before showing your next step.'
-                      : planForLatestPayslip
-                        ? `Your saved plan gives your everyday spending an intentional place until ${formatDate(planForLatestPayslip.nextPayday)}.`
-                        : 'Use the pay you have checked as a starting point for bills, everyday spending and a little buffer.'}
-                </p>
-              </div>
-              {isDemo ? (
-                <div className="pi-dashboard__plan-saved">
-                  <dl className="pi-dashboard__plan-summary" aria-label="Sample payday plan">
-                    <div>
-                      <dt>Everyday spending</dt>
-                      <dd>£780.00</dd>
-                      <span>Sample allocation</span>
-                    </div>
-                    <div>
-                      <dt>Buffer</dt>
-                      <dd>£250.00</dd>
-                      <span>Sample allocation</span>
-                    </div>
-                  </dl>
-                  <div className="pi-dashboard__plan-action">
-                    <Button className="pi-dashboard__primary-action pi-dashboard__primary-action--roomy" onClick={leaveDemoForSignUp}>
-                      Sign up to make my plan
-                      <ArrowRight className="h-4 w-4" aria-hidden="true" />
-                    </Button>
-                    <p>Sample figures only. Planning guide, not a bank balance.</p>
-                  </div>
+            <section className="pi-dashboard__next-grid" aria-label="Your next actions">
+              <article className="pi-dashboard__next-card pi-dashboard__next-card--primary">
+                <div className="pi-dashboard__next-icon" aria-hidden="true"><MessageSquareText /></div>
+                <div>
+                  <p className="pi-dashboard__next-kicker">Turn insight into action</p>
+                  <h2>Ask payroll a clear question.</h2>
+                  <p>Build a concise message from the figures you confirmed and the change you want explained.</p>
                 </div>
-              ) : hasPaydayPlanError ? (
-                <div className="pi-dashboard__plan-action" role="alert">
-                  <strong>We couldn’t check your saved plan.</strong>
-                  <Button
-                    className="pi-dashboard__primary-action pi-dashboard__primary-action--roomy"
-                    onClick={() => { void refetchPaydayPlan(); }}
-                  >
-                    Try again
-                  </Button>
-                  <p>Check your connection and try again before starting or changing a plan.</p>
-                </div>
-              ) : isPaydayPlanLoading ? (
-                <div className="pi-dashboard__plan-action" role="status" aria-live="polite">
-                  <strong>Checking your saved plan…</strong>
-                  <p>We’ll show the right next step as soon as it is ready.</p>
-                </div>
-              ) : planForLatestPayslip ? (
-                <div className="pi-dashboard__plan-saved">
-                  <dl className="pi-dashboard__plan-summary">
-                    <div>
-                      <dt>Everyday amount in this plan</dt>
-                      <dd>{formatPlanCurrency(planForLatestPayslip.allocations.everydaySpending, planForLatestPayslip.currency)}</dd>
-                      <span>Planned amount</span>
-                    </div>
-                    <div>
-                      <dt>Days to next payday</dt>
-                      <dd>{nextPaydayLabel}</dd>
-                      <span>{hasCurrentPlanPayday ? formatDate(planForLatestPayslip.nextPayday) : 'Open your plan to update the date.'}</span>
-                    </div>
-                  </dl>
-                  <div className="pi-dashboard__plan-action">
-                    <Button asChild className="pi-dashboard__primary-action pi-dashboard__primary-action--roomy">
-                      <Link to="/plan">
-                        Open my plan
-                        <ArrowRight className="h-4 w-4" aria-hidden="true" />
-                      </Link>
-                    </Button>
-                    <p>Planned amounts, not a live balance or financial advice.</p>
-                  </div>
-                </div>
-              ) : (
-                <div className="pi-dashboard__plan-action">
-                  <Button asChild className="pi-dashboard__primary-action pi-dashboard__primary-action--roomy">
-                    <Link to="/plan">
-                      Start my plan
-                      <ArrowRight className="h-4 w-4" aria-hidden="true" />
-                    </Link>
-                  </Button>
-                  <p>It is a planning guide, not your bank balance.</p>
-                </div>
-              )}
-            </section>
+                {isDemo ? (
+                  <button className="pi-dashboard__next-link" onClick={() => setDemoPreview({ anomaly: featuredAnomaly, payslip: latest })} type="button">
+                    See the evidence first <ArrowRight aria-hidden="true" />
+                  </button>
+                ) : (
+                  <Link className="pi-dashboard__next-link" to={`/draft/${latest.id}`}>
+                    Prepare my question <ArrowRight aria-hidden="true" />
+                  </Link>
+                )}
+              </article>
 
-            {!isDemo && planForLatestPayslip && daysUntilNextPayday !== null ? (
-              <PaydayPlanPulse
-                key={planForLatestPayslip.id}
-                daysUntilNextPayday={daysUntilNextPayday}
-                payFrequency={profile?.pay_frequency}
-                plan={planForLatestPayslip}
-              />
-            ) : null}
+              <article className="pi-dashboard__next-card pi-dashboard__next-card--tax">
+                <div className="pi-dashboard__next-icon" aria-hidden="true"><Landmark /></div>
+                <div>
+                  <p className="pi-dashboard__next-kicker">Official-source guide</p>
+                  <h2>Keep your tax year on track.</h2>
+                  <p>Bring confirmed payslips together and follow the right Revenue or HMRC steps—without refund promises.</p>
+                </div>
+                <Link className="pi-dashboard__next-link" to="/tax-helper">
+                  Open tax-year helper <ArrowRight aria-hidden="true" />
+                </Link>
+              </article>
+            </section>
 
             {showUsageAccessPending && (
               <section className="pi-dashboard__usage" aria-label="Checking account access" role="status">

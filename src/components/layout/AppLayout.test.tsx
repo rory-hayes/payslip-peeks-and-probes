@@ -30,7 +30,7 @@ describe("AppLayout demo navigation", () => {
     state.isDemo = true;
   });
 
-  it("only offers the demo-safe dashboard and exits without a provider sign-out", () => {
+  it("only offers the demo-safe payday and tax-year routes and exits without a provider sign-out", () => {
     render(
       <MemoryRouter initialEntries={["/dashboard"]}>
         <AppLayout><p>Dashboard content</p></AppLayout>
@@ -38,11 +38,11 @@ describe("AppLayout demo navigation", () => {
       </MemoryRouter>,
     );
 
-    expect(screen.getAllByRole("link", { name: "Home" }).length).toBeGreaterThan(0);
-    expect(screen.queryByRole("link", { name: "Pay check" })).not.toBeInTheDocument();
-    expect(screen.queryByRole("link", { name: "Plan" })).not.toBeInTheDocument();
+    expect(screen.getAllByRole("link", { name: "Payday" }).length).toBeGreaterThan(0);
+    expect(screen.getAllByRole("link", { name: "Tax year" }).length).toBeGreaterThan(0);
+    expect(screen.queryByRole("link", { name: "Payslips" })).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Things to check" })).not.toBeInTheDocument();
-    expect(screen.queryByRole("link", { name: "Me" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "You" })).not.toBeInTheDocument();
 
     fireEvent.click(screen.getAllByRole("button", { name: "Exit demo" })[0]);
 
@@ -51,7 +51,7 @@ describe("AppLayout demo navigation", () => {
     expect(screen.getByTestId("location")).toHaveTextContent("/");
   });
 
-  it("adds the payday plan to the signed-in navigation", () => {
+  it("offers the focused payslip navigation to a signed-in user", () => {
     state.isDemo = false;
 
     render(
@@ -60,7 +60,10 @@ describe("AppLayout demo navigation", () => {
       </MemoryRouter>,
     );
 
-    expect(screen.getAllByRole("link", { name: "Plan" }).some((link) => link.getAttribute("href") === "/plan")).toBe(true);
+    expect(screen.getAllByRole("link", { name: "Payslips" }).some((link) => link.getAttribute("href") === "/vault")).toBe(true);
+    expect(screen.getAllByRole("link", { name: "Tax year" }).some((link) => link.getAttribute("href") === "/tax-helper")).toBe(true);
+    expect(screen.getAllByRole("link", { name: "You" }).some((link) => link.getAttribute("href") === "/settings")).toBe(true);
+    expect(screen.queryByRole("link", { name: "Plan" })).not.toBeInTheDocument();
   });
 
   it('gives the mobile navigation dialog an accessible name', async () => {

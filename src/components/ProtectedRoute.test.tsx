@@ -27,6 +27,7 @@ const renderProtected = (path: string) => render(
   <MemoryRouter initialEntries={[path]}>
     <Routes>
       <Route path="/dashboard" element={<ProtectedRoute><div>Demo dashboard</div></ProtectedRoute>} />
+      <Route path="/tax-helper" element={<ProtectedRoute><div>Demo tax helper</div></ProtectedRoute>} />
       <Route path="/vault" element={<ProtectedRoute><div>Payslip vault</div></ProtectedRoute>} />
       <Route path="/checkout" element={<ProtectedRoute><div>Checkout</div></ProtectedRoute>} />
       <Route path="/checkout/return" element={<ProtectedRoute><div>Checkout return</div></ProtectedRoute>} />
@@ -56,6 +57,13 @@ describe("ProtectedRoute demo handling", () => {
 
     expect(await screen.findByText("Demo dashboard")).toBeInTheDocument();
     expect(screen.queryByText("Payslip vault")).not.toBeInTheDocument();
+  });
+
+  it("lets unauthenticated demo visitors use the tax-year helper", () => {
+    renderProtected("/tax-helper");
+
+    expect(screen.getByText("Demo tax helper")).toBeInTheDocument();
+    expect(screen.getByTestId("location")).toHaveTextContent("/tax-helper");
   });
 
   it('announces account loading instead of rendering a silent spinner', () => {

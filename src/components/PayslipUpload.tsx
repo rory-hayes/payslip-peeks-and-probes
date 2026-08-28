@@ -1116,12 +1116,12 @@ const PayslipUpload = ({ onUploadComplete, resumeReviewId = null }: PayslipUploa
             <h3 className="pi-upload-title">{completionState === 'confirmed' ? 'Payslip confirmed' : 'Payslip saved'}</h3>
             <p className="pi-upload-body">
               {completionState === 'confirmed'
-                ? 'Your checked figures are ready for a payday plan.'
-                : 'This payslip is already in your history. You can check it again in the vault or make a payday plan.'}
+                ? 'Your checked figures are now part of your pay history and ready to compare.'
+                : 'This payslip is already in your history. You can review it again in the payslip list.'}
             </p>
             <div className="pi-upload-success-actions">
               <Button asChild className="pi-upload-action">
-                <Link to="/plan">Make my payday plan</Link>
+                <Link to="/dashboard">See my payday summary</Link>
               </Button>
               <Button variant="outline" className="pi-upload-action pi-upload-action--quiet" onClick={resetState}>Upload another</Button>
             </div>

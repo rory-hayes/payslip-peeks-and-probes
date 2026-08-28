@@ -16,8 +16,8 @@ const SITE_ORIGIN = 'https://payslipinsights.com';
 export const INDEXABLE_MARKETING_PAGES: readonly MarketingPageSeo[] = [
   {
     path: '/',
-    title: 'Payslip Insights — Understand your payslip, plan your payday',
-    description: 'Upload your payslip, review its figures, spot changes worth checking, and plan to your next payday. Built for UK and Ireland employees.',
+    title: 'Payslip Insights — Understand and compare your pay',
+    description: 'Upload a payslip, confirm its figures, compare pay changes, prepare payroll questions, and follow official UK or Ireland tax-year steps.',
     jsonLd: {
       '@context': 'https://schema.org',
       '@type': 'WebSite',
@@ -28,7 +28,7 @@ export const INDEXABLE_MARKETING_PAGES: readonly MarketingPageSeo[] = [
   {
     path: '/pricing',
     title: 'Pricing | Payslip Insights',
-    description: 'Compare Free, Plus, and Lifetime plans for Payslip Insights. Review payslips, track confirmed pay, and plan to your next payday.',
+    description: 'Compare Free, Plus, and Lifetime plans for Payslip Insights. Review payslips, track confirmed pay, compare changes, and prepare payroll questions.',
     jsonLd: {
       '@context': 'https://schema.org',
       '@type': 'WebPage',
@@ -38,7 +38,7 @@ export const INDEXABLE_MARKETING_PAGES: readonly MarketingPageSeo[] = [
   {
     path: '/privacy',
     title: 'Privacy Policy | Payslip Insights',
-    description: 'How Payslip Insights handles account information, payslips, confirmed figures, and planning data for UK and Ireland employees.',
+    description: 'How Payslip Insights handles account information, payslips, confirmed figures, and payroll questions for UK and Ireland employees.',
     jsonLd: {
       '@context': 'https://schema.org',
       '@type': 'WebPage',
@@ -48,7 +48,7 @@ export const INDEXABLE_MARKETING_PAGES: readonly MarketingPageSeo[] = [
   {
     path: '/terms',
     title: 'Terms of Service | Payslip Insights',
-    description: 'Terms for using Payslip Insights to review payslips, track confirmed figures, and make a personal payday plan.',
+    description: 'Terms for using Payslip Insights to review payslips, track confirmed figures, compare changes, and prepare payroll questions.',
     jsonLd: {
       '@context': 'https://schema.org',
       '@type': 'WebPage',

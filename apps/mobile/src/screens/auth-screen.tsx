@@ -106,7 +106,7 @@ export function AuthScreen({
           <Brand />
           <View style={styles.heroCopy}>
             <Text style={styles.title}>{mode === 'sign-in' ? 'Your payday, clear.' : 'Make payday feel simpler.'}</Text>
-            <Text style={styles.subtitle}>Check what changed, then make a plan for the money you have until the next pay day.</Text>
+            <Text style={styles.subtitle}>Check what changed, compare confirmed pay, and leave with a clear next step.</Text>
           </View>
           <HeroIllustration size={190} />
         </View>

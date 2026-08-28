@@ -3,7 +3,7 @@
     "name": "Payslip Insights",
     "slug": "payslip-insights",
     "version": "0.1.0",
-    "description": "Understand a payslip, track confirmed pay, and plan until the next payday.",
+    "description": "Check a payslip, compare confirmed pay, prepare a payroll question, and finish the tax year with official guidance.",
     "scheme": "payslipinsights",
     "orientation": "portrait",
     "icon": "./assets/payslip-insights-app-icon-v1.png",

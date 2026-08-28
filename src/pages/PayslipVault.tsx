@@ -104,7 +104,7 @@ const PayslipVault = () => {
                     <p>{slip.status === 'extracted' ? 'Check the extracted figures before you confirm this payslip.' : slip.employer_name}</p>
                   </div>
                   <div className="pi-vault-row-amount">
-                    {slip.status === 'extracted' ? <><strong>Review</strong><span>Before you plan</span></> : <><strong>{formatCurrency(slip.net_pay)}</strong><span>Net pay</span></>}
+                    {slip.status === 'extracted' ? <><strong>Review</strong><span>Before it joins your history</span></> : <><strong>{formatCurrency(slip.net_pay)}</strong><span>Net pay</span></>}
                   </div>
                   <ChevronRight aria-hidden="true" className="pi-vault-chevron" />
                 </Link>

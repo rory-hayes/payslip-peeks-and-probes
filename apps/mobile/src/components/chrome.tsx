@@ -40,6 +40,8 @@ export function PrimaryButton({
 }) {
   return (
     <Pressable
+      accessible
+      accessibilityLabel={label}
       accessibilityRole="button"
       accessibilityHint={accessibilityHint}
       accessibilityState={{ disabled }}
@@ -65,6 +67,8 @@ export function QuietButton({
 }) {
   return (
     <Pressable
+      accessible
+      accessibilityLabel={label}
       accessibilityRole="button"
       accessibilityState={{ disabled }}
       disabled={disabled}

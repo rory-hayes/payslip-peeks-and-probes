@@ -4,10 +4,10 @@ import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetDescription, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import {
   AlertTriangle,
-  CalendarDays,
   CreditCard,
   FileSearch,
   Home,
+  Landmark,
   LogOut,
   Menu,
   UserRound,
@@ -19,10 +19,10 @@ import VerifyEmailBanner from '@/components/VerifyEmailBanner';
 import brandMark from '@/assets/payslip-insights-mark.png';
 
 const primaryNavItems = [
-  { label: 'Home', icon: Home, path: '/dashboard' },
-  { label: 'Pay check', icon: FileSearch, path: '/vault' },
-  { label: 'Plan', icon: CalendarDays, path: '/plan' },
-  { label: 'Me', icon: UserRound, path: '/settings' },
+  { label: 'Payday', icon: Home, path: '/dashboard' },
+  { label: 'Payslips', icon: FileSearch, path: '/vault' },
+  { label: 'Tax year', icon: Landmark, path: '/tax-helper' },
+  { label: 'You', icon: UserRound, path: '/settings' },
 ];
 
 const secondaryNavItems = [
@@ -62,7 +62,7 @@ const AppLayout = ({ children }: { children: ReactNode }) => {
   };
 
   const visiblePrimaryItems = isDemo
-    ? primaryNavItems.filter((item) => item.path === '/dashboard')
+    ? primaryNavItems.filter((item) => item.path === '/dashboard' || item.path === '/tax-helper')
     : primaryNavItems;
   const visibleSecondaryItems = isDemo ? [] : secondaryNavItems;
 

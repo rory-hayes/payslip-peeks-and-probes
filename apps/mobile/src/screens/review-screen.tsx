@@ -84,7 +84,7 @@ export function ReviewScreen({
       return 'No figures were added automatically. Use the original payslip to fill in only the details you can see.';
     }
     if (!review?.extraction.confidence_score) return null;
-    return 'Some figures were read from your document. Compare them with the original payslip before you use them in a plan.';
+    return 'Some figures were read from your document. Compare them with the original payslip before they join your pay history.';
   }, [review?.extraction.confidence_score, review?.extraction.extraction_status]);
 
   const update = (field: keyof ReviewDraft, value: string) => {
@@ -224,7 +224,7 @@ export function ReviewScreen({
           <Text style={styles.subtitle}>
             {isManualReview
               ? `The automatic check could not create a draft from ${review.payslip.file_name || 'your payslip'}. Add the figures shown on the original before this payslip joins your history.`
-              : `These figures were extracted from ${review.payslip.file_name || 'your payslip'}. It’s worth comparing them with the original before you use them in a plan.`}
+              : `These figures were extracted from ${review.payslip.file_name || 'your payslip'}. It’s worth comparing them with the original before they join your pay history.`}
           </Text>
         </View>
 
@@ -303,7 +303,7 @@ export function ReviewScreen({
 
         <View style={styles.actions}>
           <PrimaryButton disabled={saving} label={saving ? 'Confirming…' : 'Confirm these figures'} onPress={() => void save()} />
-          <Text style={styles.disclaimer}>This check is for understanding and planning only. It is not tax or financial advice.</Text>
+          <Text style={styles.disclaimer}>This check is for understanding and record-keeping only. It is not tax, financial, or payroll advice.</Text>
         </View>
       </ScrollView>
     </KeyboardAvoidingView>

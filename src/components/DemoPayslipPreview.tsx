@@ -163,8 +163,8 @@ const DemoPayslipPreview = ({ onOpenChange, onSignUp, preview }: DemoPayslipPrev
               <section className="pi-demo-preview__next" aria-labelledby="sample-next-heading">
                 <FileText aria-hidden="true" />
                 <div>
-                  <h3 id="sample-next-heading">Then turn confirmed pay into a payday plan</h3>
-                  <p>Set aside your essentials, everyday spending and a buffer. This is a planning guide, not a bank balance or financial advice.</p>
+                  <h3 id="sample-next-heading">Then build a useful pay history</h3>
+                  <p>Compare future payslips with figures you confirmed, prepare a clear payroll question, and keep the right documents ready for tax year-end.</p>
                 </div>
               </section>
             </div>

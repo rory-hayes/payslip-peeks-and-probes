@@ -2,13 +2,13 @@ import { Ionicons } from '@expo/vector-icons';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { colors, spacing } from '../theme';
 
-export type MainTab = 'home' | 'paycheck' | 'plan' | 'me';
+export type MainTab = 'home' | 'paycheck' | 'tax' | 'me';
 
 const items: Array<{ id: MainTab; label: string; activeIcon: keyof typeof Ionicons.glyphMap; icon: keyof typeof Ionicons.glyphMap }> = [
-  { id: 'home', label: 'Home', icon: 'home-outline', activeIcon: 'home' },
-  { id: 'paycheck', label: 'Payslips', icon: 'document-text-outline', activeIcon: 'document-text' },
-  { id: 'plan', label: 'Plan', icon: 'pie-chart-outline', activeIcon: 'pie-chart' },
-  { id: 'me', label: 'Me', icon: 'person-outline', activeIcon: 'person' },
+  { id: 'home', label: 'Payday', icon: 'home-outline', activeIcon: 'home' },
+  { id: 'paycheck', label: 'Check', icon: 'document-text-outline', activeIcon: 'document-text' },
+  { id: 'tax', label: 'Tax year', icon: 'business-outline', activeIcon: 'business' },
+  { id: 'me', label: 'You', icon: 'person-outline', activeIcon: 'person' },
 ];
 
 export function BottomTabs({ active, onChange }: { active: MainTab; onChange: (tab: MainTab) => void }) {

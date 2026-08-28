@@ -73,9 +73,9 @@ describe('Landing', () => {
   it('keeps the selected consumer journey wired to sign-up, demo, and anchored sections', () => {
     renderLanding();
 
-    expect(document.title).toBe('Payslip Insights — Understand your payslip, plan your payday');
+    expect(document.title).toBe('Payslip Insights — Understand and compare your pay');
     expect(document.head.querySelector('meta[name="description"]')?.getAttribute('content'))
-      .toBe('Upload your payslip, review its figures, spot changes worth checking, and plan to your next payday. Built for UK and Ireland employees.');
+      .toBe('Upload a payslip, confirm its figures, compare pay changes, prepare payroll questions, and follow official UK or Ireland tax-year steps.');
     expect(screen.getByRole('link', { name: /check a payslip/i })).toHaveAttribute('href', '/sign-up');
     expect(screen.getByRole('link', { name: 'Choose Plus' })).toHaveAttribute('href', '/sign-up?checkout=plus_yearly');
     expect(screen.getByText('Billed €19.99 yearly until you cancel.')).toBeInTheDocument();

@@ -41,7 +41,7 @@ export function HomeScreen({
           ) : (
             <>
               <Text style={styles.emptyTitle}>Just got paid?</Text>
-              <Text style={styles.emptySubtitle}>Add a payslip and we’ll help you understand the important bits before you make your plan.</Text>
+              <Text style={styles.emptySubtitle}>Add a payslip and we’ll help you understand the important bits before they join your pay history.</Text>
               <HeroIllustration size={245} />
             </>
           )}
@@ -69,10 +69,6 @@ export function HomeScreen({
   const usualPay = deriveUsualPayBaseline(data?.confirmedPayslips ?? []);
   const hasUsualPay = usualPay.status === 'ready' && usualPay.currentPayslipId === latest.id;
   const payDifference = hasUsualPay ? usualPay.netDifference : netDifference;
-  const plan = data?.activePlan;
-  const essentialBills = allocation(data?.allocations ?? [], 'essential_bills');
-  const buffer = allocation(data?.allocations ?? [], 'buffer');
-  const everyday = allocation(data?.allocations ?? [], 'everyday_spending');
   const insight = getInsight(data, currency);
 
   return (
@@ -124,16 +120,18 @@ export function HomeScreen({
         </View>
       </Notice>
 
-      <Notice tone={insight.tone}>
-        <View style={styles.insightRow}>
-          <View style={styles.insightCopy}>
-            <Text style={styles.insightTitle}>{insight.title}</Text>
-            <Text style={styles.insightBody}>{insight.body}</Text>
+      {!data?.latestAnomalies.length ? (
+        <Notice tone={insight.tone}>
+          <View style={styles.insightRow}>
+            <View style={styles.insightCopy}>
+              <Text style={styles.insightTitle}>{insight.title}</Text>
+              <Text style={styles.insightBody}>{insight.body}</Text>
+            </View>
+            <Ionicons color={colors.navy} name={insight.icon} size={27} />
           </View>
-          <Ionicons color={colors.navy} name={insight.icon} size={27} />
-        </View>
-        {latest.status === 'needs_review' ? <PrimaryButton label="Check the details" onPress={() => onOpenReview(latest.id)} style={styles.insightButton} /> : null}
-      </Notice>
+          {latest.status === 'needs_review' ? <PrimaryButton label="Check the details" onPress={() => onOpenReview(latest.id)} style={styles.insightButton} /> : null}
+        </Notice>
+      ) : null}
 
       {data?.latestAnomalies.length ? (
         <Notice tone="aqua">
@@ -148,25 +146,36 @@ export function HomeScreen({
       ) : null}
 
       <View style={styles.section}>
-        <SectionHeading title="Plan until payday" />
-        {plan ? (
-          <View style={styles.planCard}>
-            <View style={styles.planAllocations}>
-              <PlanColumn icon="home-outline" label="Bills" amount={essentialBills} currency={currency} tone="violet" />
-              <View style={styles.planDivider} />
-              <PlanColumn icon="basket-outline" label="Everyday" amount={everyday} currency={currency} tone="aqua" />
-              <View style={styles.planDivider} />
-              <PlanColumn icon="umbrella-outline" label="Buffer" amount={buffer} currency={currency} tone="coral" />
-            </View>
-            <PrimaryButton label="Edit my payday plan" onPress={() => onTabChange('plan')} />
-          </View>
-        ) : (
-          <View style={styles.unplanned}>
-            <Text style={styles.unplannedTitle}>Give this pay a simple plan.</Text>
-            <Text style={styles.unplannedBody}>Set aside essentials, everyday spending and a little buffer before the month gets busy.</Text>
-            <PrimaryButton label="Make my payday plan" onPress={() => onTabChange('plan')} />
-          </View>
-        )}
+        <SectionHeading title="Your next step" />
+        <View style={styles.nextActions}>
+          <Pressable
+            accessibilityHint="Opens the confirmed figures and comparison for this payslip"
+            accessibilityLabel="Review the evidence behind this payday"
+            accessibilityRole="button"
+            onPress={() => onOpenPayHistory(latest.id)}
+            style={({ pressed }) => [styles.nextCard, styles.nextCardPrimary, pressed && styles.nextCardPressed]}
+          >
+            <View style={styles.nextIcon}><Ionicons color={colors.white} name="chatbubble-ellipses-outline" size={23} /></View>
+            <Text style={styles.nextKicker}>Turn insight into action</Text>
+            <Text style={styles.nextTitle}>Review the evidence.</Text>
+            <Text style={styles.nextBody}>See the confirmed figures behind this change before you ask payroll a question.</Text>
+            <View style={styles.nextLink}><Text style={styles.nextLinkText}>Open payday detail</Text><Ionicons color={colors.navy} name="arrow-forward" size={18} /></View>
+          </Pressable>
+
+          <Pressable
+            accessibilityHint="Opens the official-source end-of-year tax checklist"
+            accessibilityLabel="Open tax year helper"
+            accessibilityRole="button"
+            onPress={() => onTabChange('tax')}
+            style={({ pressed }) => [styles.nextCard, styles.nextCardTax, pressed && styles.nextCardPressed]}
+          >
+            <View style={styles.nextIcon}><Ionicons color={colors.white} name="business-outline" size={23} /></View>
+            <Text style={styles.nextKicker}>Official-source guide</Text>
+            <Text style={styles.nextTitle}>Keep your tax year on track.</Text>
+            <Text style={styles.nextBody}>Bring confirmed payslips together, then follow the right Revenue or HMRC steps.</Text>
+            <View style={styles.nextLink}><Text style={styles.nextLinkText}>Open tax-year helper</Text><Ionicons color={colors.navy} name="arrow-forward" size={18} /></View>
+          </Pressable>
+        </View>
       </View>
 
       {data?.confirmedPayslips.length ? (
@@ -277,10 +286,6 @@ function PayHistoryRow({
   );
 }
 
-function allocation(items: MobileDashboardData['allocations'], category: 'essential_bills' | 'everyday_spending' | 'buffer'): number {
-  return asNumber(items.find((item) => item.category === category)?.amount);
-}
-
 function getInsight(data: MobileDashboardData, currency: 'GBP' | 'EUR') {
   const current = data.latestExtraction;
   const previous = data.previousExtraction;
@@ -298,19 +303,7 @@ function getInsight(data: MobileDashboardData, currency: 'GBP' | 'EUR') {
       };
     }
   }
-  return { title: 'Your payslip is ready', body: 'You can now make a clear plan for this payday.', icon: 'checkmark-circle-outline' as const, tone: 'green' as const };
-}
-
-function PlanColumn({ icon, label, amount, currency, tone }: { icon: keyof typeof Ionicons.glyphMap; label: string; amount: number; currency: 'GBP' | 'EUR'; tone: 'violet' | 'aqua' | 'coral' }) {
-  const surface = tone === 'violet' ? colors.lavender : tone === 'aqua' ? colors.aquaSoft : colors.coralSoft;
-  const color = tone === 'violet' ? colors.violet : tone === 'aqua' ? '#0989A5' : colors.coral;
-  return (
-    <View style={styles.planColumn}>
-      <View style={[styles.planColumnIcon, { backgroundColor: surface }]}><Ionicons color={color} name={icon} size={23} /></View>
-      <Text style={styles.planColumnLabel}>{label}</Text>
-      <Text style={styles.planColumnValue}>{formatShortMoney(amount, currency)}</Text>
-    </View>
-  );
+  return { title: 'Your payslip is ready', body: 'The figures you confirmed are ready to understand, compare and act on.', icon: 'checkmark-circle-outline' as const, tone: 'green' as const };
 }
 
 const styles = StyleSheet.create({
@@ -348,16 +341,17 @@ const styles = StyleSheet.create({
   insightBody: { color: colors.muted, fontSize: 14, lineHeight: 20, marginTop: 4 },
   insightButton: { marginTop: spacing.md, minHeight: 48 },
   section: { marginHorizontal: spacing.lg, marginTop: spacing.xl },
-  planCard: { backgroundColor: colors.white, borderColor: colors.lavenderLine, borderRadius: radius.large, borderWidth: 1, overflow: 'hidden', padding: spacing.md },
-  planAllocations: { alignItems: 'stretch', flexDirection: 'row', marginBottom: spacing.md },
-  planColumn: { alignItems: 'center', flex: 1, gap: spacing.xs },
-  planColumnIcon: { alignItems: 'center', borderRadius: 999, height: 46, justifyContent: 'center', width: 46 },
-  planColumnLabel: { color: colors.muted, fontSize: 13, fontWeight: '700', textAlign: 'center' },
-  planColumnValue: { color: colors.navy, fontSize: 18, fontWeight: '900', letterSpacing: -0.7, textAlign: 'center' },
-  planDivider: { alignSelf: 'center', backgroundColor: colors.lavenderLine, height: 74, width: 1 },
-  unplanned: { backgroundColor: colors.lavender, borderRadius: radius.large, gap: spacing.md, padding: spacing.lg },
-  unplannedTitle: { color: colors.navy, fontSize: 21, fontWeight: '800', letterSpacing: -0.5 },
-  unplannedBody: { color: colors.muted, fontSize: 15, lineHeight: 22 },
+  nextActions: { gap: spacing.sm },
+  nextCard: { borderColor: colors.lavenderLine, borderRadius: radius.large, borderWidth: 1, minHeight: 238, overflow: 'hidden', padding: spacing.lg },
+  nextCardPrimary: { backgroundColor: colors.lavender },
+  nextCardTax: { backgroundColor: colors.aquaSoft },
+  nextCardPressed: { opacity: 0.72, transform: [{ scale: 0.995 }] },
+  nextIcon: { alignItems: 'center', backgroundColor: colors.navy, borderRadius: radius.small, height: 46, justifyContent: 'center', width: 46 },
+  nextKicker: { color: colors.violet, fontSize: 11, fontWeight: '900', letterSpacing: 1.1, marginTop: spacing.md, textTransform: 'uppercase' },
+  nextTitle: { color: colors.navy, fontSize: 24, fontWeight: '900', letterSpacing: -0.8, marginTop: spacing.xs },
+  nextBody: { color: colors.muted, fontSize: 14, lineHeight: 20, marginTop: spacing.xs },
+  nextLink: { alignItems: 'center', flexDirection: 'row', gap: spacing.xs, marginTop: 'auto', paddingTop: spacing.md },
+  nextLinkText: { color: colors.navy, fontSize: 14, fontWeight: '900' },
   historyCard: { backgroundColor: colors.white, borderColor: colors.lavenderLine, borderRadius: radius.large, borderWidth: 1, overflow: 'hidden', paddingHorizontal: spacing.md },
   historyRow: { alignItems: 'center', flexDirection: 'row', gap: spacing.sm, minHeight: 70 },
   historyRowBorder: { borderBottomColor: colors.lavenderLine, borderBottomWidth: StyleSheet.hairlineWidth },

@@ -1,11 +1,12 @@
 import type { Session } from '@supabase/supabase-js';
 import { StatusBar } from 'expo-status-bar';
 import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, Linking, Platform, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, Linking, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { BottomTabs, type MainTab } from './src/components/bottom-tabs';
 import { AquaCorner, Brand, PrimaryButton, QuietButton } from './src/components/chrome';
 import { loadDashboard } from './src/lib/data';
+import { SAMPLE_MOBILE_DASHBOARD_DATA } from './src/lib/demo-data';
 import { parseAuthRedirect } from './src/lib/deep-links';
 import { hasSupabaseConfig, manageSupabaseTokenRefresh, supabase } from './src/lib/supabase';
 import { AuthScreen } from './src/screens/auth-screen';
@@ -14,7 +15,7 @@ import { MeScreen } from './src/screens/me-screen';
 import { PayHistoryScreen } from './src/screens/pay-history-screen';
 import { PaycheckScreen } from './src/screens/paycheck-screen';
 import { PayslipHistoryDetailScreen } from './src/screens/payslip-history-detail-screen';
-import { PlanScreen } from './src/screens/plan-screen';
+import { TaxHelperScreen } from './src/screens/tax-helper-screen';
 import { ProfileSetupScreen } from './src/screens/profile-setup-screen';
 import { PasswordResetScreen } from './src/screens/password-reset-screen';
 import { ReviewScreen } from './src/screens/review-screen';
@@ -36,6 +37,7 @@ export default function App() {
   const [payHistoryRoute, setPayHistoryRoute] = useState<PayHistoryRoute | null>(null);
   const [passwordRecovery, setPasswordRecovery] = useState(false);
   const [accountDeletionNotice, setAccountDeletionNotice] = useState<AccountDeletionResult | null>(null);
+  const [demoMode, setDemoMode] = useState(false);
 
   const consumeAuthRedirect = useCallback(async (url: string) => {
     if (!supabase) return;
@@ -183,7 +185,9 @@ export default function App() {
       <StatusBar style="dark" />
       <View style={styles.appViewport}>
         <View style={styles.appFrame}>
-          {!hasSupabaseConfig || !supabase || !authReady ? <BootScreen /> : null}
+          {(!hasSupabaseConfig || !supabase) && !demoMode ? <BootScreen onExploreSample={() => setDemoMode(true)} /> : null}
+          {(!hasSupabaseConfig || !supabase) && demoMode ? <SampleApp onExit={() => setDemoMode(false)} /> : null}
+          {hasSupabaseConfig && supabase && !authReady ? <BootScreen /> : null}
           {hasSupabaseConfig && supabase && authReady && !session ? <AuthScreen accountDeletionNotice={accountDeletionNotice} /> : null}
           {hasSupabaseConfig && supabase && authReady && session && passwordRecovery ? (
             <PasswordResetScreen
@@ -333,14 +337,8 @@ function AuthenticatedApp({
             userId={userId}
           />
         ) : null}
-        {activeTab === 'plan' ? (
-          <PlanScreen
-            data={dashboard}
-            onOpenPaycheck={() => onTabChange('paycheck')}
-            onOpenReview={onOpenReview}
-            onSaved={onDashboardChanged}
-            userId={userId}
-          />
+        {activeTab === 'tax' ? (
+          <TaxHelperScreen data={dashboard} onOpenHistory={() => onOpenPayHistory()} />
         ) : null}
         {activeTab === 'me' ? (
           <MeScreen
@@ -359,7 +357,122 @@ function AuthenticatedApp({
   );
 }
 
-function BootScreen({ message }: { message?: string }) {
+function SampleApp({ onExit }: { onExit: () => void }) {
+  const [activeTab, setActiveTab] = useState<MainTab>('home');
+  const [payHistoryRoute, setPayHistoryRoute] = useState<PayHistoryRoute | null>(null);
+  const dashboard = SAMPLE_MOBILE_DASHBOARD_DATA;
+
+  const changeTab = (tab: MainTab) => {
+    setPayHistoryRoute(null);
+    setActiveTab(tab);
+  };
+
+  const openPayHistory = (payslipId?: string) => {
+    setPayHistoryRoute(payslipId ? { screen: 'detail', payslipId } : { screen: 'list' });
+  };
+
+  if (payHistoryRoute) {
+    const selectedPayslip = payHistoryRoute.screen === 'detail'
+      ? dashboard.confirmedPayslips.find((payslip) => payslip.id === payHistoryRoute.payslipId)
+      : null;
+    return (
+      <SafeAreaView edges={['top', 'bottom']} style={styles.root}>
+        {selectedPayslip ? (
+          <PayslipHistoryDetailScreen
+            currency="GBP"
+            onClose={() => openPayHistory()}
+            payslip={selectedPayslip}
+            payslips={dashboard.confirmedPayslips}
+          />
+        ) : (
+          <PayHistoryScreen
+            currency="GBP"
+            onClose={() => setPayHistoryRoute(null)}
+            onOpenPayslip={openPayHistory}
+            payslips={dashboard.confirmedPayslips}
+          />
+        )}
+      </SafeAreaView>
+    );
+  }
+
+  return (
+    <View style={styles.root}>
+      <SafeAreaView edges={['top']} style={styles.content}>
+        {activeTab === 'home' ? (
+          <HomeScreen
+            data={dashboard}
+            onOpenPayHistory={openPayHistory}
+            onOpenReview={() => undefined}
+            onRefresh={() => undefined}
+            onTabChange={changeTab}
+            refreshing={false}
+          />
+        ) : null}
+        {activeTab === 'paycheck' ? <SampleInfoScreen kind="check" onExit={onExit} onTabChange={changeTab} /> : null}
+        {activeTab === 'tax' ? <TaxHelperScreen data={dashboard} onOpenHistory={() => openPayHistory()} /> : null}
+        {activeTab === 'me' ? <SampleInfoScreen kind="account" onExit={onExit} onTabChange={changeTab} /> : null}
+      </SafeAreaView>
+      <SafeAreaView edges={['bottom']} style={styles.tabSafeArea}>
+        <BottomTabs active={activeTab} onChange={changeTab} />
+      </SafeAreaView>
+    </View>
+  );
+}
+
+function SampleInfoScreen({
+  kind,
+  onExit,
+  onTabChange,
+}: {
+  kind: 'check' | 'account';
+  onExit: () => void;
+  onTabChange: (tab: MainTab) => void;
+}) {
+  const isCheck = kind === 'check';
+  const items = isCheck
+    ? [
+      ['1', 'Add a payslip', 'Use a PDF, photo, or screenshot in the connected app.'],
+      ['2', 'Confirm every figure', 'Nothing enters your history until you review the extracted values.'],
+      ['3', 'See the change', 'Compare with your recent confirmed pay and focus on what moved.'],
+      ['4', 'Take a clear next step', 'Prepare a payroll question or open the tax-year guide.'],
+    ]
+    : [
+      ['UK + IE', 'Country-aware', 'Income Tax and NI for the UK; PAYE, PRSI, and USC for Ireland.'],
+      ['Private', 'Review first', 'The product separates extracted data from figures you confirmed.'],
+      ['Bounded', 'No refund promises', 'Revenue, HMRC, payroll, or a qualified professional makes the final decision.'],
+    ];
+
+  return (
+    <ScrollView contentContainerStyle={styles.sampleScroll}>
+      <AquaCorner />
+      <View style={styles.sampleHeader}>
+        <Brand compact />
+        <Text accessibilityRole="header" style={styles.sampleTitle}>{isCheck ? 'A payslip check in four clear beats.' : 'Sample mode, with honest boundaries.'}</Text>
+        <Text style={styles.sampleIntro}>
+          {isCheck
+            ? 'This read-only sample shows the experience without uploading a real document.'
+            : 'Explore the product with sample figures. Connect the app to create an account and check your own payslips.'}
+        </Text>
+      </View>
+      <View style={styles.sampleSteps}>
+        {items.map(([number, title, body]) => (
+          <View key={number} style={styles.sampleStep}>
+            <View style={styles.sampleNumber}><Text style={styles.sampleNumberText}>{number}</Text></View>
+            <View style={styles.sampleStepCopy}>
+              <Text style={styles.sampleStepTitle}>{title}</Text>
+              <Text style={styles.sampleStepBody}>{body}</Text>
+            </View>
+          </View>
+        ))}
+      </View>
+      {isCheck ? <PrimaryButton label="Return to sample payday" onPress={() => onTabChange('home')} /> : <PrimaryButton label="See the tax-year guide" onPress={() => onTabChange('tax')} />}
+      <QuietButton label="Exit sample mode" onPress={onExit} />
+    </ScrollView>
+  );
+}
+
+function BootScreen({ message, onExploreSample }: { message?: string; onExploreSample?: () => void }) {
   const missingConnection = !hasSupabaseConfig;
   return (
     <SafeAreaView edges={['top', 'bottom']} style={styles.boot}>
@@ -371,6 +484,7 @@ function BootScreen({ message }: { message?: string }) {
             <>
               <Text style={styles.bootTitle}>This build needs its app connection.</Text>
               <Text style={styles.bootText}>Add the public Supabase URL and publishable key to the mobile app’s local configuration, then restart it.</Text>
+              {onExploreSample ? <PrimaryButton label="Explore sample app" onPress={onExploreSample} /> : null}
             </>
           ) : (
             <>
@@ -429,6 +543,17 @@ const styles = StyleSheet.create({
   bootMessage: { alignItems: 'flex-start', gap: spacing.md, marginBottom: 72 },
   bootTitle: { color: colors.navy, fontSize: 34, fontWeight: '900', letterSpacing: -1.4, lineHeight: 39, maxWidth: 330 },
   bootText: { color: colors.muted, fontSize: 16, lineHeight: 23, maxWidth: 330 },
+  sampleScroll: { backgroundColor: colors.background, gap: spacing.md, minHeight: '100%', padding: spacing.lg, paddingBottom: 44, position: 'relative' },
+  sampleHeader: { gap: spacing.sm, paddingTop: 28 },
+  sampleTitle: { color: colors.navy, fontSize: 36, fontWeight: '900', letterSpacing: -1.7, lineHeight: 39, marginTop: spacing.xl, maxWidth: 390 },
+  sampleIntro: { color: colors.muted, fontSize: 16, lineHeight: 23, maxWidth: 410 },
+  sampleSteps: { gap: spacing.sm, marginVertical: spacing.sm },
+  sampleStep: { alignItems: 'flex-start', backgroundColor: colors.white, borderColor: colors.lavenderLine, borderRadius: 18, borderWidth: 1, flexDirection: 'row', gap: spacing.sm, padding: spacing.md },
+  sampleNumber: { alignItems: 'center', backgroundColor: colors.lavender, borderRadius: 999, justifyContent: 'center', minHeight: 40, minWidth: 40, paddingHorizontal: spacing.xs },
+  sampleNumberText: { color: colors.violet, fontSize: 12, fontWeight: '900' },
+  sampleStepCopy: { flex: 1 },
+  sampleStepTitle: { color: colors.navy, fontSize: 16, fontWeight: '900' },
+  sampleStepBody: { color: colors.muted, fontSize: 13, lineHeight: 19, marginTop: 3 },
   failure: { flex: 1, justifyContent: 'center', gap: spacing.md, padding: spacing.lg, position: 'relative' },
   failureCopy: { gap: spacing.sm, marginTop: spacing.xxl },
   failureTitle: { color: colors.navy, fontSize: 34, fontWeight: '900', letterSpacing: -1.4, lineHeight: 39 },

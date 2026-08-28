@@ -143,7 +143,7 @@ async function readArrayBuffer(file: PickedPayslipFile): Promise<ArrayBuffer> {
 
 export async function loadDashboard(userId: string): Promise<MobileDashboardData> {
   const db = client();
-  const [profileResult, confirmedPayslipResult, pendingPayslipResult, billsResult, goalResult] = await Promise.all([
+  const [profileResult, confirmedPayslipResult, pendingPayslipResult] = await Promise.all([
     db.from('profiles').select('user_id, first_name, country, currency, pay_frequency').eq('user_id', userId).maybeSingle(),
     // A payslip becomes `completed` only through the review-confirmation RPC.
     // Load enough owner-scoped history to find up to three comparable records,
@@ -152,13 +152,9 @@ export async function loadDashboard(userId: string): Promise<MobileDashboardData
       .eq('status', 'completed').order('pay_date', { ascending: false, nullsFirst: false }).limit(12),
     db.from('payslips').select('id, employer_id, file_path, pay_date, pay_period_end, pay_period_start, country, file_name, status, processing_failure_code, cleanup_requested_at, created_at').eq('user_id', userId)
       .in('status', ['processing', 'failed', 'needs_review']).order('created_at', { ascending: false }).limit(10),
-    db.from('recurring_bills').select('id, name, amount, due_day, frequency, is_essential, is_active')
-      .eq('user_id', userId).eq('is_active', true).order('due_day', { ascending: true, nullsFirst: false }),
-    db.from('savings_goals').select('id, name, target_amount, current_amount, currency, is_primary')
-      .eq('user_id', userId).eq('is_primary', true).maybeSingle(),
   ]);
 
-  const firstError = [profileResult, confirmedPayslipResult, pendingPayslipResult, billsResult, goalResult]
+  const firstError = [profileResult, confirmedPayslipResult, pendingPayslipResult]
     .map((result) => result.error)
     .find(Boolean);
   if (firstError) throw new Error('We could not load your payday data.');
@@ -166,26 +162,17 @@ export async function loadDashboard(userId: string): Promise<MobileDashboardData
   const confirmedPayslips = asArray<Payslip>(confirmedPayslipResult.data);
   const pendingPayslips = asArray<Payslip>(pendingPayslipResult.data);
   const latestPayslip = confirmedPayslips[0] ?? null;
-  const planResult = latestPayslip
-    ? await db.from('payday_plans').select('id, user_id, payslip_id, pay_date, next_payday, currency, net_pay, everyday_remaining, everyday_checked_in_at, status, created_at')
-      .eq('user_id', userId).eq('payslip_id', latestPayslip.id).eq('status', 'active').maybeSingle()
-    : { data: null, error: null };
-  if (planResult.error) throw new Error('We could not load your payday plan.');
-  const activePlan = asOne<PaydayPlan>(planResult.data);
 
-  const [confirmedExtractionResult, allocationResult, anomalyResult] = await Promise.all([
+  const [confirmedExtractionResult, anomalyResult] = await Promise.all([
     confirmedPayslips.length > 0
       ? db.from('payslip_extractions').select('payslip_id, extraction_status, confidence_score, gross_pay, net_pay, taxable_pay, tax_amount, national_insurance_amount, prsi_amount, usc_amount, pension_amount, total_deductions').in('payslip_id', confirmedPayslips.map((payslip) => payslip.id))
-      : Promise.resolve({ data: [], error: null }),
-    activePlan
-      ? db.from('payday_plan_allocations').select('id, plan_id, category, amount').eq('plan_id', activePlan.id)
       : Promise.resolve({ data: [], error: null }),
     latestPayslip
       ? db.from('anomaly_results').select('id, payslip_id, severity, title, description, suggested_action, status').eq('payslip_id', latestPayslip.id).order('created_at', { ascending: false })
       : Promise.resolve({ data: [], error: null }),
   ]);
 
-  if (confirmedExtractionResult.error || allocationResult.error || anomalyResult.error) {
+  if (confirmedExtractionResult.error || anomalyResult.error) {
     throw new Error('We could not load your pay details.');
   }
 
@@ -208,10 +195,10 @@ export async function loadDashboard(userId: string): Promise<MobileDashboardData
     confirmedPayslips: confirmedPayHistory,
     pendingPayslips,
     latestAnomalies: asArray<PayslipAnomaly>(anomalyResult.data),
-    activePlan,
-    allocations: asArray<PlanAllocation>(allocationResult.data),
-    bills: asArray<RecurringBill>(billsResult.data),
-    primaryGoal: asOne<SavingsGoal>(goalResult.data),
+    activePlan: null,
+    allocations: [],
+    bills: [],
+    primaryGoal: null,
   };
 }
 

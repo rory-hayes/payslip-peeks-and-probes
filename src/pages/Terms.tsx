@@ -33,7 +33,7 @@ const Terms = () => {
       <div className="prose prose-sm max-w-none text-muted-foreground space-y-6">
         <section className="space-y-3">
           <h2 className="text-lg font-semibold text-foreground">1. About Payslip Insights</h2>
-          <p>Payslip Insights is a payslip review, tracking, and planning tool for employees in the United Kingdom and Ireland. It can help you notice changes or figures worth checking. <strong className="text-foreground">It is not formal tax, legal, financial, or payroll advice.</strong> Always confirm a question with your employer, payroll team, or a qualified professional.</p>
+          <p>Payslip Insights is a payslip review, comparison, record-keeping, and payroll-question tool for employees in the United Kingdom and Ireland. It can help you notice changes or figures worth checking and guide you to official tax-year processes. <strong className="text-foreground">It does not calculate your final tax position and is not formal tax, legal, financial, or payroll advice.</strong> Always confirm a question with your employer, payroll team, the relevant tax authority, or a qualified professional.</p>
         </section>
 
         <section className="space-y-3">

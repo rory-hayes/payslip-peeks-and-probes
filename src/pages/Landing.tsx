@@ -15,8 +15,10 @@ import {
   ChevronRight,
   Eye,
   FileCheck,
+  Landmark,
   Menu,
   MessageSquare,
+  MessageSquareText,
   TrendingUp,
   Upload,
   X,
@@ -74,6 +76,16 @@ const FEATURES = [
     title: 'Compare without the spreadsheet',
     description: 'See two confirmed payslips side by side when you want a closer look.',
   },
+  {
+    icon: MessageSquareText,
+    title: 'Ask payroll clearly',
+    description: 'Turn a confirmed change into a concise question with the relevant figures attached.',
+  },
+  {
+    icon: Landmark,
+    title: 'Prepare for tax year-end',
+    description: 'Keep your payslips together and follow the right official Revenue or HMRC process.',
+  },
 ] as const;
 
 const FREE_FEATURES = [
@@ -93,11 +105,11 @@ const PLUS_FEATURES = [
 const FAQ_ITEMS = [
   {
     question: 'Is Payslip Insights tax advice?',
-    answer: 'No. Payslip Insights is a payslip review and planning tool. It can flag changes worth checking, but it does not provide formal tax, legal, or payroll advice. Always confirm a concern with your employer or a qualified professional.',
+    answer: 'No. Payslip Insights is a payslip review and record-keeping tool. It can flag changes worth checking and guide you to official tax-year steps, but it does not calculate a final tax position or provide formal tax, legal, or payroll advice.',
   },
   {
     question: 'How is my payslip data handled?',
-    answer: 'We use your payslip to provide review, tracking, and planning features. We may use service providers for hosting and document extraction. Read the Privacy Policy before uploading for the current details.',
+    answer: 'We use your payslip to provide review, comparison, history, and payroll-message features. We may use service providers for hosting and document extraction. Read the Privacy Policy before uploading for the current details.',
   },
   {
     question: 'Which payslip formats do you support?',
@@ -205,7 +217,7 @@ const Landing = () => {
             <div className="pi-landing__hero-copy">
               <h1>Your payday, clear.</h1>
               <p>
-                Upload your payslip, spot changes worth checking, and plan to your next payday. Clear figures and a calmer next step.
+                Upload your payslip, confirm the figures, and see what changed. Compare pay, ask payroll clearly, and stay ready for tax year-end.
               </p>
               <div className="pi-landing__hero-actions">
                 <Link to="/sign-up" className="pi-landing__button" onClick={() => analytics.track('marketing_cta_clicked')}>
@@ -258,7 +270,7 @@ const Landing = () => {
           <div className="pi-landing__container pi-landing__feature-grid">
             <div className="pi-landing__feature-intro">
               <h2>Built around the moment your pay lands.</h2>
-              <p>Not another generic budgeting dashboard. A simple place to understand what changed and decide what to do next.</p>
+              <p>Not another generic budgeting dashboard. A focused place to understand what changed, keep the evidence, and decide what to do next.</p>
               <Link to="/guides" className="pi-landing__text-link">
                 Explore payslip guides <ArrowRight aria-hidden="true" />
               </Link>
@@ -332,7 +344,7 @@ const Landing = () => {
               Prices are shown for {selectedPricing.countryLabel} in {selectedPricing.currency}.
             </p>
             <p className="pi-landing__currency-help">
-              Choose the currency for your plan. Your payslip country is selected separately during account setup.
+              Choose your billing currency. Your payslip country is selected separately during account setup.
             </p>
 
             <div className="pi-landing__pricing-grid">
@@ -396,7 +408,7 @@ const Landing = () => {
             <div className="pi-landing__closing-panel">
               <div>
                 <h2>Ready to check your payslips?</h2>
-                <p>Upload a payslip, understand what changed, and make a simple plan to your next payday.</p>
+                <p>Upload a payslip, understand what changed, and leave with a clear, evidence-backed next step.</p>
               </div>
               <Link to="/sign-up" className="pi-landing__button pi-landing__button--light" onClick={() => analytics.track('marketing_cta_clicked')}>
                 Get started for free <ArrowRight aria-hidden="true" />

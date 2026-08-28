@@ -233,7 +233,7 @@ export function MeScreen({
             <View style={styles.modalHandle} />
             <View style={styles.profileModalIcon}><Ionicons color={colors.violet} name="options-outline" size={30} /></View>
             <Text style={styles.modalTitle}>Pay settings</Text>
-            <Text style={styles.modalText}>Choose the country and pay rhythm used for your next-payday plan.</Text>
+            <Text style={styles.modalText}>Choose the country and pay rhythm used for your payslip history and tax-year guide.</Text>
 
             <Text style={styles.confirmLabel}>Where are you paid?</Text>
             <View style={styles.settingChoices}>

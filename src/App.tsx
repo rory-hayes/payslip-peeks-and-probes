@@ -1,5 +1,5 @@
 import { lazy, Suspense } from "react";
-import { BrowserRouter, Route, Routes } from "react-router";
+import { BrowserRouter, Navigate, Route, Routes } from "react-router";
 import { DemoProvider } from "@/contexts/DemoContext";
 import DemoExitOnArrival from "@/components/DemoExitOnArrival";
 import ScrollToTop from "@/components/ScrollToTop";
@@ -14,13 +14,13 @@ const ForgotPassword = lazy(() => import("./pages/ForgotPassword"));
 const ResetPassword = lazy(() => import("./pages/ResetPassword"));
 const Onboarding = lazy(() => import("./pages/Onboarding"));
 const Dashboard = lazy(() => import("./pages/Dashboard"));
-const Plan = lazy(() => import("./pages/Plan"));
 const PayslipVault = lazy(() => import("./pages/PayslipVault"));
 const PayslipDetail = lazy(() => import("./pages/PayslipDetail"));
 const ComparePayslips = lazy(() => import("./pages/ComparePayslips"));
 const Anomalies = lazy(() => import("./pages/Anomalies"));
 const DraftQuery = lazy(() => import("./pages/DraftQuery"));
 const Settings = lazy(() => import("./pages/Settings"));
+const TaxHelper = lazy(() => import("./pages/TaxHelper"));
 const Pricing = lazy(() => import("./pages/Pricing"));
 const Checkout = lazy(() => import("./pages/Checkout"));
 const CheckoutReturn = lazy(() => import("./pages/CheckoutReturn"));
@@ -87,13 +87,14 @@ const App = () => (
                 <Route element={<ProtectedRouteLayout />}>
                   <Route path="/onboarding" element={<Onboarding />} />
                   <Route path="/dashboard" element={<Dashboard />} />
-                  <Route path="/plan" element={<Plan />} />
+                  <Route path="/plan" element={<Navigate replace to="/dashboard" />} />
                   <Route path="/vault" element={<PayslipVault />} />
                   <Route path="/payslip/:id" element={<PayslipDetail />} />
                   <Route path="/compare" element={<ComparePayslips />} />
                   <Route path="/anomalies" element={<Anomalies />} />
                   <Route path="/draft/:id" element={<DraftQuery />} />
                   <Route path="/settings" element={<Settings />} />
+                  <Route path="/tax-helper" element={<TaxHelper />} />
                   <Route path="/checkout" element={<Checkout />} />
                   <Route path="/checkout/return" element={<CheckoutReturn />} />
                 </Route>
