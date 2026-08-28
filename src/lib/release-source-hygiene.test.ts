@@ -26,6 +26,14 @@ describe('release source hygiene', () => {
     expect(packageJson.devDependencies?.['lovable-tagger']).toBeUndefined();
   });
 
+  it('serves the Payslip Insights favicon with a cache-busting URL', () => {
+    const indexHtml = readFileSync(projectFile('index.html'), 'utf8');
+
+    expect(indexHtml).toContain('/favicon.svg?v=payslip-insights-1');
+    expect(indexHtml).toContain('/favicon.png?v=payslip-insights-1');
+    expect(indexHtml).not.toMatch(/lovable[^<]*(?:favicon|icon)/i);
+  });
+
   it('keeps the web release on its reviewed npm dependency lockfile', () => {
     expect(existsSync(projectFile('package-lock.json'))).toBe(true);
     expect(existsSync(projectFile('bun.lock'))).toBe(false);
