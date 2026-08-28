@@ -105,6 +105,7 @@ function parseLineItems(value: unknown): PayslipLineItem[] {
       confidence: candidate.confidence === 'high' || candidate.confidence === 'medium' || candidate.confidence === 'low'
         ? candidate.confidence
         : 'low',
+      reviewed: candidate.reviewed === true,
     }];
   }).slice(0, 60);
 }

@@ -22,6 +22,8 @@ export interface PayslipLineItem {
   year_to_date_amount: number | null;
   evidence: string | null;
   confidence: PayslipExtractionConfidence;
+  /** True after the account owner confirms this row against the original. */
+  reviewed?: boolean;
 }
 
 export interface PayslipFieldEvidence {

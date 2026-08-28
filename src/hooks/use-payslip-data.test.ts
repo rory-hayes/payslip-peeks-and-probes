@@ -38,9 +38,11 @@ describe('normalizeExtractionDetails', () => {
         year_to_date_amount: 9000,
         evidence: 'Basic pay £3,000.00',
         confidence: 'high',
+        reviewed: false,
       }],
       extraction_field_evidence: [{ field: 'gross_pay', evidence: 'Gross pay £3,000.00', confidence: 'high' }],
       year_to_date: { gross_pay: 9000, tax: 1200, ni: 600, pension: 300 },
+      extraction_context: undefined,
     });
   });
 });

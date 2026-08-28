@@ -40,7 +40,7 @@ const STEPS = [
     icon: Upload,
     number: '01',
     title: 'Upload your payslip',
-    description: 'Add a PDF or photo, then review the figures we find before you confirm anything.',
+    description: 'Add a PDF or photo, then check and correct the totals, earnings and deductions before you confirm anything.',
   },
   {
     icon: Eye,
@@ -61,7 +61,7 @@ const FEATURES = [
     icon: FileCheck,
     eyebrow: 'Confirm',
     title: 'A payslip record you reviewed',
-    description: 'Check, correct or leave out extracted figures before anything joins your confirmed history.',
+    description: 'Check, correct, add or remove extracted pay rows before anything joins your confirmed history.',
   },
   {
     icon: BarChart3,
@@ -122,7 +122,7 @@ const FAQ_ITEMS = [
   },
   {
     question: 'What if the extraction gets something wrong?',
-    answer: 'You can review and edit extracted values before confirming. If a figure is missing or does not match your original payslip, correct it or leave it blank before you save.',
+    answer: 'You can correct headline values and edit, add or remove individual earnings and deduction rows before confirming. The app asks you to check those rows against the original before they join your history.',
   },
   {
     question: 'Why not use a general AI chat?',
@@ -235,7 +235,7 @@ const Landing = () => {
                 </button>
               </div>
               <div className="pi-landing__hero-notes" aria-label="Product highlights">
-                <span><Check aria-hidden="true" /> Review every extracted figure</span>
+                <span><Check aria-hidden="true" /> Check figures against the original</span>
                 <span><Check aria-hidden="true" /> UK &amp; Ireland focused</span>
                 <span><Check aria-hidden="true" /> No bank connection</span>
               </div>

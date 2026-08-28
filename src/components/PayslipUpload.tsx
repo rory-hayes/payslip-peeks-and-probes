@@ -10,7 +10,18 @@ import { Label } from '@/components/ui/label';
 import { Progress } from '@/components/ui/progress';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Upload, FileText, CheckCircle, AlertCircle, ClipboardCheck, ExternalLink, Sparkles } from 'lucide-react';
+import {
+  AlertCircle,
+  CheckCircle,
+  ClipboardCheck,
+  ExternalLink,
+  FileText,
+  Pencil,
+  Plus,
+  Sparkles,
+  Trash2,
+  Upload,
+} from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { formatDate } from '@/lib/date-utils';
 import { useUsage } from '@/hooks/use-usage';
@@ -25,6 +36,15 @@ import {
   parseIssuedPayslipUpload,
 } from '@/lib/payslip-upload';
 import { acceptsRealPayslips } from '@/lib/public-legal-details';
+import {
+  createBlankReviewLineItemDraft,
+  createReviewLineItemDrafts,
+  REVIEW_LINE_ITEM_KINDS,
+  REVIEW_LINE_ITEM_LIMIT,
+  validateReviewLineItems,
+  type ReviewLineItemDraft,
+  type ReviewLineItemErrors,
+} from '@/lib/payslip-review-line-items';
 
 type UploadState = 'idle' | 'uploading' | 'processing' | 'opening_review' | 'review' | 'success' | 'error';
 
@@ -58,6 +78,12 @@ function formatReviewMoney(value: number, currency: 'GBP' | 'EUR'): string {
     currency,
     style: 'currency',
   }).format(value);
+}
+
+function formatReviewDraftMoney(value: string, currency: 'GBP' | 'EUR'): string {
+  if (!value.trim()) return '—';
+  const amount = Number(value);
+  return Number.isFinite(amount) ? formatReviewMoney(amount, currency) : 'Check value';
 }
 
 interface PayslipUploadProps {
@@ -101,7 +127,14 @@ const PayslipUpload = ({ onUploadComplete, resumeReviewId = null }: PayslipUploa
   const [reviewSaving, setReviewSaving] = useState(false);
   const [reviewErrors, setReviewErrors] = useState<Partial<Record<RequiredReviewField, string>>>({});
   const [reviewExtraction, setReviewExtraction] = useState<ReviewExtractionDetails>(() => emptyReviewExtractionDetails());
+  const [reviewLineItems, setReviewLineItems] = useState<ReviewLineItemDraft[]>([]);
+  const [reviewLineItemErrors, setReviewLineItemErrors] = useState<Record<string, ReviewLineItemErrors>>({});
+  const [reviewLineItemsChecked, setReviewLineItemsChecked] = useState(false);
+  const [reviewLineItemsCheckError, setReviewLineItemsCheckError] = useState('');
   const reviewInputRefs = useRef<Partial<Record<RequiredReviewField, HTMLInputElement | null>>>({});
+  const reviewLineItemInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
+  const reviewLineItemsCheckboxRef = useRef<HTMLInputElement>(null);
+  const nextReviewLineItemId = useRef(0);
   const [originalPayslipUrl, setOriginalPayslipUrl] = useState<string | null>(null);
   const [originalPayslipState, setOriginalPayslipState] = useState<'idle' | 'loading' | 'ready' | 'unavailable'>('idle');
 
@@ -207,7 +240,12 @@ const PayslipUpload = ({ onUploadComplete, resumeReviewId = null }: PayslipUploa
         setReviewCountry(payslip.country || 'UK');
         setReviewFields(fields);
         setFieldMeta(meta);
-        setReviewExtraction(normalizeExtractionDetails(extraction));
+        const extractionDetails = normalizeExtractionDetails(extraction);
+        setReviewExtraction(extractionDetails);
+        setReviewLineItems(createReviewLineItemDrafts(extractionDetails.extraction_line_items ?? []));
+        setReviewLineItemsChecked(false);
+        setReviewLineItemErrors({});
+        setReviewLineItemsCheckError('');
         setReviewPayslipId(resumeReviewId);
         setFileName(payslip.file_name || 'Payslip');
         setState('review');
@@ -252,6 +290,10 @@ const PayslipUpload = ({ onUploadComplete, resumeReviewId = null }: PayslipUploa
     setFieldMeta({});
     setReviewErrors({});
     setReviewExtraction(emptyReviewExtractionDetails());
+    setReviewLineItems([]);
+    setReviewLineItemErrors({});
+    setReviewLineItemsChecked(false);
+    setReviewLineItemsCheckError('');
   };
 
   const updateField = (key: keyof ReviewFields, value: string) => {
@@ -272,6 +314,47 @@ const PayslipUpload = ({ onUploadComplete, resumeReviewId = null }: PayslipUploa
     setReviewFields((current) => country === 'Ireland'
       ? { ...current, ni_amount: '' }
       : { ...current, prsi_amount: '', usc_amount: '' });
+  };
+
+  const updateReviewLineItem = <Key extends keyof Pick<ReviewLineItemDraft, 'label' | 'kind' | 'amount' | 'yearToDateAmount'>>(
+    id: string,
+    key: Key,
+    value: ReviewLineItemDraft[Key],
+  ) => {
+    setReviewLineItems((current) => current.map((item) => item.id === id ? { ...item, [key]: value } : item));
+    setReviewLineItemsChecked(false);
+    setReviewLineItemsCheckError('');
+    setReviewLineItemErrors((current) => {
+      if (!current[id]) return current;
+      const next = { ...current };
+      delete next[id];
+      return next;
+    });
+  };
+
+  const setReviewLineItemEditing = (id: string, editing: boolean) => {
+    setReviewLineItems((current) => current.map((item) => item.id === id ? { ...item, editing } : item));
+  };
+
+  const addReviewLineItem = () => {
+    if (reviewLineItems.length >= REVIEW_LINE_ITEM_LIMIT) return;
+    const id = `added-${nextReviewLineItemId.current++}`;
+    setReviewLineItems((current) => [...current, createBlankReviewLineItemDraft(id)]);
+    setReviewLineItemsChecked(false);
+    setReviewLineItemsCheckError('');
+    requestAnimationFrame(() => reviewLineItemInputRefs.current[id]?.focus());
+  };
+
+  const removeReviewLineItem = (id: string) => {
+    setReviewLineItems((current) => current.filter((item) => item.id !== id));
+    setReviewLineItemsChecked(false);
+    setReviewLineItemsCheckError('');
+    setReviewLineItemErrors((current) => {
+      if (!current[id]) return current;
+      const next = { ...current };
+      delete next[id];
+      return next;
+    });
   };
 
   const invalidatePayslipQueries = useCallback(async () => {
@@ -348,7 +431,12 @@ const PayslipUpload = ({ onUploadComplete, resumeReviewId = null }: PayslipUploa
           total_deductions: ext.total_deductions != null ? String(ext.total_deductions) : '',
         };
         setReviewFields(fields);
-        setReviewExtraction(normalizeExtractionDetails(extraction));
+        const extractionDetails = normalizeExtractionDetails(extraction);
+        setReviewExtraction(extractionDetails);
+        setReviewLineItems(createReviewLineItemDrafts(extractionDetails.extraction_line_items ?? []));
+        setReviewLineItemsChecked(false);
+        setReviewLineItemErrors({});
+        setReviewLineItemsCheckError('');
 
         // Track which fields were auto-extracted
         const meta: Record<string, FieldMeta> = {};
@@ -559,6 +647,10 @@ const PayslipUpload = ({ onUploadComplete, resumeReviewId = null }: PayslipUploa
       setReviewFields(fields);
       setFieldMeta(meta);
       setReviewExtraction(emptyReviewExtractionDetails());
+      setReviewLineItems([]);
+      setReviewLineItemsChecked(false);
+      setReviewLineItemErrors({});
+      setReviewLineItemsCheckError('');
       setReviewPayslipId(failedPayslipId);
       setFileName(payslip.file_name || 'Payslip');
       setFailedPayslipId(null);
@@ -601,6 +693,25 @@ const PayslipUpload = ({ onUploadComplete, resumeReviewId = null }: PayslipUploa
 
     setReviewErrors({});
 
+    const lineItemValidation = validateReviewLineItems(reviewLineItems);
+    if (!lineItemValidation.lineItems) {
+      setReviewLineItemErrors(lineItemValidation.errors);
+      const firstInvalidLineItemId = Object.keys(lineItemValidation.errors).find((id) => id !== '_form');
+      if (firstInvalidLineItemId) {
+        setReviewLineItemEditing(firstInvalidLineItemId, true);
+        requestAnimationFrame(() => reviewLineItemInputRefs.current[firstInvalidLineItemId]?.focus());
+      }
+      return;
+    }
+
+    setReviewLineItemErrors({});
+    if (reviewLineItems.length > 0 && !reviewLineItemsChecked) {
+      setReviewLineItemsCheckError('Confirm that you checked these detailed rows against the original payslip.');
+      requestAnimationFrame(() => reviewLineItemsCheckboxRef.current?.focus());
+      return;
+    }
+    setReviewLineItemsCheckError('');
+
     setReviewSaving(true);
     try {
       const { error: confirmationError } = await supabase.rpc('confirm_payslip_review', {
@@ -615,6 +726,7 @@ const PayslipUpload = ({ onUploadComplete, resumeReviewId = null }: PayslipUploa
         p_usc_amount: parseReviewAmount(reviewFields.usc_amount),
         p_pension_amount: parseReviewAmount(reviewFields.pension_amount),
         p_total_deductions: parseReviewAmount(reviewFields.total_deductions),
+        p_line_items: lineItemValidation.lineItems,
       });
 
       if (confirmationError) {
@@ -680,7 +792,6 @@ const PayslipUpload = ({ onUploadComplete, resumeReviewId = null }: PayslipUploa
 
   // Determine which monetary fields to show based on country
   const isIreland = reviewCountry === 'Ireland';
-  const reviewLineItems = reviewExtraction.extraction_line_items ?? [];
   const reviewFieldEvidence = reviewExtraction.extraction_field_evidence ?? [];
   const reviewYearToDate = reviewExtraction.year_to_date;
   const reviewExtractionContextEntries = reviewExtraction.extraction_context
@@ -852,34 +963,168 @@ const PayslipUpload = ({ onUploadComplete, resumeReviewId = null }: PayslipUploa
               )}
             </div>
 
-            {(reviewLineItems.length > 0 || reviewYearToDate || reviewFieldEvidence.length > 0 || reviewExtractionContextEntries.length > 0) && (
-              <section className="pi-review-extraction" aria-labelledby="review-extraction-heading">
+            <section className="pi-review-extraction" aria-labelledby="review-extraction-heading">
                 <div className="pi-review-extraction-header">
                   <div>
-                    <p className="pi-eyebrow">Transcription evidence</p>
-                    <h4 id="review-extraction-heading">What we found beyond the headline totals</h4>
+                    <p className="pi-eyebrow">Detailed review</p>
+                    <h4 id="review-extraction-heading">Check the payslip rows</h4>
                   </div>
                   {reviewExtraction.extraction_confidence && (
                     <Badge variant="outline" className="pi-review-status">{reviewExtraction.extraction_confidence} confidence</Badge>
                   )}
                 </div>
                 <p className="pi-review-extraction-note">
-                  These rows and snippets are AI-transcribed from the original. Use the private original above to verify them; they are not a payroll verdict.
+                  Edit or remove anything we transcribed incorrectly, or add a missing earning or deduction. Use the private original above as the source of truth.
                 </p>
 
                 {reviewLineItems.length > 0 && (
-                  <div className="pi-review-extraction-list" aria-label="Extracted payslip line items">
+                  <div className="pi-review-extraction-list" aria-label="Payslip earnings and deduction rows">
                     {reviewLineItems.map((item, index) => (
-                      <div key={`${item.label}-${index}`} className="pi-review-extraction-item">
-                        <div>
-                          <strong>{item.label}</strong>
-                          <span>{item.kind === 'employer_contribution' ? 'Employer contribution' : item.kind} · {item.confidence} confidence</span>
-                          {item.evidence && <small>“{item.evidence}”</small>}
+                      <div key={item.id} className={`pi-review-line-item ${item.editing ? 'pi-review-line-item--editing' : ''}`}>
+                        <div className="pi-review-line-item-summary">
+                          <div>
+                            <strong>{item.label || `New row ${index + 1}`}</strong>
+                            <span>
+                              {REVIEW_LINE_ITEM_KINDS.find((option) => option.value === item.kind)?.label}
+                              {item.sourceIndex !== null ? ` · ${item.confidence} confidence` : ' · added by you'}
+                            </span>
+                          </div>
+                          <div className="pi-review-line-item-value">
+                            <b>{formatReviewDraftMoney(item.amount, reviewCurrency)}</b>
+                            {!item.editing && (
+                              <button
+                                type="button"
+                                onClick={() => setReviewLineItemEditing(item.id, true)}
+                                aria-label={`Edit ${item.label || `row ${index + 1}`}`}
+                              >
+                                <Pencil aria-hidden="true" /> Edit
+                              </button>
+                            )}
+                          </div>
                         </div>
-                        <b>{item.amount == null ? '—' : formatReviewMoney(item.amount, reviewCurrency)}</b>
+
+                        {item.editing ? (
+                          <div className="pi-review-line-item-editor">
+                            <div className="pi-review-line-item-field pi-review-line-item-field--label">
+                              <Label htmlFor={`review-line-label-${item.id}`}>Description</Label>
+                              <Input
+                                ref={(node) => { reviewLineItemInputRefs.current[item.id] = node; }}
+                                id={`review-line-label-${item.id}`}
+                                value={item.label}
+                                maxLength={120}
+                                onChange={(event) => updateReviewLineItem(item.id, 'label', event.target.value)}
+                                aria-invalid={Boolean(reviewLineItemErrors[item.id]?.label)}
+                                aria-describedby={reviewLineItemErrors[item.id]?.label ? `review-line-label-error-${item.id}` : undefined}
+                              />
+                              {reviewLineItemErrors[item.id]?.label && (
+                                <p id={`review-line-label-error-${item.id}`} role="alert">{reviewLineItemErrors[item.id]?.label}</p>
+                              )}
+                            </div>
+                            <div className="pi-review-line-item-field">
+                              <Label htmlFor={`review-line-kind-${item.id}`}>Type</Label>
+                              <select
+                                id={`review-line-kind-${item.id}`}
+                                value={item.kind}
+                                onChange={(event) => updateReviewLineItem(item.id, 'kind', event.target.value as ReviewLineItemDraft['kind'])}
+                              >
+                                {REVIEW_LINE_ITEM_KINDS.map((option) => (
+                                  <option key={option.value} value={option.value}>{option.label}</option>
+                                ))}
+                              </select>
+                            </div>
+                            <div className="pi-review-line-item-field">
+                              <Label htmlFor={`review-line-amount-${item.id}`}>This payslip</Label>
+                              <Input
+                                id={`review-line-amount-${item.id}`}
+                                type="number"
+                                min="0"
+                                max="10000000"
+                                step="0.01"
+                                value={item.amount}
+                                onChange={(event) => updateReviewLineItem(item.id, 'amount', event.target.value)}
+                                aria-invalid={Boolean(reviewLineItemErrors[item.id]?.amount)}
+                                aria-describedby={reviewLineItemErrors[item.id]?.amount ? `review-line-amount-error-${item.id}` : undefined}
+                              />
+                              {reviewLineItemErrors[item.id]?.amount && (
+                                <p id={`review-line-amount-error-${item.id}`} role="alert">{reviewLineItemErrors[item.id]?.amount}</p>
+                              )}
+                            </div>
+                            <div className="pi-review-line-item-field">
+                              <Label htmlFor={`review-line-ytd-${item.id}`}>Year to date</Label>
+                              <Input
+                                id={`review-line-ytd-${item.id}`}
+                                type="number"
+                                min="0"
+                                max="10000000"
+                                step="0.01"
+                                value={item.yearToDateAmount}
+                                onChange={(event) => updateReviewLineItem(item.id, 'yearToDateAmount', event.target.value)}
+                                aria-invalid={Boolean(reviewLineItemErrors[item.id]?.yearToDateAmount)}
+                                aria-describedby={reviewLineItemErrors[item.id]?.yearToDateAmount ? `review-line-ytd-error-${item.id}` : undefined}
+                              />
+                              {reviewLineItemErrors[item.id]?.yearToDateAmount && (
+                                <p id={`review-line-ytd-error-${item.id}`} role="alert">{reviewLineItemErrors[item.id]?.yearToDateAmount}</p>
+                              )}
+                            </div>
+                            <div className="pi-review-line-item-editor-actions">
+                              <Button type="button" size="sm" onClick={() => setReviewLineItemEditing(item.id, false)}>Done</Button>
+                              <Button type="button" size="sm" variant="ghost" onClick={() => removeReviewLineItem(item.id)}>
+                                <Trash2 aria-hidden="true" /> Remove row
+                              </Button>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="pi-review-line-item-detail">
+                            {item.yearToDateAmount.trim() !== '' && (
+                              <span>Year to date {formatReviewDraftMoney(item.yearToDateAmount, reviewCurrency)}</span>
+                            )}
+                            {item.evidence && <small>Source: “{item.evidence}”</small>}
+                          </div>
+                        )}
                       </div>
                     ))}
                   </div>
+                )}
+
+                <div className="pi-review-line-item-controls">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={addReviewLineItem}
+                    disabled={reviewLineItems.length >= REVIEW_LINE_ITEM_LIMIT}
+                  >
+                    <Plus aria-hidden="true" /> Add a missing row
+                  </Button>
+                  <span>{reviewLineItems.length} of {REVIEW_LINE_ITEM_LIMIT} rows</span>
+                </div>
+
+                {reviewLineItemErrors._form?.label && (
+                  <p className="pi-review-line-item-error" role="alert">{reviewLineItemErrors._form.label}</p>
+                )}
+
+                {reviewLineItems.length > 0 && (
+                  <div className={`pi-review-line-item-check ${reviewLineItemsCheckError ? 'pi-review-line-item-check--error' : ''}`}>
+                    <input
+                      ref={reviewLineItemsCheckboxRef}
+                      id="review-line-items-checked"
+                      type="checkbox"
+                      checked={reviewLineItemsChecked}
+                      onChange={(event) => {
+                        setReviewLineItemsChecked(event.target.checked);
+                        if (event.target.checked) setReviewLineItemsCheckError('');
+                      }}
+                      aria-invalid={Boolean(reviewLineItemsCheckError)}
+                      aria-describedby={reviewLineItemsCheckError ? 'review-line-items-check-help review-line-items-check-error' : 'review-line-items-check-help'}
+                    />
+                    <label htmlFor="review-line-items-checked">
+                      <strong>I checked these rows against the original.</strong>
+                      <span id="review-line-items-check-help">Only the rows shown here will be saved to your confirmed history.</span>
+                    </label>
+                  </div>
+                )}
+                {reviewLineItemsCheckError && (
+                  <p id="review-line-items-check-error" className="pi-review-line-item-error" role="alert">{reviewLineItemsCheckError}</p>
                 )}
 
                 {reviewYearToDate && (
@@ -923,8 +1168,7 @@ const PayslipUpload = ({ onUploadComplete, resumeReviewId = null }: PayslipUploa
                     </div>
                   </details>
                 )}
-              </section>
-            )}
+            </section>
 
             <div className="pi-review-section">
               <div className="pi-review-section-heading">

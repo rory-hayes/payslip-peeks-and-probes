@@ -986,31 +986,35 @@
   overflow: hidden;
 }
 
-.pi-review-extraction-item {
+.pi-review-line-item {
+  padding: 12px;
+}
+
+.pi-review-line-item + .pi-review-line-item {
+  border-top: 1px solid #eeeafe;
+}
+
+.pi-review-line-item-summary {
   align-items: flex-start;
   display: flex;
   gap: 14px;
   justify-content: space-between;
-  padding: 10px;
 }
 
-.pi-review-extraction-item + .pi-review-extraction-item {
-  border-top: 1px solid #eeeafe;
-}
-
-.pi-review-extraction-item strong,
-.pi-review-extraction-item b {
+.pi-review-line-item-summary strong,
+.pi-review-line-item-summary b {
   color: #17155d;
   font-size: 13px;
 }
 
-.pi-review-extraction-item b {
+.pi-review-line-item-summary b {
   flex: 0 0 auto;
   font-weight: 900;
 }
 
-.pi-review-extraction-item span,
-.pi-review-extraction-item small {
+.pi-review-line-item-summary span,
+.pi-review-line-item-detail span,
+.pi-review-line-item-detail small {
   color: #64658d;
   display: block;
   font-size: 10px;
@@ -1018,9 +1022,168 @@
   margin-top: 3px;
 }
 
-.pi-review-extraction-item small {
+.pi-review-line-item-detail small {
   font-size: 11px;
   margin-top: 5px;
+}
+
+.pi-review-line-item-value {
+  align-items: flex-end;
+  display: flex;
+  flex: 0 0 auto;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.pi-review-line-item-value button {
+  align-items: center;
+  color: #704bff;
+  display: inline-flex;
+  font-size: 11px;
+  font-weight: 900;
+  gap: 4px;
+  min-height: 28px;
+  padding: 3px 0 3px 8px;
+}
+
+.pi-review-line-item-value button:hover {
+  color: #5035c7;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.pi-review-line-item-value svg {
+  height: 12px;
+  width: 12px;
+}
+
+.pi-review-line-item-editor {
+  background: #f9f8ff;
+  border-radius: 9px;
+  display: grid;
+  gap: 10px;
+  grid-template-columns: minmax(0, 1fr);
+  margin-top: 11px;
+  padding: 11px;
+}
+
+.pi-review-line-item-field label {
+  color: #4f5078;
+  display: block;
+  font-size: 10px;
+  font-weight: 900;
+  margin-bottom: 4px;
+}
+
+.pi-review-line-item-field input,
+.pi-review-line-item-field select {
+  background: #fff;
+  border: 1px solid #d8d2f3;
+  border-radius: 8px;
+  color: #17155d;
+  font-size: 14px;
+  font-weight: 750;
+  min-height: 42px;
+  padding: 8px 10px;
+  width: 100%;
+}
+
+.pi-review-line-item-field input:focus,
+.pi-review-line-item-field select:focus {
+  border-color: #704bff;
+  box-shadow: 0 0 0 3px rgb(112 75 255 / 14%);
+  outline: 0;
+}
+
+.pi-review-line-item-field p,
+.pi-review-line-item-error {
+  color: #b42318;
+  font-size: 11px;
+  font-weight: 750;
+  line-height: 1.4;
+  margin: 5px 0 0;
+}
+
+.pi-review-line-item-editor-actions {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.pi-review-line-item-editor-actions button {
+  gap: 5px;
+}
+
+.pi-review-line-item-editor-actions svg {
+  height: 13px;
+  width: 13px;
+}
+
+.pi-review-line-item-controls {
+  align-items: center;
+  display: flex;
+  gap: 10px;
+  justify-content: space-between;
+  margin-top: 10px;
+}
+
+.pi-review-line-item-controls button {
+  gap: 5px;
+}
+
+.pi-review-line-item-controls svg {
+  height: 14px;
+  width: 14px;
+}
+
+.pi-review-line-item-controls span {
+  color: #77779a;
+  font-size: 10px;
+  font-weight: 750;
+}
+
+.pi-review-line-item-check {
+  align-items: flex-start;
+  background: #fff;
+  border: 1px solid #d8d2f3;
+  border-radius: 10px;
+  display: flex;
+  gap: 10px;
+  margin-top: 12px;
+  padding: 11px;
+}
+
+.pi-review-line-item-check--error {
+  border-color: #e48c84;
+}
+
+.pi-review-line-item-check input {
+  accent-color: #704bff;
+  height: 18px;
+  margin: 1px 0 0;
+  width: 18px;
+}
+
+.pi-review-line-item-check label {
+  color: #17155d;
+  cursor: pointer;
+  line-height: 1.35;
+}
+
+.pi-review-line-item-check strong,
+.pi-review-line-item-check span {
+  display: block;
+}
+
+.pi-review-line-item-check strong {
+  font-size: 12px;
+}
+
+.pi-review-line-item-check span {
+  color: #64658d;
+  font-size: 10px;
+  margin-top: 3px;
 }
 
 .pi-review-extraction-ytd {
@@ -1257,6 +1420,15 @@
   .pi-review-grid {
     column-gap: 26px;
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .pi-review-line-item-editor {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .pi-review-line-item-field--label,
+  .pi-review-line-item-editor-actions {
+    grid-column: 1 / -1;
   }
 
   .pi-review-actions {

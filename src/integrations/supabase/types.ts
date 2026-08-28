@@ -754,6 +754,7 @@ export type Database = {
           p_usc_amount: number | null
           p_pension_amount: number | null
           p_total_deductions: number | null
+          p_line_items?: Json | null
         }
         Returns: undefined
       }

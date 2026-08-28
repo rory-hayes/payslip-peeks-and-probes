@@ -185,7 +185,7 @@ describe('PayslipUpload processing failure', () => {
     expect(await screen.findByRole('heading', { name: 'Check the details.' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Confirm my payslip' })).toBeInTheDocument();
     expect(screen.getByDisplayValue('1600')).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: 'What we found beyond the headline totals' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Check the payslip rows' })).toBeInTheDocument();
     expect(screen.getByText('Basic pay')).toBeInTheDocument();
     expect(screen.getByText('Gross YTD')).toBeInTheDocument();
     expect(mocks.invoke).not.toHaveBeenCalledWith('process-payslip', expect.anything());
@@ -386,6 +386,122 @@ describe('PayslipUpload processing failure', () => {
     expect(screen.getByText('Enter a gross pay amount greater than zero.')).toBeInTheDocument();
     expect(screen.getByText('Enter a net pay amount greater than zero.')).toBeInTheDocument();
     await waitFor(() => expect(screen.getByLabelText(/Pay date/)).toHaveFocus());
+  });
+
+  it('requires the detailed rows to be checked before they can join confirmed history', async () => {
+    mocks.payslipSelect.mockResolvedValue({
+      data: {
+        country: 'UK',
+        file_name: 'April payslip.pdf',
+        pay_date: '2026-08-01',
+        status: 'needs_review',
+      },
+      error: null,
+    });
+    mocks.extractionSelect.mockResolvedValue({
+      data: {
+        gross_pay: 2200,
+        net_pay: 1600,
+        tax_amount: 400,
+        total_deductions: 600,
+        normalized_json: {
+          currency: 'GBP',
+          line_items: [{
+            label: 'Basic pay',
+            kind: 'earning',
+            amount: 2200,
+            year_to_date_amount: 6600,
+            evidence: 'Basic pay £2,200.00',
+            confidence: 'high',
+          }],
+        },
+      },
+      error: null,
+    });
+
+    render(
+      <MemoryRouter>
+        <PayslipUpload resumeReviewId="review-detailed-rows" />
+      </MemoryRouter>,
+    );
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Confirm my payslip' }));
+
+    expect(await screen.findByText('Confirm that you checked these detailed rows against the original payslip.')).toBeInTheDocument();
+    expect(screen.getByRole('checkbox', { name: /I checked these rows against the original/i })).toHaveFocus();
+    expect(mocks.rpc).not.toHaveBeenCalledWith('confirm_payslip_review', expect.anything());
+  });
+
+  it('sends corrected and added rows through the atomic confirmation call', async () => {
+    mocks.payslipSelect.mockResolvedValue({
+      data: {
+        country: 'UK',
+        file_name: 'April payslip.pdf',
+        pay_date: '2026-08-01',
+        status: 'needs_review',
+      },
+      error: null,
+    });
+    mocks.extractionSelect.mockResolvedValue({
+      data: {
+        gross_pay: 2200,
+        net_pay: 1600,
+        tax_amount: 400,
+        total_deductions: 600,
+        normalized_json: {
+          currency: 'GBP',
+          line_items: [{
+            label: 'Basic pay',
+            kind: 'earning',
+            amount: 2200,
+            year_to_date_amount: 6600,
+            evidence: 'Basic pay £2,200.00',
+            confidence: 'high',
+          }],
+        },
+      },
+      error: null,
+    });
+
+    render(
+      <MemoryRouter>
+        <PayslipUpload resumeReviewId="review-corrected-rows" />
+      </MemoryRouter>,
+    );
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Edit Basic pay' }));
+    fireEvent.change(screen.getByLabelText('Description'), { target: { value: 'Basic salary' } });
+    fireEvent.change(screen.getByLabelText('This payslip'), { target: { value: '2250.50' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Done' }));
+
+    fireEvent.click(screen.getByRole('button', { name: 'Add a missing row' }));
+    const descriptions = screen.getAllByLabelText('Description');
+    fireEvent.change(descriptions.at(-1) as HTMLInputElement, { target: { value: 'Cycle to Work' } });
+    const typePickers = screen.getAllByLabelText('Type');
+    fireEvent.change(typePickers.at(-1) as HTMLSelectElement, { target: { value: 'deduction' } });
+    const currentAmounts = screen.getAllByLabelText('This payslip');
+    fireEvent.change(currentAmounts.at(-1) as HTMLInputElement, { target: { value: '35' } });
+    fireEvent.click(screen.getByRole('checkbox', { name: /I checked these rows against the original/i }));
+    fireEvent.click(screen.getByRole('button', { name: 'Confirm my payslip' }));
+
+    await waitFor(() => expect(mocks.rpc).toHaveBeenCalledWith('confirm_payslip_review', expect.objectContaining({
+      p_line_items: [
+        {
+          source_index: 0,
+          label: 'Basic salary',
+          kind: 'earning',
+          amount: 2250.5,
+          year_to_date_amount: 6600,
+        },
+        {
+          source_index: null,
+          label: 'Cycle to Work',
+          kind: 'deduction',
+          amount: 35,
+          year_to_date_amount: null,
+        },
+      ],
+    })));
   });
 
   it('lets a reviewer correct the payslip country before saving', async () => {

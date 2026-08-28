@@ -247,7 +247,9 @@ const PayslipDetail = () => {
                         <div className="flex flex-wrap items-start justify-between gap-2 text-sm">
                           <div>
                             <p className="font-medium text-foreground">{item.label}</p>
-                            <p className="mt-1 text-xs text-muted-foreground">{readableLineItemKind(item.kind)} · {item.confidence} confidence</p>
+                            <p className="mt-1 text-xs text-muted-foreground">
+                              {readableLineItemKind(item.kind)} · {item.reviewed ? 'checked by you' : `${item.confidence} confidence`}
+                            </p>
                           </div>
                           <span className="font-semibold text-foreground">{item.amount == null ? '—' : formatCurrency(item.amount)}</span>
                         </div>
