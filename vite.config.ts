@@ -3,20 +3,19 @@ import react from "@vitejs/plugin-react-swc";
 import path from "path";
 import { prerenderGuides } from "./vite-plugins/prerender-guides";
 import { releaseManifest } from "./vite-plugins/release-manifest";
+import { resolvePublicSupabaseConfig } from "./src/integrations/supabase/public-config";
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), "");
+  const publicSupabaseConfig = resolvePublicSupabaseConfig(env);
 
-  // A missing public client configuration used to produce a successful build
-  // that crashed before React rendered. Fail the production build instead so
-  // a deployment cannot silently replace a working site with a blank page.
+  // Lovable Cloud does not expose project build variables to every production
+  // builder. Use the reviewed public browser fallback, while still preferring
+  // an explicit host override. Secret/service-role keys remain server-only.
   if (mode === "production") {
-    const missing = ["VITE_SUPABASE_URL", "VITE_SUPABASE_PUBLISHABLE_KEY"]
-      .filter((name) => !env[name]?.trim());
-
-    if (missing.length > 0) {
-      throw new Error(`Missing required production environment variable(s): ${missing.join(", ")}`);
+    if (!publicSupabaseConfig.url.startsWith("https://") || !publicSupabaseConfig.publishableKey) {
+      throw new Error("Missing valid public Supabase browser configuration.");
     }
   }
 

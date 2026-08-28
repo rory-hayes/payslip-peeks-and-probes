@@ -1,4 +1,5 @@
 import {
+  cpSync,
   copyFileSync,
   existsSync,
   mkdirSync,
@@ -78,4 +79,34 @@ writeFileSync(
   }, null, 2)}\n`,
 );
 
-console.log("Prepared Sites build: dist/client, dist/server/index.js, dist/wrangler.jsonc, and dist/.openai/hosting.json");
+// Lovable publishes the repository's `dist` directory as a conventional
+// static Vite site, while Sites reads from `dist/client` through its Worker.
+// Mirror the reviewed browser output at the root so the same exact build can
+// be published by either host without changing route metadata or provenance.
+for (const entry of readdirSync(client, { withFileTypes: true })) {
+  if (entry.name === "__pages") continue;
+  cpSync(path.join(client, entry.name), path.join(dist, entry.name), {
+    force: true,
+    recursive: entry.isDirectory(),
+  });
+}
+
+for (const entry of readdirSync(pageAssets, { withFileTypes: true })) {
+  cpSync(path.join(pageAssets, entry.name), path.join(dist, entry.name), {
+    force: true,
+    recursive: entry.isDirectory(),
+  });
+}
+
+for (const file of [
+  path.join(dist, "index.html"),
+  path.join(dist, "release.json"),
+  path.join(dist, "pricing", "index.html"),
+  path.join(dist, "guides", "index.html"),
+  path.join(dist, "sign-in", "index.html"),
+  path.join(dist, "assets"),
+]) {
+  if (!existsSync(file)) throw new Error(`Missing static-host build output: ${file}`);
+}
+
+console.log("Prepared dual-host build: static output in dist plus Sites output in dist/client and dist/server.");

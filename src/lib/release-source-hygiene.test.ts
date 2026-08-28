@@ -39,4 +39,14 @@ describe('release source hygiene', () => {
     expect(existsSync(projectFile('bun.lock'))).toBe(false);
     expect(existsSync(projectFile('bun.lockb'))).toBe(false);
   });
+
+  it('keeps the web release gate aligned with the latest two-check quota migration', () => {
+    const preflight = readFileSync(projectFile('scripts/release-web-preflight.mjs'), 'utf8');
+    const readme = readFileSync(projectFile('README.md'), 'utf8');
+    const latestMigration = '20260828150000_two_check_lifetime_free_trial.sql';
+
+    expect(existsSync(projectFile(`supabase/migrations/${latestMigration}`))).toBe(true);
+    expect(preflight).toContain(`const REQUIRED_MIGRATION = "${latestMigration}"`);
+    expect(readme).toContain(`migrations through \`${latestMigration}\``);
+  });
 });

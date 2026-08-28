@@ -32,7 +32,7 @@ function sourceHas(path, text) {
   return existsSync(path) && readFileSync(path, "utf8").includes(text);
 }
 
-const REQUIRED_MIGRATION = "20260804124000_bound_payday_check_in_to_active_cycle.sql";
+const REQUIRED_MIGRATION = "20260828150000_two_check_lifetime_free_trial.sql";
 const REQUIRED_EDGE_FUNCTIONS = [
   "start-payslip-upload",
   "finish-payslip-upload",
@@ -133,7 +133,7 @@ for (const functionName of SENSITIVE_NO_STORE_FUNCTIONS) {
 }
 
 const manualChecks = [
-  "Apply the intended Supabase migrations through 20260804124000_bound_payday_check_in_to_active_cycle.sql and deploy the exact Edge Function revisions, including server-owned payslip upload, original-link, checkout-return verification, payment-webhook, and account-deletion functions.",
+  "Apply the intended Supabase migrations through 20260828150000_two_check_lifetime_free_trial.sql and deploy the exact Edge Function revisions, including the server-owned two-check lifetime quota, upload, original-link, checkout-return verification, payment-webhook, and account-deletion functions.",
   "Roll out 20260804114000_server_owned_payslip_upload_sessions and 20260804114500_harden_payslip_upload_token_lifecycle before 20260804115000_lock_down_direct_payslip_storage; block or upgrade old mobile builds before the final policy lock-down.",
   "Set the server-only PAYSLIP_UPLOAD_CLEANUP_SECRET and verify a protected scheduled cleanup of expired upload sessions in the target Supabase project. Confirm invalid and deletion-requested files remain queued until their signed upload token expires, rather than being untracked early.",
   "Set the server-only ACCOUNT_DELETION_WORKER_SECRET and verify a protected frequent POST worker for delete-account with { runDue: true }. Prove queued deletion resumes after an upload-token wait, waits for a recent original-link lease, and a seeded deletion-time billing review blocks deleteUser before Auth is removed. Delay a worker between Auth preparation and confirmation, deliver a verified billing event, and confirm Auth is not called.",
