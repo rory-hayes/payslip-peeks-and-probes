@@ -8,6 +8,7 @@ import { AquaCorner, Brand, PrimaryButton, QuietButton } from './src/components/
 import { loadDashboard } from './src/lib/data';
 import { SAMPLE_MOBILE_DASHBOARD_DATA } from './src/lib/demo-data';
 import { parseAuthRedirect } from './src/lib/deep-links';
+import { getMissingAppConnectionState } from './src/lib/app-connection-state';
 import { hasSupabaseConfig, manageSupabaseTokenRefresh, supabase } from './src/lib/supabase';
 import { AuthScreen } from './src/screens/auth-screen';
 import { HomeScreen } from './src/screens/home-screen';
@@ -474,6 +475,7 @@ function SampleInfoScreen({
 
 function BootScreen({ message, onExploreSample }: { message?: string; onExploreSample?: () => void }) {
   const missingConnection = !hasSupabaseConfig;
+  const missingConnectionState = missingConnection ? getMissingAppConnectionState(__DEV__) : null;
   return (
     <SafeAreaView edges={['top', 'bottom']} style={styles.boot}>
       <AquaCorner />
@@ -482,9 +484,13 @@ function BootScreen({ message, onExploreSample }: { message?: string; onExploreS
         <View style={styles.bootMessage}>
           {missingConnection ? (
             <>
-              <Text style={styles.bootTitle}>This build needs its app connection.</Text>
-              <Text style={styles.bootText}>Add the public Supabase URL and publishable key to the mobile app’s local configuration, then restart it.</Text>
-              {onExploreSample ? <PrimaryButton label="Explore sample app" onPress={onExploreSample} /> : null}
+              <Text style={styles.bootTitle}>{missingConnectionState?.title}</Text>
+              <Text selectable={!__DEV__} style={styles.bootText}>
+                {missingConnectionState?.body}
+              </Text>
+              {missingConnectionState?.showSample && onExploreSample ? (
+                <PrimaryButton label="Explore sample app" onPress={onExploreSample} />
+              ) : null}
             </>
           ) : (
             <>
