@@ -10,6 +10,7 @@ const REQUIRED_SCHEMA_VERSION = 2;
 const MIN_HSTS_MAX_AGE_SECONDS = 31_536_000;
 const GIT_SHA_PATTERN = /^[0-9a-f]{40}$/;
 const CANONICAL_ISO_TIMESTAMP_PATTERN = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/;
+const VERIFICATION_SCOPES = new Set(['release', 'cutover']);
 export const DIRECT_ROUTE_CHECKS = [
   { label: 'guides hub', path: '/guides', staticMetadata: true, ogType: 'website' },
   { label: 'guide', path: '/guides/how-to-check-your-payslip', staticMetadata: true, ogType: 'article' },
@@ -34,6 +35,7 @@ function readOption(argv, name) {
 export function parsePublicReleaseArguments(argv) {
   const url = nonEmptyString(readOption(argv, 'url'));
   const revision = nonEmptyString(readOption(argv, 'revision'));
+  const scope = nonEmptyString(readOption(argv, 'scope')) ?? 'release';
 
   if (!url) throw new Error('Pass the public site with --url https://payslipinsights.com.');
 
@@ -58,8 +60,11 @@ export function parsePublicReleaseArguments(argv) {
   if (revision && !GIT_SHA_PATTERN.test(revision)) {
     throw new Error('--revision must be the full 40-character lowercase Git commit SHA.');
   }
+  if (!VERIFICATION_SCOPES.has(scope)) {
+    throw new Error('--scope must be release or cutover.');
+  }
 
-  return { publicUrl, revision };
+  return { publicUrl, revision, scope };
 }
 
 export function expectedTitleFromSource(source) {
@@ -165,6 +170,67 @@ export function inspectPublicHomePage(html, expectedTitle, publicOrigin) {
   }
 
   return { issues, moduleAssetPath: `${moduleAsset.pathname}${moduleAsset.search}` };
+}
+
+/**
+ * The storage-policy cutover only needs proof that the exact secure client is
+ * the one currently served. Host-owned scripts and badges are deliberately
+ * left to the stricter release audit so they cannot keep the legacy upload
+ * policy open after the secure client is live.
+ */
+export function inspectPublicCutoverHomePage(html, expectedTitle, publicOrigin) {
+  const trustedOrigin = new URL(publicOrigin).origin;
+  const issues = [];
+  const titleMatch = html.match(/<title>([^<]*)<\/title>/i);
+  const publicTitle = nonEmptyString(titleMatch?.[1]);
+  if (publicTitle !== expectedTitle) {
+    issues.push(`The public page title does not match the release source (${expectedTitle}).`);
+  }
+  if (!/<div\b[^>]*\bid=["']root["'][^>]*><\/div>/i.test(html)) {
+    issues.push('The public page is missing the application root.');
+  }
+  if (/catch payroll mistakes early/i.test(html)) {
+    issues.push('The public page still contains the retired payroll-mistakes claim.');
+  }
+  if (/\/src\/main\.tsx/i.test(html)) {
+    issues.push('The public page is serving a development entrypoint rather than built assets.');
+  }
+
+  const applicationModules = [...html.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script\s*>/gi)]
+    .map((match) => ({ attributes: match[1], inlineContent: match[2] }))
+    .filter(({ attributes, inlineContent }) => {
+      const source = attributes.match(/\bsrc=["']([^"']+)["']/i)?.[1] ?? '';
+      return /\btype=["']module["']/i.test(attributes)
+        && source.startsWith('/assets/')
+        && !source.startsWith('//')
+        && !inlineContent.trim();
+    });
+
+  if (applicationModules.length !== 1) {
+    issues.push('The public page must contain exactly one same-origin application module under /assets/.');
+    return { issues, moduleAssetPath: null };
+  }
+
+  const source = applicationModules[0].attributes.match(/\bsrc=["']([^"']+)["']/i)?.[1] ?? '';
+  let moduleAsset;
+  try {
+    moduleAsset = new URL(source, trustedOrigin);
+  } catch {
+    issues.push('The public page application module has an invalid asset path.');
+    return { issues, moduleAssetPath: null };
+  }
+
+  if (
+    moduleAsset.origin !== trustedOrigin
+    || !moduleAsset.pathname.startsWith('/assets/')
+    || moduleAsset.search
+    || moduleAsset.hash
+  ) {
+    issues.push('The public page application module must be a same-origin asset under /assets/.');
+    return { issues, moduleAssetPath: null };
+  }
+
+  return { issues, moduleAssetPath: moduleAsset.pathname };
 }
 
 export function headerIssues(headers) {
@@ -428,14 +494,18 @@ function assertExpectedResponseUrl(response, expectedUrl, label) {
 }
 
 async function main() {
-  const { publicUrl, revision: requestedRevision } = parsePublicReleaseArguments(process.argv.slice(2));
+  const {
+    publicUrl,
+    revision: requestedRevision,
+    scope,
+  } = parsePublicReleaseArguments(process.argv.slice(2));
   const checkedOutRevision = cleanCheckedOutRevision();
   const expectedRevision = resolveExpectedReleaseRevision(requestedRevision, checkedOutRevision);
 
   const expectedTitle = expectedTitleFromSource(readFileSync('index.html', 'utf8'));
   const root = rootUrl(publicUrl);
   const manifestUrl = releaseManifestUrl(publicUrl);
-  const directRoutes = DIRECT_ROUTE_CHECKS.map((route) => ({
+  const directRoutes = (scope === 'release' ? DIRECT_ROUTE_CHECKS : []).map((route) => ({
     ...route,
     url: directRouteUrl(publicUrl, route.path),
   }));
@@ -468,11 +538,13 @@ async function main() {
     if (!homeResponse.headers.get('content-type')?.toLowerCase().includes('text/html')) {
       issues.push('The public home page is not served as HTML.');
     }
-    issues.push(...headerIssues(homeResponse.headers));
+    if (scope === 'release') issues.push(...headerIssues(homeResponse.headers));
     let homePage;
     try {
       const homeHtml = await readResponseTextWithinLimit(homeResponse, MAX_HOME_PAGE_BYTES, 'home page');
-      homePage = inspectPublicHomePage(homeHtml, expectedTitle, root.origin);
+      homePage = scope === 'release'
+        ? inspectPublicHomePage(homeHtml, expectedTitle, root.origin)
+        : inspectPublicCutoverHomePage(homeHtml, expectedTitle, root.origin);
       issues.push(...homePage.issues);
     } catch (error) {
       if (error instanceof Error && error.message.includes('safety limit')) {
@@ -527,12 +599,19 @@ async function main() {
     return;
   }
 
-  console.log('\nPublic web release verification passed.');
+  console.log(scope === 'release'
+    ? '\nPublic web release verification passed.'
+    : '\nPublic secure-client cutover verification passed.');
   console.log(`- URL: ${root.origin}`);
   console.log(`- Revision: ${expectedRevision}`);
   console.log('- Release manifest: production web build from a clean worktree');
-  console.log('- Public page: expected title, built application module, no known host injection, and restrictive headers');
-  console.log('- Direct routes: indexable routes serve distinct static metadata; sign-in and protected-route shells serve static noindex HTML without a host redirect');
+  if (scope === 'release') {
+    console.log('- Public page: expected title, built application module, no known host injection, and restrictive headers');
+    console.log('- Direct routes: indexable routes serve distinct static metadata; sign-in and protected-route shells serve static noindex HTML without a host redirect');
+  } else {
+    console.log('- Public page: expected title and one same-origin built application module');
+    console.log('- Scope: secure-client cutover only; run the default verifier separately for the complete public-quality audit');
+  }
   console.log('\nThis verifies the deployed public shell only. It does not prove authentication, payslip processing, storage isolation, Stripe, or deletion flows.');
 }
 

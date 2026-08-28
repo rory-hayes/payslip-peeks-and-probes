@@ -5,6 +5,7 @@ import {
   directRouteResponseIssues,
   expectedTitleFromSource,
   headerIssues,
+  inspectPublicCutoverHomePage,
   isCanonicalBuildTimestamp,
   inspectPublicHomePage,
   parsePublicReleaseArguments,
@@ -40,7 +41,13 @@ describe('public release verification contract', () => {
       '--revision', RELEASE_SHA,
     ])).toMatchObject({
       revision: RELEASE_SHA,
+      scope: 'release',
     });
+
+    expect(parsePublicReleaseArguments([
+      '--url', 'https://payslipinsights.com',
+      '--scope', 'cutover',
+    ])).toMatchObject({ scope: 'cutover' });
 
     expect(() => parsePublicReleaseArguments(['--url', 'http://payslipinsights.com']))
       .toThrow(/HTTPS/);
@@ -48,6 +55,10 @@ describe('public release verification contract', () => {
       '--url', 'https://payslipinsights.com',
       '--revision', 'short-sha',
     ])).toThrow(/40-character/);
+    expect(() => parsePublicReleaseArguments([
+      '--url', 'https://payslipinsights.com',
+      '--scope', 'partial',
+    ])).toThrow(/release or cutover/);
 
     for (const unsafeUrl of [
       'https://user:password@payslipinsights.com',
@@ -118,6 +129,24 @@ describe('public release verification contract', () => {
       <div id="root"></div>
       <script type="module" crossorigin src="/assets/index-abc123.js"></script>
     `, expectedTitle, RELEASE_ORIGIN)).toEqual({ issues: [], moduleAssetPath: '/assets/index-abc123.js' });
+  });
+
+  it('allows host-owned scripts only for the secure-client cutover check', () => {
+    const html = `
+      <title>${EXPECTED_TITLE}</title>
+      <div id="root"></div>
+      <script type="module" crossorigin src="/assets/index-secure123.js"></script>
+      <script src="/~flock.js"></script>
+      <aside id="lovable-badge"></aside>
+    `;
+
+    expect(inspectPublicCutoverHomePage(html, EXPECTED_TITLE, RELEASE_ORIGIN))
+      .toEqual({ issues: [], moduleAssetPath: '/assets/index-secure123.js' });
+    expect(inspectPublicHomePage(html, EXPECTED_TITLE, RELEASE_ORIGIN).issues)
+      .toEqual(expect.arrayContaining([
+        expect.stringMatching(/Lovable editing badge/i),
+        expect.stringMatching(/host-injected analytics/i),
+      ]));
   });
 
   it('rejects external, protocol-relative, and non-canonical application module sources', () => {

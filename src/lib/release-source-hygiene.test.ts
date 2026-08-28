@@ -47,6 +47,18 @@ describe('release source hygiene', () => {
 
     expect(existsSync(projectFile(`supabase/migrations/${latestMigration}`))).toBe(true);
     expect(preflight).toContain(`const REQUIRED_MIGRATION = "${latestMigration}"`);
-    expect(readme).toContain(`migrations through \`${latestMigration}\``);
+    expect(readme).toContain('every reviewed migration through');
+    expect(readme).toContain(latestMigration);
+  });
+
+  it('keeps the secure storage migration behind an exact-client cutover gate', () => {
+    const deployment = readFileSync(projectFile('scripts/deploy-supabase.mjs'), 'utf8');
+    const lockdownMigration = '20260804115000_lock_down_direct_payslip_storage.sql';
+
+    expect(deployment).toContain(`LOCKDOWN_MIGRATION = '${lockdownMigration}'`);
+    expect(deployment).toContain("const PHASES = new Set(['prepare', 'functions', 'lockdown'])");
+    expect(deployment).toContain("'--scope',\n          'cutover'");
+    expect(deployment.indexOf('release:web:verify-public'))
+      .toBeLessThan(deployment.indexOf("lockdownOnly: true"));
   });
 });
