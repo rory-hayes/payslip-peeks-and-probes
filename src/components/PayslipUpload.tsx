@@ -122,7 +122,7 @@ const PayslipUpload = ({ onUploadComplete, resumeReviewId = null }: PayslipUploa
   const [fileName, setFileName] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
   const [failedPayslipId, setFailedPayslipId] = useState<string | null>(null);
-  const [completionState, setCompletionState] = useState<'confirmed' | 'already_saved' | null>(null);
+  const [completionState, setCompletionState] = useState<'confirmed' | 'confirmed_checks_pending' | 'already_saved' | null>(null);
 
   // Review state
   const [reviewPayslipId, setReviewPayslipId] = useState<string | null>(null);
@@ -520,12 +520,9 @@ const PayslipUpload = ({ onUploadComplete, resumeReviewId = null }: PayslipUploa
         return false;
       }
 
-      const anomalyCount = fnData?.anomalies_found || 0;
       toast({
-        title: 'Payslip processed',
-        description: anomalyCount > 0
-          ? `We found ${anomalyCount} item${anomalyCount !== 1 ? 's' : ''} worth reviewing.`
-          : 'No changes were flagged in this check. Review the extracted figures before confirming.',
+        title: 'Payslip already saved',
+        description: 'Open it from your history to see its reviewed figures and current issue checks.',
       });
       setProgress(100);
       setCompletionState('already_saved');
@@ -824,6 +821,23 @@ const PayslipUpload = ({ onUploadComplete, resumeReviewId = null }: PayslipUploa
         return;
       }
 
+      let reviewedChecksCompleted = false;
+      let reviewedAnomaliesFound = 0;
+      try {
+        const { data: checksData, error: checksError } = await supabase.functions.invoke('process-payslip', {
+          body: { payslip_id: reviewPayslipId, mode: 'reviewed_checks' },
+        });
+        if (!checksError && checksData?.checks_status === 'complete') {
+          reviewedChecksCompleted = true;
+          reviewedAnomaliesFound = Number.isInteger(Number(checksData.anomalies_found))
+            ? Number(checksData.anomalies_found)
+            : 0;
+        }
+      } catch {
+        // The reviewed figures are already committed. Keep that successful
+        // confirmation visible and let the person retry only the derived checks.
+      }
+
       // Employer names are profile data, not extraction state. Keep that optional
       // edit separate from the atomic confirmation path.
       if (reviewFields.employer_name && fieldMeta.employer_name?.edited) {
@@ -841,12 +855,22 @@ const PayslipUpload = ({ onUploadComplete, resumeReviewId = null }: PayslipUploa
         }
       }
 
-      toast({ title: 'Payslip confirmed', description: `Saved with pay date ${formatDate(reviewFields.pay_date)}.` });
+      toast(reviewedChecksCompleted
+        ? {
+            title: 'Payslip saved and checked',
+            description: reviewedAnomaliesFound > 0
+              ? `${reviewedAnomaliesFound} item${reviewedAnomaliesFound === 1 ? '' : 's'} worth checking.`
+              : 'No unusual changes were found in the figures you reviewed.',
+          }
+        : {
+            title: 'Payslip saved',
+            description: 'Your figures are safe, but the issue checks still need to finish.',
+          });
       queryClient.invalidateQueries({ queryKey: ['payslips'] });
       queryClient.invalidateQueries({ queryKey: ['anomalies'] });
       queryClient.invalidateQueries({ queryKey: ['usage'] });
       setProgress(100);
-      setCompletionState('confirmed');
+      setCompletionState(reviewedChecksCompleted ? 'confirmed' : 'confirmed_checks_pending');
       setState('success');
       onUploadComplete?.(reviewPayslipId);
     } catch {
@@ -1598,15 +1622,21 @@ const PayslipUpload = ({ onUploadComplete, resumeReviewId = null }: PayslipUploa
             <div className="pi-upload-icon pi-upload-icon--success">
               <CheckCircle aria-hidden="true" />
             </div>
-            <h3 className="pi-upload-title">{completionState === 'confirmed' ? 'Payslip confirmed' : 'Payslip saved'}</h3>
+            <h3 className="pi-upload-title">{completionState === 'confirmed' ? 'Payslip saved and checked' : 'Payslip saved'}</h3>
             <p className="pi-upload-body">
               {completionState === 'confirmed'
-                ? 'Your checked figures are now part of your pay history and ready to compare.'
+                ? 'Your reviewed figures and issue checks are now part of your pay history.'
+                : completionState === 'confirmed_checks_pending'
+                  ? 'Your reviewed figures are in your pay history. Open this payslip to finish its issue checks.'
                 : 'This payslip is already in your history. You can review it again in the payslip list.'}
             </p>
             <div className="pi-upload-success-actions">
               <Button asChild className="pi-upload-action">
-                <Link to="/dashboard">See my payday summary</Link>
+                <Link to={completionState === 'confirmed_checks_pending' && reviewPayslipId
+                  ? `/payslip/${reviewPayslipId}`
+                  : '/dashboard'}>
+                  {completionState === 'confirmed_checks_pending' ? 'Finish issue checks' : 'See my payday summary'}
+                </Link>
               </Button>
               <Button variant="outline" className="pi-upload-action pi-upload-action--quiet" onClick={resetState}>Upload another</Button>
             </div>

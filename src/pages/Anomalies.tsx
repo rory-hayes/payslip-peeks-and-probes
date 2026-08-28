@@ -19,6 +19,12 @@ const statusLabels: Record<AnomalyStatus, string> = {
   resolved: 'Resolved',
 };
 
+const priorityLabels = {
+  high: 'High priority',
+  medium: 'Worth checking',
+  low: 'For awareness',
+} as const;
+
 const Anomalies = () => {
   const [filter, setFilter] = useState<AnomalyStatus | 'all'>('all');
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
@@ -33,9 +39,9 @@ const Anomalies = () => {
     <AppLayout>
       <div className="space-y-6 max-w-4xl">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Anomalies</h1>
+          <h1 className="text-2xl font-bold text-foreground">Things to check</h1>
           <p className="text-sm text-muted-foreground">
-            {isError ? 'Your flagged items could not be loaded.' : `${all.length} flagged items across your payslips`}
+            {isError ? 'Your check results could not be loaded.' : `${all.length} item${all.length === 1 ? '' : 's'} across your reviewed payslips`}
           </p>
         </div>
 
@@ -44,8 +50,8 @@ const Anomalies = () => {
             <CardContent className="flex items-center gap-3 p-4">
               <AlertTriangle className="h-5 w-5 text-destructive shrink-0" />
               <div>
-                <p className="text-sm font-medium text-foreground">{highCount} high-severity item{highCount !== 1 && 's'} need your attention</p>
-                <p className="text-xs text-muted-foreground">These may indicate payroll errors worth raising with your employer.</p>
+                <p className="text-sm font-medium text-foreground">{highCount} item{highCount !== 1 && 's'} worth checking soon</p>
+                <p className="text-xs text-muted-foreground">A valid payroll change can trigger these too. Check the explanation before deciding what to do.</p>
               </div>
             </CardContent>
           </Card>
@@ -82,8 +88,8 @@ const Anomalies = () => {
           <Card className="border-0 shadow-sm">
             <CardContent className="flex flex-col items-center justify-center py-16">
               <CheckCircle className="h-12 w-12 text-success/40" />
-              <h3 className="mt-4 text-lg font-semibold text-foreground">No anomalies here</h3>
-              <p className="mt-2 text-sm text-muted-foreground">Nothing flagged in this category.</p>
+              <h3 className="mt-4 text-lg font-semibold text-foreground">Nothing to check here</h3>
+              <p className="mt-2 text-sm text-muted-foreground">No reviewed check results match this category.</p>
             </CardContent>
           </Card>
         ) : (
@@ -107,7 +113,7 @@ const Anomalies = () => {
                             anomaly.severity === 'high' ? 'border-destructive text-destructive' :
                             anomaly.severity === 'medium' ? 'border-anomaly text-anomaly' :
                             'border-warning text-warning'
-                          }`}>{anomaly.severity}</Badge>
+                          }`}>{priorityLabels[anomaly.severity]}</Badge>
                           <Badge variant="secondary" className="text-xs capitalize">{statusLabels[anomaly.status]}</Badge>
                         </div>
                       </div>
@@ -166,7 +172,7 @@ const Anomalies = () => {
         )}
 
         <p className="text-xs text-muted-foreground text-center">
-          Anomaly detection is based on structured rule checks. Findings are guidance, not formal advice.
+          These are structured rule checks on figures you reviewed. They are guidance, not formal payroll or tax advice.
         </p>
       </div>
     </AppLayout>

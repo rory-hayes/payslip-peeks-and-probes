@@ -40,6 +40,8 @@ function payslip(overrides: Partial<Payslip> = {}): Payslip {
     pay_date: '2026-03-31',
     pay_period_end: '2026-03-31',
     pay_period_start: '2026-03-01',
+    review_checks_revision: 1,
+    review_checks_status: 'complete',
     status: 'confirmed',
     tax_amount: 400,
     total_deductions: 700,
@@ -132,5 +134,26 @@ describe('PayslipDetail comparison link', () => {
     expect(screen.queryByRole('heading', { name: 'Payslip not found' })).not.toBeInTheDocument();
     screen.getByRole('button', { name: 'Try again' }).click();
     expect(state.refetchPayslip).toHaveBeenCalledTimes(1);
+  });
+
+  it('shows calm positive confirmation only after reviewed checks complete', () => {
+    state.slip = payslip({ id: 'current', review_checks_status: 'complete' });
+    state.payslips = [state.slip];
+
+    renderDetail();
+
+    expect(screen.getByText('No unusual changes found')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Run issue checks' })).not.toBeInTheDocument();
+  });
+
+  it('shows one focused retry action while reviewed checks are pending', () => {
+    state.slip = payslip({ id: 'current', review_checks_status: 'pending' });
+    state.payslips = [state.slip];
+
+    renderDetail();
+
+    expect(screen.getByText('Your reviewed figures are saved')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Run issue checks' })).toBeInTheDocument();
+    expect(screen.queryByText('No unusual changes found')).not.toBeInTheDocument();
   });
 });

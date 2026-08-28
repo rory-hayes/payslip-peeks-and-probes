@@ -46,7 +46,7 @@ const STEPS = [
     icon: Eye,
     number: '02',
     title: 'See what changed',
-    description: 'Compare this payday with the last one and bring changes worth checking into focus.',
+    description: 'After you confirm, rule checks compare only your reviewed figures with the previous confirmed payday.',
   },
   {
     icon: MessageSquare,
@@ -67,7 +67,7 @@ const FEATURES = [
     icon: BarChart3,
     eyebrow: 'Compare',
     title: 'The changes behind your take-home pay',
-    description: 'Compare confirmed pay periods and bring tax, deduction and net-pay movements into focus.',
+    description: 'Compare confirmed pay periods and bring tax, deduction-line and net-pay movements into focus using the figures you reviewed.',
   },
   {
     icon: MessageSquareText,

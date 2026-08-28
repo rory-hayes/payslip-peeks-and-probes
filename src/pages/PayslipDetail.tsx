@@ -39,6 +39,7 @@ const PayslipDetail = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [retrying, setRetrying] = useState(false);
+  const [checksRetrying, setChecksRetrying] = useState(false);
   const updateStatus = useUpdateAnomalyStatus();
 
   const allPayslips = realPayslips || [];
@@ -52,6 +53,43 @@ const PayslipDetail = () => {
     : null;
 
   const canRetry = slip && (slip.status as string) !== 'confirmed' && (slip.status as string) !== 'extracted';
+
+  const handleReviewedChecks = async () => {
+    if (!id) return;
+    setChecksRetrying(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('process-payslip', {
+        body: { payslip_id: id, mode: 'reviewed_checks' },
+      });
+      if (error || data?.checks_status !== 'complete') {
+        toast({
+          title: 'Checks still pending',
+          description: 'Your reviewed figures are safe. Try the issue checks again in a moment.',
+          variant: 'destructive',
+        });
+      } else {
+        const count = Number.isInteger(Number(data.anomalies_found)) ? Number(data.anomalies_found) : 0;
+        toast({
+          title: 'Issue checks complete',
+          description: count > 0
+            ? `${count} item${count === 1 ? '' : 's'} worth checking.`
+            : 'No unusual changes were found in your reviewed figures.',
+        });
+      }
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['payslips'] }),
+        queryClient.invalidateQueries({ queryKey: ['anomalies'] }),
+      ]);
+    } catch {
+      toast({
+        title: 'Checks still pending',
+        description: 'Your reviewed figures are safe. We could not reach the checking service yet.',
+        variant: 'destructive',
+      });
+    } finally {
+      setChecksRetrying(false);
+    }
+  };
 
   const handleRetry = async () => {
     if (!id) return;
@@ -168,6 +206,46 @@ const PayslipDetail = () => {
             </CardContent>
           </Card>
         )}
+
+        {slip.status === 'confirmed' && slip.review_checks_status !== 'complete' && (
+          <Card className="border-warning/30 bg-warning/10 shadow-sm" role="status">
+            <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="text-sm font-semibold text-foreground">Your reviewed figures are saved</p>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  The change and deduction checks have not finished, so no issue list is shown yet.
+                </p>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                className="min-h-11 shrink-0 gap-2"
+                onClick={() => void handleReviewedChecks()}
+                disabled={checksRetrying}
+              >
+                <RefreshCw className={`h-4 w-4 ${checksRetrying ? 'animate-spin' : ''}`} aria-hidden="true" />
+                {checksRetrying ? 'Checking…' : 'Run issue checks'}
+              </Button>
+            </CardContent>
+          </Card>
+        )}
+
+        {slip.status === 'confirmed'
+          && slip.review_checks_status === 'complete'
+          && anomalies.length === 0
+          && !anomaliesError && (
+            <Card className="border-success/30 bg-success/10 shadow-sm" role="status">
+              <CardContent className="flex gap-3 p-4">
+                <CheckCircle className="mt-0.5 h-5 w-5 shrink-0 text-success" aria-hidden="true" />
+                <div>
+                  <p className="text-sm font-semibold text-foreground">No unusual changes found</p>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    Our rule checks did not flag anything in the figures you reviewed. This is helpful guidance, not proof that payroll is correct.
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
         <Card className="border-0 shadow-sm">
           <CardHeader className="pb-2"><CardTitle className="text-base">Pay breakdown</CardTitle></CardHeader>

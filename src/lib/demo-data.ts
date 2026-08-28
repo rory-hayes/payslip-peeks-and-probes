@@ -18,6 +18,8 @@ export const DEMO_PAYSLIPS: Payslip[] = [
     pension_amount: 80,
     total_deductions: 902.50,
     taxable_pay: 3750,
+    review_checks_status: 'complete',
+    review_checks_revision: 1,
     anomaly_count: 0,
   },
   {
@@ -36,6 +38,8 @@ export const DEMO_PAYSLIPS: Payslip[] = [
     pension_amount: 80,
     total_deductions: 902.50,
     taxable_pay: 3750,
+    review_checks_status: 'complete',
+    review_checks_revision: 1,
     anomaly_count: 0,
   },
   {
@@ -63,6 +67,7 @@ export const DEMO_PAYSLIPS: Payslip[] = [
       pay_frequency: 'monthly',
       pay_basis: 'Salary',
     },
+    extraction_context_reviewed: true,
     extraction_line_items: [
       {
         label: 'Basic pay',
@@ -71,6 +76,7 @@ export const DEMO_PAYSLIPS: Payslip[] = [
         year_to_date_amount: 11250,
         evidence: 'Basic pay £3,750.00',
         confidence: 'high',
+        reviewed: true,
       },
       {
         label: 'PAYE tax',
@@ -79,6 +85,7 @@ export const DEMO_PAYSLIPS: Payslip[] = [
         year_to_date_amount: 1660,
         evidence: 'PAYE tax £640.00',
         confidence: 'high',
+        reviewed: true,
       },
       {
         label: 'National Insurance',
@@ -87,6 +94,7 @@ export const DEMO_PAYSLIPS: Payslip[] = [
         year_to_date_amount: 937.50,
         evidence: 'National Insurance £312.50',
         confidence: 'high',
+        reviewed: true,
       },
       {
         label: 'Employee pension',
@@ -95,6 +103,7 @@ export const DEMO_PAYSLIPS: Payslip[] = [
         year_to_date_amount: 247.50,
         evidence: 'Employee pension £87.50',
         confidence: 'medium',
+        reviewed: true,
       },
     ],
     extraction_field_evidence: [
@@ -102,6 +111,9 @@ export const DEMO_PAYSLIPS: Payslip[] = [
       { field: 'net_pay', evidence: 'Net pay £2,710.00', confidence: 'high' },
     ],
     year_to_date: { gross_pay: 11250, tax: 1660, ni: 937.50, pension: 247.50 },
+    year_to_date_reviewed: true,
+    review_checks_status: 'complete',
+    review_checks_revision: 1,
     anomaly_count: 2,
   },
 ];

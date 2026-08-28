@@ -27,7 +27,6 @@ import { useToast } from '@/hooks/use-toast';
 import { useUsage } from '@/hooks/use-usage';
 import { useSubscription } from '@/hooks/use-subscription';
 import { getStripeEnvironment } from '@/lib/stripe';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Download, Trash2, HelpCircle, Sparkles, ExternalLink } from 'lucide-react';
 import { Link, useNavigate } from 'react-router';
 import { AccountDeletionBlockedError, AccountDeletionPendingError, deleteCurrentUserAccount } from '@/lib/delete-account';
@@ -91,7 +90,6 @@ const Settings = () => {
   const [studentLoanPlan, setStudentLoanPlan] = useState('plan2');
   const [subRegion, setSubRegion] = useState<string | null>(null);
   const [filingStatus, setFilingStatus] = useState<string | null>(null);
-  const [threshold, setThreshold] = useState<number>(5);
   const [loading, setLoading] = useState(false);
   const [profileLoading, setProfileLoading] = useState(() => Boolean(user));
   const [profileLoadError, setProfileLoadError] = useState(false);
@@ -180,7 +178,6 @@ const Settings = () => {
         setStudentLoanPlan(data.student_loan_plan || 'plan2');
         setSubRegion((data as { sub_region?: string | null }).sub_region ?? null);
         setFilingStatus((data as { filing_status?: string | null }).filing_status ?? null);
-        setThreshold(data.anomaly_threshold_percent != null ? Number(data.anomaly_threshold_percent) : 5);
       } catch {
         if (active) setProfileLoadError(true);
       } finally {
@@ -229,7 +226,6 @@ const Settings = () => {
           student_loan_plan: hasStudentLoan ? studentLoanPlan : null,
           sub_region: countryConfig.subRegions ? subRegion : null,
           filing_status: countryConfig.filingStatuses ? filingStatus : null,
-          anomaly_threshold_percent: threshold,
         })
         .eq('user_id', user.id);
       if (error) {
@@ -373,8 +369,7 @@ const Settings = () => {
   };
 
   return (
-    <TooltipProvider>
-      <AppLayout>
+    <AppLayout>
         <div className="space-y-6 max-w-2xl">
         <div>
           <h1 className="text-2xl font-bold text-foreground">Settings</h1>
@@ -707,49 +702,6 @@ const Settings = () => {
         </Card>
 
         <Card className="border-0 shadow-sm">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base flex items-center gap-1.5">
-              Anomaly sensitivity
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <button
-                    type="button"
-                    aria-label="How anomaly sensitivity works"
-                    className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-md text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                  >
-                    <HelpCircle className="h-3.5 w-3.5" />
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent className="max-w-xs">
-                  The minimum % change in your gross or net pay (vs. last payslip) that triggers an alert. Lower = more sensitive (more alerts); higher = only big swings. <strong>5% is recommended</strong>.
-                </TooltipContent>
-              </Tooltip>
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex items-center justify-between">
-              <Label htmlFor="threshold">Change threshold</Label>
-              <span className="text-lg font-bold text-primary tabular-nums">{threshold}%</span>
-            </div>
-            <input
-              id="threshold"
-              type="range"
-              min={1}
-              max={25}
-              step={1}
-              value={threshold}
-              onChange={(e) => setThreshold(Number(e.target.value))}
-              className="min-h-11 w-full cursor-pointer accent-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-            />
-            <div className="flex justify-between text-[11px] text-muted-foreground">
-              <span>1% — very sensitive</span>
-              <span>5% — recommended</span>
-              <span>25% — only big changes</span>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="border-0 shadow-sm">
           <CardHeader className="pb-2"><CardTitle className="text-base">Employer</CardTitle></CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
@@ -794,13 +746,13 @@ const Settings = () => {
               <AccordionItem value="upload">
                 <AccordionTrigger className="min-h-11 text-left text-sm">How do I upload a payslip?</AccordionTrigger>
                 <AccordionContent className="text-sm text-muted-foreground">
-                  Go to the Payslip Vault and drag & drop a PDF or image of your payslip. We'll extract the key figures automatically and compare them against your profile.
+                  Go to the Payslip Vault and add a PDF or image. We prepare a first transcription, then you check and correct the figures against the original before saving.
                 </AccordionContent>
               </AccordionItem>
               <AccordionItem value="anomalies">
-                <AccordionTrigger className="min-h-11 text-left text-sm">What are anomalies?</AccordionTrigger>
+                <AccordionTrigger className="min-h-11 text-left text-sm">What gets checked?</AccordionTrigger>
                 <AccordionContent className="text-sm text-muted-foreground">
-                  Anomalies are changes or figures worth checking — like a sudden tax increase, a missing deduction, or a drop in net pay. Each one includes an explanation and a suggested next step.
+                  After you confirm a payslip, rule checks compare its reviewed figures with the previous confirmed pay period. We bring unusual tax, deduction and net-pay changes into focus, with an explanation and a practical next step.
                 </AccordionContent>
               </AccordionItem>
               <AccordionItem value="advice">
@@ -938,8 +890,7 @@ const Settings = () => {
           </CardContent>
         </Card>
         </div>
-      </AppLayout>
-    </TooltipProvider>
+    </AppLayout>
   );
 };
 

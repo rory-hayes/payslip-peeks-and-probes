@@ -74,7 +74,7 @@ describe('release source hygiene', () => {
   it('keeps the web release gate aligned with the latest reviewed-detail migration', () => {
     const preflight = readFileSync(projectFile('scripts/release-web-preflight.mjs'), 'utf8');
     const readme = readFileSync(projectFile('README.md'), 'utf8');
-    const latestMigration = '20260828200000_confirm_review_supporting_details.sql';
+    const latestMigration = '20260828210000_reviewed_anomaly_checks.sql';
 
     expect(existsSync(projectFile(`supabase/migrations/${latestMigration}`))).toBe(true);
     expect(preflight).toContain(`const REQUIRED_MIGRATION = "${latestMigration}"`);

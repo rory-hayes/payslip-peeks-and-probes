@@ -41,6 +41,8 @@ type PayslipRow = {
   pay_period_end?: string | null;
   country?: string | null;
   status?: string | null;
+  review_checks_status?: string | null;
+  review_checks_revision?: number | null;
   employers?: EmployerRow | EmployerRow[] | null;
   payslip_extractions?: PayslipExtractionRow[] | null;
 };
@@ -55,6 +57,7 @@ type AnomalyRow = {
   description?: string | null;
   status?: AnomalyResult['status'] | null;
   suggested_action?: string | null;
+  review_checks_revision?: number | null;
   payslips?: PayslipJoin | PayslipJoin[] | null;
 };
 
@@ -78,6 +81,16 @@ function countryOrDefault(value: string | null | undefined): Payslip['country'] 
   return countries.includes(value as Payslip['country']) ? value as Payslip['country'] : 'UK';
 }
 
+function reviewChecksStatusOrDefault(
+  value: string | null | undefined,
+  payslipStatus: string | null | undefined,
+): Payslip['review_checks_status'] {
+  if (value === 'pending' || value === 'complete' || value === 'failed') return value;
+  // Keeps locally mocked and staged pre-migration records calm. The deployed
+  // schema always returns an explicit state for confirmed payslips.
+  return payslipStatus === 'completed' ? 'complete' : 'pending';
+}
+
 // The database lifecycle names differ from the consumer UI vocabulary: a
 // completed review is a confirmed payslip, while a payslip awaiting review is
 // an extracted one. Keep this translation at the data boundary so a server
@@ -99,6 +112,7 @@ export function usePayslips() {
         .from('payslips')
         .select(`
           id, file_name, pay_date, pay_period_start, pay_period_end, country, status,
+          review_checks_status, review_checks_revision,
           employer_id,
           employers(name, payroll_email),
           payslip_extractions(
@@ -117,14 +131,26 @@ export function usePayslips() {
       // Count anomalies per payslip
       const { data: anomalyCounts, error: anomalyCountsError } = await supabase
         .from('anomaly_results')
-        .select('payslip_id')
+        .select('payslip_id, review_checks_revision')
         .eq('status', 'new');
 
       if (anomalyCountsError) throw anomalyCountsError;
 
       const countMap: Record<string, number> = {};
+      const payslipChecksById = new Map(
+        ((payslips ?? []) as unknown as PayslipRow[]).map((payslip) => [payslip.id, {
+          revision: Number(payslip.review_checks_revision ?? 0),
+          status: payslip.review_checks_status,
+        }]),
+      );
       anomalyCounts?.forEach((a) => {
-        countMap[a.payslip_id] = (countMap[a.payslip_id] || 0) + 1;
+        const payslipChecks = payslipChecksById.get(a.payslip_id);
+        if (
+          payslipChecks?.status === 'complete'
+          && Number(a.review_checks_revision) === payslipChecks.revision
+        ) {
+          countMap[a.payslip_id] = (countMap[a.payslip_id] || 0) + 1;
+        }
       });
 
       const rows = (payslips ?? []) as unknown as PayslipRow[];
@@ -157,6 +183,10 @@ export function usePayslips() {
           total_deductions: numberOrZero(ext.total_deductions),
           taxable_pay: optionalNumber(ext.taxable_pay),
           ...extractionDetails,
+          review_checks_status: reviewChecksStatusOrDefault(p.review_checks_status, p.status),
+          review_checks_revision: Number.isInteger(Number(p.review_checks_revision))
+            ? Number(p.review_checks_revision)
+            : 0,
           anomaly_count: countMap[p.id] || 0,
         } as Payslip;
       });
@@ -179,19 +209,29 @@ export function useAnomalies() {
       const { data, error } = await supabase
         .from('anomaly_results')
         .select(`
-          id, payslip_id, anomaly_type, severity, confidence, title, description,
+          id, payslip_id, review_checks_revision, anomaly_type, severity, confidence, title, description,
           status, suggested_action, created_at,
-          payslips!inner(pay_date, user_id, employers(name))
+          payslips!inner(pay_date, user_id, review_checks_status, review_checks_revision, employers(name))
         `)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
 
       const rows = (data ?? []) as unknown as AnomalyRow[];
-      return rows.map((a) => {
+      return rows.flatMap((a) => {
         const payslip = firstRelation(a.payslips);
+        const payslipWithChecks = payslip as (PayslipJoin & {
+          review_checks_status?: string | null;
+          review_checks_revision?: number | null;
+        }) | null;
+        if (
+          payslipWithChecks?.review_checks_status !== 'complete'
+          || Number(a.review_checks_revision) !== Number(payslipWithChecks.review_checks_revision)
+        ) {
+          return [];
+        }
         const employer = firstRelation(payslip?.employers);
-        return {
+        return [{
           id: a.id,
           payslip_id: a.payslip_id,
           payslip_date: payslip?.pay_date || '',
@@ -203,7 +243,7 @@ export function useAnomalies() {
           description: a.description || '',
           status: a.status || 'new',
           suggested_action: a.suggested_action || '',
-        };
+        }];
       });
     },
     enabled: !!user,

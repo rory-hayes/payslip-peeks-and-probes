@@ -11,6 +11,7 @@ export type Country =
 export type PayFrequency = 'weekly' | 'fortnightly' | 'monthly' | 'other';
 export type AnomalySeverity = 'low' | 'medium' | 'high';
 export type AnomalyStatus = 'new' | 'reviewed' | 'raised' | 'resolved';
+export type ReviewChecksStatus = 'pending' | 'complete' | 'failed';
 export type PayslipStatus = 'uploading' | 'processing' | 'extracted' | 'confirmed' | 'failed';
 export type PayslipExtractionConfidence = 'high' | 'medium' | 'low';
 export type PayslipLineItemKind = 'earning' | 'deduction' | 'employer_contribution' | 'information';
@@ -82,6 +83,9 @@ export interface Payslip {
   year_to_date_reviewed?: boolean;
   extraction_context?: PayslipExtractionContext;
   extraction_context_reviewed?: boolean;
+  /** Rule checks are complete only when they match review_checks_revision. */
+  review_checks_status: ReviewChecksStatus;
+  review_checks_revision: number;
   anomaly_count: number;
 }
 

@@ -195,8 +195,7 @@ describe('Settings', () => {
     expect(within(frequencyGroup).getByRole('radio', { name: 'monthly' })).toBeChecked();
     expect(screen.getByRole('switch', { name: 'Pension contribution' })).toHaveAttribute('aria-checked', 'false');
     expect(screen.getByRole('switch', { name: 'Student loan' })).toHaveAttribute('aria-checked', 'false');
-    expect(screen.getByRole('slider', { name: 'Change threshold' })).toHaveValue('5');
-    expect(screen.getByRole('button', { name: 'How anomaly sensitivity works' })).toBeInTheDocument();
+    expect(screen.queryByRole('slider', { name: 'Change threshold' })).not.toBeInTheDocument();
     expect(screen.getByRole('progressbar', { name: 'Automatic checks used on the Free plan' })).toHaveAttribute('aria-valuenow', '0');
     expect(screen.getByRole('progressbar', { name: 'Payroll-message drafts used this month' })).toHaveAttribute('aria-valuemax', '2');
   });

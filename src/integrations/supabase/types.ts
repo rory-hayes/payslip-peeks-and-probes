@@ -23,6 +23,7 @@ export type Database = {
           id: string
           metadata_json: Json | null
           payslip_id: string
+          review_checks_revision: number
           severity: string
           status: string | null
           suggested_action: string | null
@@ -37,6 +38,7 @@ export type Database = {
           id?: string
           metadata_json?: Json | null
           payslip_id: string
+          review_checks_revision?: number
           severity: string
           status?: string | null
           suggested_action?: string | null
@@ -51,6 +53,7 @@ export type Database = {
           id?: string
           metadata_json?: Json | null
           payslip_id?: string
+          review_checks_revision?: number
           severity?: string
           status?: string | null
           suggested_action?: string | null
@@ -426,6 +429,10 @@ export type Database = {
           pay_period_start: string | null
           processing_token: string | null
           provider_started_at: string | null
+          review_checks_failure_code: string | null
+          review_checks_revision: number
+          review_checks_status: string
+          review_checks_updated_at: string | null
           status: string | null
           user_id: string
         }
@@ -442,6 +449,10 @@ export type Database = {
           pay_period_start?: string | null
           processing_token?: string | null
           provider_started_at?: string | null
+          review_checks_failure_code?: string | null
+          review_checks_revision?: number
+          review_checks_status?: string
+          review_checks_updated_at?: string | null
           status?: string | null
           user_id: string
         }
@@ -458,6 +469,10 @@ export type Database = {
           pay_period_start?: string | null
           processing_token?: string | null
           provider_started_at?: string | null
+          review_checks_failure_code?: string | null
+          review_checks_revision?: number
+          review_checks_status?: string
+          review_checks_updated_at?: string | null
           status?: string | null
           user_id?: string
         }

@@ -51,7 +51,6 @@ function completeRequiredOnboarding() {
   fireEvent.change(screen.getByLabelText(/Employer name/), { target: { value: 'Acme Ltd' } });
   fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
   fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
-  fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
 }
 
 describe('Onboarding checkout continuation', () => {
@@ -186,5 +185,25 @@ describe('Onboarding checkout continuation', () => {
 
     expect(screen.getByRole('status')).toHaveTextContent('');
     expect(screen.getByRole('button', { name: 'Continue' })).toBeEnabled();
+  });
+
+  it('uses sensible change-check defaults and asks only for deduction context that affects the estimate', () => {
+    renderPage('/onboarding');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
+    fireEvent.click(screen.getByRole('button', { name: /United Kingdom/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
+    fireEvent.click(screen.getByRole('radio', { name: 'monthly' }));
+    fireEvent.change(screen.getByLabelText(/Employer name/), { target: { value: 'Acme Ltd' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
+
+    expect(screen.getByRole('heading', { name: 'A little deduction context' })).toBeInTheDocument();
+    expect(screen.queryByRole('slider', { name: /threshold/i })).not.toBeInTheDocument();
+    expect(screen.getByText(/Bonus, overtime and other deduction rows are taken from each payslip you review/i)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByText('I contribute to a pension'));
+    expect(screen.getByLabelText('Your contribution (%)')).toHaveValue(5);
+    fireEvent.click(screen.getByText('A student loan is deducted from my pay'));
+    expect(screen.getByRole('radio', { name: 'Plan 2' })).toBeChecked();
   });
 });

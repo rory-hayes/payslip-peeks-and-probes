@@ -90,7 +90,7 @@ describe('PayslipUpload processing failure', () => {
     mocks.extractionSelect.mockResolvedValue({ data: null, error: new Error('not requested') });
     mocks.extractionInsert.mockResolvedValue({ error: null });
     mocks.invalidateQueries.mockResolvedValue(undefined);
-    mocks.invoke.mockImplementation(async (name: string) => {
+    mocks.invoke.mockImplementation(async (name: string, options?: { body?: { mode?: string } }) => {
       if (name === 'start-payslip-upload') {
         return {
           data: {
@@ -257,7 +257,7 @@ describe('PayslipUpload processing failure', () => {
       error: null,
     });
     mocks.profileSelect.mockResolvedValue({ data: { country: 'UK' }, error: null });
-    mocks.invoke.mockImplementation(async (name: string) => {
+    mocks.invoke.mockImplementation(async (name: string, options?: { body?: { mode?: string } }) => {
       if (name === 'start-payslip-upload') {
         return {
           data: {
@@ -300,7 +300,7 @@ describe('PayslipUpload processing failure', () => {
 
   it('only signals upload completion after the person confirms the review', async () => {
     const onUploadComplete = vi.fn();
-    mocks.invoke.mockImplementation(async (name: string) => {
+    mocks.invoke.mockImplementation(async (name: string, options?: { body?: { mode?: string } }) => {
       if (name === 'start-payslip-upload') {
         return {
           data: {
@@ -314,7 +314,10 @@ describe('PayslipUpload processing failure', () => {
         };
       }
       if (name === 'finish-payslip-upload') return { data: { payslipId: 'payslip-1' }, error: null };
-      if (name === 'process-payslip') return { data: { anomalies_found: 0, extraction: {} }, error: null };
+      if (name === 'process-payslip' && options?.body?.mode === 'reviewed_checks') {
+        return { data: { checks_status: 'complete', anomalies_found: 0 }, error: null };
+      }
+      if (name === 'process-payslip') return { data: { checks_pending: true, extraction: {} }, error: null };
       return { data: null, error: new Error('not requested') };
     });
     mocks.payslipSelect.mockResolvedValue({
@@ -351,7 +354,53 @@ describe('PayslipUpload processing failure', () => {
     expect(onUploadComplete).not.toHaveBeenCalled();
 
     await waitFor(() => expect(onUploadComplete).toHaveBeenCalledWith('payslip-1'));
-    expect(screen.getByText('Payslip confirmed')).toBeInTheDocument();
+    expect(mocks.invoke).toHaveBeenCalledWith('process-payslip', {
+      body: { payslip_id: 'payslip-1', mode: 'reviewed_checks' },
+    });
+    expect(screen.getByText('Payslip saved and checked')).toBeInTheDocument();
+  });
+
+  it('keeps a confirmed payslip successful when only its derived checks need retrying', async () => {
+    const onUploadComplete = vi.fn();
+    mocks.payslipSelect.mockResolvedValue({
+      data: {
+        country: 'UK',
+        file_name: 'April payslip.pdf',
+        pay_date: '2026-08-01',
+        status: 'needs_review',
+      },
+      error: null,
+    });
+    mocks.extractionSelect.mockResolvedValue({
+      data: {
+        gross_pay: 2200,
+        net_pay: 1600,
+        tax_amount: 400,
+        total_deductions: 600,
+      },
+      error: null,
+    });
+    mocks.invoke.mockImplementation(async (name: string) => {
+      if (name === 'get-payslip-original-url') return { data: null, error: new Error('unavailable') };
+      if (name === 'process-payslip') return { data: null, error: new Error('checks unavailable') };
+      return { data: null, error: new Error('not requested') };
+    });
+
+    render(
+      <MemoryRouter>
+        <PayslipUpload resumeReviewId="review-checks-retry" onUploadComplete={onUploadComplete} />
+      </MemoryRouter>,
+    );
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Confirm my payslip' }));
+
+    await waitFor(() => expect(onUploadComplete).toHaveBeenCalledWith('review-checks-retry'));
+    expect(screen.getByRole('heading', { name: 'Payslip saved' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Finish issue checks' })).toHaveAttribute(
+      'href',
+      '/payslip/review-checks-retry',
+    );
+    expect(mocks.toast).not.toHaveBeenCalledWith(expect.objectContaining({ title: 'Save failed' }));
   });
 
   it('shows inline required-field errors and focuses the first missing review field', async () => {

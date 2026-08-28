@@ -16,9 +16,6 @@ import {
   getCountryConfig,
   type LaunchCountryCode,
 } from '@/lib/countries';
-
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
-import { HelpCircle } from 'lucide-react';
 import { BrandLockup } from '@/components/BrandLockup';
 import {
   checkoutPathForPrice,
@@ -27,7 +24,14 @@ import {
   getCheckoutReturnSessionId,
 } from '@/lib/checkout-price';
 
-const STEPS = ['Welcome', 'Country', 'Pay profile', 'Sensitivity', 'Payroll setup', 'Ready'] as const;
+const STEPS = ['Welcome', 'Country', 'Pay profile', 'Deductions', 'Ready'] as const;
+const UK_STUDENT_LOAN_PLANS = [
+  { value: 'plan1', label: 'Plan 1' },
+  { value: 'plan2', label: 'Plan 2' },
+  { value: 'plan4', label: 'Plan 4 (Scotland)' },
+  { value: 'plan5', label: 'Plan 5' },
+  { value: 'postgrad', label: 'Postgraduate loan' },
+] as const;
 
 const Onboarding = () => {
   const navigate = useNavigate();
@@ -42,8 +46,9 @@ const Onboarding = () => {
   const [frequency, setFrequency] = useState<string>('');
   const [employer, setEmployer] = useState('');
   const [annualSalary, setAnnualSalary] = useState<string>('');
-  const [threshold, setThreshold] = useState<number>(5);
-  const [flags, setFlags] = useState({ pension: false, studentLoan: false, bonus: false, benefits: false });
+  const [flags, setFlags] = useState({ pension: false, studentLoan: false });
+  const [pensionPercent, setPensionPercent] = useState('5');
+  const [studentLoanPlan, setStudentLoanPlan] = useState('plan2');
   const [saving, setSaving] = useState(false);
   const stepHeadingRef = useRef<HTMLHeadingElement>(null);
   const checkoutPriceId = getCheckoutPriceId(searchParams.get('checkout'));
@@ -73,9 +78,13 @@ const Onboarding = () => {
       return true;
     }
     if (step === 2) return !!frequency && employer.trim().length > 0;
-    if (step === 3) return threshold >= 1 && threshold <= 25;
+    if (step === 3) {
+      const pension = Number(pensionPercent);
+      if (flags.pension && (!Number.isFinite(pension) || pension <= 0 || pension > 100)) return false;
+      if (country === 'UK' && flags.studentLoan && !studentLoanPlan) return false;
+      return true;
+    }
     if (step === 4) return true;
-    if (step === 5) return true;
     return false;
   })();
   const payProfileRequirementsMessage = !frequency && !employer.trim()
@@ -112,11 +121,11 @@ const Onboarding = () => {
           pay_frequency: frequency,
           employer_name: employer.trim(),
           annual_salary: parsedSalary && parsedSalary > 0 ? parsedSalary : null,
-          anomaly_threshold_percent: threshold,
+          anomaly_threshold_percent: 5,
           has_pension: flags.pension,
-          has_student_loan: flags.studentLoan,
-          has_bonus: flags.bonus,
-          has_benefits: flags.benefits,
+          pension_percent: flags.pension ? Number(pensionPercent) : null,
+          has_student_loan: country === 'UK' && flags.studentLoan,
+          student_loan_plan: country === 'UK' && flags.studentLoan ? studentLoanPlan : null,
           onboarding_complete: true,
         })
         .eq('user_id', user.id);
@@ -390,94 +399,84 @@ const Onboarding = () => {
               </div>
             )}
 
-            {/* Step 3 — Sensitivity */}
+            {/* Step 3 — Relevant deductions */}
             {step === 3 && (
               <div className="space-y-6">
                 <div className="text-center">
-                  <h1 ref={stepHeadingRef} tabIndex={-1} className="text-2xl font-bold text-foreground">How sensitive should we be?</h1>
-                  <p className="mt-2 text-sm text-muted-foreground">
-                    We flag pay changes between payslips when they exceed your threshold.
-                  </p>
-                </div>
-
-                <div className="rounded-xl border border-border p-5 space-y-4">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-1.5">
-                      <Label htmlFor="threshold" className="text-sm font-medium">Change threshold</Label>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <button type="button" aria-label="What is this?" className="text-muted-foreground hover:text-foreground">
-                            <HelpCircle className="h-3.5 w-3.5" />
-                          </button>
-                        </TooltipTrigger>
-                        <TooltipContent className="max-w-xs">
-                          The minimum % change in your gross or net pay that triggers an alert. A lower number flags more changes (more noise); a higher number only flags larger swings. <strong>5% is recommended</strong> — it catches meaningful shifts like tax-code changes without alerting on small overtime variations.
-                        </TooltipContent>
-                      </Tooltip>
-                    </div>
-                    <span className="text-2xl font-bold text-primary tabular-nums">{threshold}%</span>
-                  </div>
-
-                  <input
-                    id="threshold"
-                    type="range"
-                    min={1}
-                    max={25}
-                    step={1}
-                    value={threshold}
-                    onChange={(e) => setThreshold(Number(e.target.value))}
-                    className="w-full accent-primary"
-                  />
-
-                  <div className="flex justify-between text-[11px] text-muted-foreground">
-                    <span>1% — very sensitive</span>
-                    <span>5% — recommended</span>
-                    <span>25% — only big changes</span>
-                  </div>
-
-                  <p className="text-xs text-muted-foreground leading-relaxed pt-1">
-                    You can change this anytime in Settings. The threshold applies to month-on-month
-                    comparisons of gross pay, net pay, and key deductions.
-                  </p>
-                </div>
-              </div>
-            )}
-
-            {/* Step 4 — Payroll setup */}
-            {step === 4 && (
-              <div className="space-y-6">
-                <div className="text-center">
-                  <h1 ref={stepHeadingRef} tabIndex={-1} className="text-2xl font-bold text-foreground">Payroll details</h1>
-                  <p className="mt-2 text-sm text-muted-foreground">Tick anything that applies — this helps us run smarter checks on your payslips.</p>
+                  <h1 ref={stepHeadingRef} tabIndex={-1} className="text-2xl font-bold text-foreground">A little deduction context</h1>
+                  <p className="mt-2 text-sm text-muted-foreground">Only add what applies. This makes the expected-pay comparison more useful.</p>
                 </div>
                 <div className="space-y-3">
-                  {([
-                    { key: 'pension' as const, label: 'Pension contributions', desc: 'Workplace or personal pension deductions' },
-                    { key: 'studentLoan' as const, label: 'Student loan repayment', desc: 'UK Plan 1, 2, 4, 5, or postgrad' },
-                    { key: 'bonus' as const, label: 'Bonus / commission', desc: 'Regular or one-off performance pay' },
-                    { key: 'benefits' as const, label: 'Benefits in kind', desc: 'Company car, health insurance, etc.' },
-                  ]).map((item) => (
-                    <label
-                      key={item.key}
-                      className="flex items-start gap-3 rounded-lg border border-border p-4 cursor-pointer hover:bg-muted/50 transition-colors"
-                    >
+                  <div className="rounded-lg border border-border p-4">
+                    <label className="flex cursor-pointer items-start gap-3">
                       <Checkbox
                         className="mt-0.5"
-                        checked={flags[item.key]}
-                        onCheckedChange={(v) => setFlags({ ...flags, [item.key]: v === true })}
+                        checked={flags.pension}
+                        onCheckedChange={(value) => setFlags({ ...flags, pension: value === true })}
                       />
                       <div>
-                        <span className="text-sm font-medium text-foreground">{item.label}</span>
-                        <p className="text-xs text-muted-foreground mt-0.5">{item.desc}</p>
+                        <span className="text-sm font-medium text-foreground">I contribute to a pension</span>
+                        <p className="mt-0.5 text-xs text-muted-foreground">Used only for the expected-pay estimate.</p>
                       </div>
                     </label>
-                  ))}
+                    {flags.pension && (
+                      <div className="mt-4 space-y-2 border-t border-border pt-4">
+                        <Label htmlFor="onboarding-pension-percent">Your contribution (%)</Label>
+                        <Input
+                          id="onboarding-pension-percent"
+                          type="number"
+                          inputMode="decimal"
+                          min="0.1"
+                          max="100"
+                          step="0.1"
+                          value={pensionPercent}
+                          onChange={(event) => setPensionPercent(event.target.value)}
+                        />
+                      </div>
+                    )}
+                  </div>
+
+                  {country === 'UK' && (
+                    <div className="rounded-lg border border-border p-4">
+                      <label className="flex cursor-pointer items-start gap-3">
+                        <Checkbox
+                          className="mt-0.5"
+                          checked={flags.studentLoan}
+                          onCheckedChange={(value) => setFlags({ ...flags, studentLoan: value === true })}
+                        />
+                        <div>
+                          <span className="text-sm font-medium text-foreground">A student loan is deducted from my pay</span>
+                          <p className="mt-0.5 text-xs text-muted-foreground">Choose the plan only if this applies.</p>
+                        </div>
+                      </label>
+                      {flags.studentLoan && (
+                        <fieldset className="mt-4 space-y-2 border-t border-border pt-4">
+                          <legend className="text-sm font-medium">Student loan plan</legend>
+                          <div className="grid gap-2 sm:grid-cols-2">
+                            {UK_STUDENT_LOAN_PLANS.map((plan) => (
+                              <label key={plan.value} className="flex min-h-11 cursor-pointer items-center gap-2 rounded-lg border border-border px-3 py-2 text-sm">
+                                <input
+                                  type="radio"
+                                  name="onboarding-student-loan-plan"
+                                  value={plan.value}
+                                  checked={studentLoanPlan === plan.value}
+                                  onChange={() => setStudentLoanPlan(plan.value)}
+                                />
+                                {plan.label}
+                              </label>
+                            ))}
+                          </div>
+                        </fieldset>
+                      )}
+                    </div>
+                  )}
                 </div>
+                <p className="text-xs text-center text-muted-foreground">Bonus, overtime and other deduction rows are taken from each payslip you review, so there is nothing else to configure here.</p>
               </div>
             )}
 
-            {/* Step 5 — Ready / Summary */}
-            {step === 5 && (
+            {/* Step 4 — Ready / Summary */}
+            {step === 4 && (
               <div className="space-y-6">
                 <div className="text-center space-y-2">
                   <div className="flex h-16 w-16 mx-auto items-center justify-center rounded-2xl bg-success/10">
@@ -534,10 +533,8 @@ const Onboarding = () => {
                     <span className="text-muted-foreground">Extras</span>
                     <span className="font-medium text-foreground text-right">
                       {[
-                        flags.pension && 'Pension',
-                        flags.studentLoan && 'Student loan',
-                        flags.bonus && 'Bonus',
-                        flags.benefits && 'Benefits',
+                        flags.pension && `${pensionPercent}% pension`,
+                        country === 'UK' && flags.studentLoan && UK_STUDENT_LOAN_PLANS.find((plan) => plan.value === studentLoanPlan)?.label,
                       ].filter(Boolean).join(', ') || 'None'}
                     </span>
                   </div>

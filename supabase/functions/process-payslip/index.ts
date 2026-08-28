@@ -8,6 +8,12 @@ import {
 import { PAYSLIP_MAX_FILE_BYTES, isOwnedPayslipObjectPath } from "../_shared/payslip-storage-boundary.ts";
 import { buildPayslipExtractionProviderRequest } from "../_shared/payslip-provider-dispatch.ts";
 import { nullableCountry, parseExtraction, type Extraction } from "../_shared/payslip-extraction.ts";
+import {
+  runReviewedLineItemChecks,
+  storedReviewedLineItems,
+  withReviewedDerivedAmounts,
+  type ReviewedLineItemForChecks,
+} from "../_shared/reviewed-anomaly-line-items.ts";
 
 // ---------- Date normalisation ----------
 
@@ -537,6 +543,196 @@ function runAnomalyChecks(
   return anomalies;
 }
 
+const STORED_EXTRACTION_FIELDS = [
+  "gross_pay",
+  "net_pay",
+  "taxable_pay",
+  "tax_amount",
+  "national_insurance_amount",
+  "prsi_amount",
+  "usc_amount",
+  "social_security_amount",
+  "solidarity_amount",
+  "church_tax_amount",
+  "pension_amount",
+  "student_loan_amount",
+  "bonus_amount",
+  "overtime_amount",
+  "total_deductions",
+] as const;
+
+function storedExtraction(value: unknown): Extraction | null {
+  if (!isPlainObject(value)) return null;
+
+  const extraction = {} as Extraction;
+  for (const field of STORED_EXTRACTION_FIELDS) {
+    const candidate = value[field];
+    if (candidate == null || candidate === "") {
+      extraction[field] = null;
+      continue;
+    }
+
+    const amount = typeof candidate === "number" ? candidate : Number(candidate);
+    if (!Number.isFinite(amount) || Math.abs(amount) > 10_000_000) return null;
+    extraction[field] = amount;
+  }
+  return extraction;
+}
+
+async function markReviewedChecksFailed(
+  supabase: SupabaseClient,
+  userId: string,
+  payslipId: string,
+  reviewChecksRevision: number,
+  failureCode: string,
+): Promise<void> {
+  await supabase
+    .from("payslips")
+    .update({
+      review_checks_status: "failed",
+      review_checks_failure_code: failureCode,
+      review_checks_updated_at: new Date().toISOString(),
+    })
+    .eq("id", payslipId)
+    .eq("user_id", userId)
+    .eq("status", "completed")
+    .eq("review_checks_revision", reviewChecksRevision);
+}
+
+async function runReviewedChecks(
+  supabase: SupabaseClient,
+  userId: string,
+  payslip: {
+    id: string;
+    country: string | null;
+    pay_date: string | null;
+    review_checks_revision: number | null;
+  },
+): Promise<{ anomaliesFound: number; error: string | null }> {
+  const reviewChecksRevision = Number(payslip.review_checks_revision);
+  if (!Number.isInteger(reviewChecksRevision) || reviewChecksRevision < 1 || !payslip.pay_date) {
+    return { anomaliesFound: 0, error: "review_checks_not_ready" };
+  }
+
+  await supabase
+    .from("payslips")
+    .update({
+      review_checks_status: "pending",
+      review_checks_failure_code: null,
+      review_checks_updated_at: null,
+    })
+    .eq("id", payslip.id)
+    .eq("user_id", userId)
+    .eq("status", "completed")
+    .eq("review_checks_revision", reviewChecksRevision);
+
+  const extractionSelect = `${STORED_EXTRACTION_FIELDS.join(", ")}, normalized_json`;
+  const { data: currentRow, error: currentError } = await supabase
+    .from("payslip_extractions")
+    .select(extractionSelect)
+    .eq("payslip_id", payslip.id)
+    .eq("extraction_status", "completed")
+    .maybeSingle();
+  const currentLineItems = storedReviewedLineItems(currentRow);
+  const currentStoredExtraction = storedExtraction(currentRow);
+  const current = currentStoredExtraction
+    ? withReviewedDerivedAmounts(currentStoredExtraction, currentLineItems)
+    : null;
+  if (currentError || !current) {
+    await markReviewedChecksFailed(
+      supabase,
+      userId,
+      payslip.id,
+      reviewChecksRevision,
+      "reviewed_extraction_unavailable",
+    );
+    return { anomaliesFound: 0, error: "reviewed_extraction_unavailable" };
+  }
+
+  // A comparison must use the nearest earlier confirmed pay period. The old
+  // extraction-time path could select a future or still-unreviewed document.
+  const { data: previousPayslips, error: previousPayslipError } = await supabase
+    .from("payslips")
+    .select("id")
+    .eq("user_id", userId)
+    .eq("status", "completed")
+    .neq("id", payslip.id)
+    .lt("pay_date", payslip.pay_date)
+    .order("pay_date", { ascending: false, nullsFirst: false })
+    .order("created_at", { ascending: false })
+    .limit(1);
+
+  if (previousPayslipError) {
+    await markReviewedChecksFailed(
+      supabase,
+      userId,
+      payslip.id,
+      reviewChecksRevision,
+      "previous_reviewed_payslip_unavailable",
+    );
+    return { anomaliesFound: 0, error: "previous_reviewed_payslip_unavailable" };
+  }
+
+  let previous: Extraction | null = null;
+  let previousLineItems: ReviewedLineItemForChecks[] | null = null;
+  const previousPayslipId = previousPayslips?.[0]?.id;
+  if (previousPayslipId) {
+    const { data: previousRow, error: previousError } = await supabase
+      .from("payslip_extractions")
+      .select(extractionSelect)
+      .eq("payslip_id", previousPayslipId)
+      .eq("extraction_status", "completed")
+      .maybeSingle();
+    previousLineItems = storedReviewedLineItems(previousRow);
+    const previousStoredExtraction = storedExtraction(previousRow);
+    previous = previousStoredExtraction
+      ? withReviewedDerivedAmounts(previousStoredExtraction, previousLineItems)
+      : null;
+    if (previousError || !previous) {
+      await markReviewedChecksFailed(
+        supabase,
+        userId,
+        payslip.id,
+        reviewChecksRevision,
+        "previous_reviewed_extraction_unavailable",
+      );
+      return { anomaliesFound: 0, error: "previous_reviewed_extraction_unavailable" };
+    }
+  }
+
+  // Sensitivity is a product guardrail, not a technical choice people must
+  // tune before understanding their first payslip. Five percent catches
+  // meaningful movement while the absolute checks still cover hard errors.
+  const threshold = 5;
+  const anomalies = [
+    ...runAnomalyChecks(current, previous, payslip.country, threshold),
+    ...runReviewedLineItemChecks(currentLineItems, previousLineItems, payslip.country, threshold),
+  ];
+
+  const { data: insertedCount, error: replaceError } = await supabase.rpc(
+    "replace_reviewed_payslip_anomalies",
+    {
+      p_payslip_id: payslip.id,
+      p_user_id: userId,
+      p_review_checks_revision: reviewChecksRevision,
+      p_anomalies: anomalies,
+    },
+  );
+
+  if (replaceError || Number(insertedCount) !== anomalies.length) {
+    await markReviewedChecksFailed(
+      supabase,
+      userId,
+      payslip.id,
+      reviewChecksRevision,
+      "reviewed_checks_save_failed",
+    );
+    return { anomaliesFound: 0, error: "reviewed_checks_save_failed" };
+  }
+
+  return { anomaliesFound: anomalies.length, error: null };
+}
+
 // ---------- Main handler ----------
 
 serve(async (req) => {
@@ -571,6 +767,9 @@ serve(async (req) => {
 
     const requestBody: unknown = await req.json().catch(() => null);
     const payslipId = isPlainObject(requestBody) ? requestBody.payslip_id : null;
+    const requestMode = isPlainObject(requestBody) && requestBody.mode === "reviewed_checks"
+      ? "reviewed_checks"
+      : "extract";
     if (!isUuid(payslipId)) {
       return new Response(
         JSON.stringify({ error: "A valid payslip_id is required" }),
@@ -586,7 +785,7 @@ serve(async (req) => {
     // same response and cannot be distinguished as a payslip existence oracle.
     const { data: initialPayslip, error: payslipErr } = await supabase
       .from("payslips")
-      .select("id, user_id, file_path, file_name, country, status, processing_attempts, processing_started_at, cleanup_requested_at")
+      .select("id, user_id, file_path, file_name, country, pay_date, created_at, status, processing_attempts, processing_started_at, cleanup_requested_at, review_checks_status, review_checks_revision")
       .eq("id", payslipId)
       .eq("user_id", user.id)
       .maybeSingle();
@@ -612,6 +811,54 @@ serve(async (req) => {
         { status: 409, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
+
+    if (requestMode === "reviewed_checks") {
+      if (payslip.status !== "completed") {
+        return new Response(
+          JSON.stringify({ error: "Confirm the payslip before running its reviewed checks." }),
+          { status: 409, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        );
+      }
+
+      const checksLimit = await checkRateLimit({
+        bucketKey: `reviewed-payslip-checks:user:${user.id}`,
+        maxPerWindow: 30,
+        windowSeconds: 3600,
+        client: supabase,
+      });
+      if (!checksLimit.allowed) {
+        return new Response(
+          JSON.stringify({ error: "Too many check refreshes. Please try again later." }),
+          {
+            status: 429,
+            headers: {
+              ...corsHeaders,
+              "Content-Type": "application/json",
+              "Retry-After": String(checksLimit.retryAfterSeconds),
+            },
+          },
+        );
+      }
+
+      const reviewedChecks = await runReviewedChecks(supabase, user.id, payslip);
+      if (reviewedChecks.error) {
+        console.error("[process-payslip] reviewed checks failed", { code: reviewedChecks.error });
+        return new Response(
+          JSON.stringify({ error: "Your figures are saved, but we could not refresh the issue checks yet." }),
+          { status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        );
+      }
+
+      return new Response(
+        JSON.stringify({
+          success: true,
+          checks_status: "complete",
+          anomalies_found: reviewedChecks.anomaliesFound,
+        }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+
     if (payslip.status !== "processing" && payslip.status !== "failed") {
       return new Response(
         JSON.stringify({ error: "This payslip has already been processed." }),
@@ -674,7 +921,7 @@ serve(async (req) => {
         .eq("status", "failed")
         .lt("processing_attempts", MAX_PROCESSING_ATTEMPTS)
         .is("cleanup_requested_at", null)
-        .select("id, user_id, file_path, file_name, country, status, processing_attempts, processing_started_at, cleanup_requested_at")
+        .select("id, user_id, file_path, file_name, country, pay_date, created_at, status, processing_attempts, processing_started_at, cleanup_requested_at, review_checks_status, review_checks_revision")
         .maybeSingle();
 
       if (retryError || !retryPayslip) {
@@ -1024,106 +1271,15 @@ serve(async (req) => {
       );
     }
 
-    // The durable extraction and user-visible status are saved. Later
-    // best-effort anomaly work must not convert a completed payslip to failed.
+    // The durable extraction and user-visible status are saved. Issue checks
+    // deliberately wait until the owner confirms or corrects these figures.
     claimedProcessing = null;
-
-    // 6. Get previous payslip extraction for anomaly comparison
-    // Include any payslip that has been processed (completed or needs_review)
-    const { data: prevPayslips } = await supabase
-      .from("payslips")
-      .select("id")
-      .eq("user_id", payslip.user_id)
-      .neq("id", payslipId)
-      .in("status", ["completed", "needs_review"])
-      .order("pay_date", { ascending: false, nullsFirst: false })
-      .limit(1);
-
-    // If no previous by pay_date, try by created_at
-    let prevId: string | null = prevPayslips?.[0]?.id ?? null;
-    if (!prevId) {
-      const { data: prevByCreated } = await supabase
-        .from("payslips")
-        .select("id")
-        .eq("user_id", payslip.user_id)
-        .neq("id", payslipId)
-        .neq("status", "processing")
-        .order("created_at", { ascending: false })
-        .limit(1);
-      prevId = prevByCreated?.[0]?.id ?? null;
-    }
-
-    let previousExtraction: Extraction | null = null;
-    if (prevId) {
-      const { data: prevExt } = await supabase
-        .from("payslip_extractions")
-        .select("*")
-        .eq("payslip_id", prevId)
-        .eq("extraction_status", "completed")
-        .single();
-
-      if (prevExt) {
-        previousExtraction = prevExt as unknown as Extraction;
-      }
-    }
-
-    // 7. Run anomaly detection
-    const currentExtraction: Extraction = {
-      gross_pay: extracted.gross_pay,
-      net_pay: extracted.net_pay,
-      taxable_pay: extracted.taxable_pay,
-      tax_amount: extracted.tax_amount,
-      national_insurance_amount: extracted.national_insurance_amount,
-      prsi_amount: extracted.prsi_amount,
-      usc_amount: extracted.usc_amount,
-      social_security_amount: extracted.social_security_amount,
-      solidarity_amount: extracted.solidarity_amount,
-      church_tax_amount: extracted.church_tax_amount,
-      pension_amount: extracted.pension_amount,
-      student_loan_amount: extracted.student_loan_amount,
-      bonus_amount: extracted.bonus_amount,
-      overtime_amount: extracted.overtime_amount,
-      total_deductions: extracted.total_deductions,
-    };
-
-    // Load user's anomaly threshold from their profile (defaults to 5%)
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("anomaly_threshold_percent")
-      .eq("user_id", payslip.user_id)
-      .maybeSingle();
-    const threshold = profile?.anomaly_threshold_percent != null
-      ? Number(profile.anomaly_threshold_percent)
-      : 5;
-
-    const anomalies = runAnomalyChecks(
-      currentExtraction,
-      previousExtraction,
-      country,
-      threshold
-    );
-
-    // 8. Save anomalies
-    if (anomalies.length > 0) {
-      const anomalyRows = anomalies.map((a) => ({
-        payslip_id: payslipId,
-        anomaly_type: a.anomaly_type,
-        severity: a.severity,
-        confidence: a.confidence,
-        title: a.title,
-        description: a.description,
-        suggested_action: a.suggested_action,
-        status: "new",
-      }));
-
-      await supabase.from("anomaly_results").insert(anomalyRows);
-    }
 
     return new Response(
       JSON.stringify({
         success: true,
         extraction: extracted,
-        anomalies_found: anomalies.length,
+        checks_pending: true,
       }),
       {
         status: 200,
