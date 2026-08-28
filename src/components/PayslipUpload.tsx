@@ -26,7 +26,6 @@ import { useToast } from '@/hooks/use-toast';
 import { formatDate } from '@/lib/date-utils';
 import { useUsage } from '@/hooks/use-usage';
 import {
-  EXTRACTION_CONTEXT_FIELDS,
   formatExtractionContextValue,
   normalizeExtractionDetails,
 } from '@/lib/payslip-extraction-details';
@@ -45,6 +44,16 @@ import {
   type ReviewLineItemDraft,
   type ReviewLineItemErrors,
 } from '@/lib/payslip-review-line-items';
+import {
+  createReviewDocumentContextDraft,
+  createReviewYearToDateDraft,
+  validateReviewDocumentContext,
+  validateReviewYearToDate,
+  type ReviewDocumentContextDraft,
+  type ReviewDocumentContextField,
+  type ReviewYearToDateDraft,
+  type ReviewYearToDateField,
+} from '@/lib/payslip-review-supporting-details';
 
 type UploadState = 'idle' | 'uploading' | 'processing' | 'opening_review' | 'review' | 'success' | 'error';
 
@@ -131,9 +140,16 @@ const PayslipUpload = ({ onUploadComplete, resumeReviewId = null }: PayslipUploa
   const [reviewLineItemErrors, setReviewLineItemErrors] = useState<Record<string, ReviewLineItemErrors>>({});
   const [reviewLineItemsChecked, setReviewLineItemsChecked] = useState(false);
   const [reviewLineItemsCheckError, setReviewLineItemsCheckError] = useState('');
+  const [reviewYearToDateDraft, setReviewYearToDateDraft] = useState<ReviewYearToDateDraft | null>(null);
+  const [reviewYearToDateEditing, setReviewYearToDateEditing] = useState(false);
+  const [reviewYearToDateErrors, setReviewYearToDateErrors] = useState<Partial<Record<ReviewYearToDateField, string>>>({});
+  const [reviewContextDraft, setReviewContextDraft] = useState<ReviewDocumentContextDraft | null>(null);
+  const [reviewContextEditing, setReviewContextEditing] = useState(false);
+  const [reviewContextErrors, setReviewContextErrors] = useState<Partial<Record<ReviewDocumentContextField, string>>>({});
   const reviewInputRefs = useRef<Partial<Record<RequiredReviewField, HTMLInputElement | null>>>({});
   const reviewLineItemInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
   const reviewLineItemsCheckboxRef = useRef<HTMLInputElement>(null);
+  const reviewSupportingInputRefs = useRef<Partial<Record<ReviewYearToDateField | ReviewDocumentContextField, HTMLInputElement | HTMLSelectElement | null>>>({});
   const nextReviewLineItemId = useRef(0);
   const [originalPayslipUrl, setOriginalPayslipUrl] = useState<string | null>(null);
   const [originalPayslipState, setOriginalPayslipState] = useState<'idle' | 'loading' | 'ready' | 'unavailable'>('idle');
@@ -243,6 +259,12 @@ const PayslipUpload = ({ onUploadComplete, resumeReviewId = null }: PayslipUploa
         const extractionDetails = normalizeExtractionDetails(extraction);
         setReviewExtraction(extractionDetails);
         setReviewLineItems(createReviewLineItemDrafts(extractionDetails.extraction_line_items ?? []));
+        setReviewYearToDateDraft(createReviewYearToDateDraft(extractionDetails.year_to_date));
+        setReviewContextDraft(createReviewDocumentContextDraft(extractionDetails.extraction_context));
+        setReviewYearToDateEditing(false);
+        setReviewContextEditing(false);
+        setReviewYearToDateErrors({});
+        setReviewContextErrors({});
         setReviewLineItemsChecked(false);
         setReviewLineItemErrors({});
         setReviewLineItemsCheckError('');
@@ -294,6 +316,12 @@ const PayslipUpload = ({ onUploadComplete, resumeReviewId = null }: PayslipUploa
     setReviewLineItemErrors({});
     setReviewLineItemsChecked(false);
     setReviewLineItemsCheckError('');
+    setReviewYearToDateDraft(null);
+    setReviewContextDraft(null);
+    setReviewYearToDateEditing(false);
+    setReviewContextEditing(false);
+    setReviewYearToDateErrors({});
+    setReviewContextErrors({});
   };
 
   const updateField = (key: keyof ReviewFields, value: string) => {
@@ -353,6 +381,33 @@ const PayslipUpload = ({ onUploadComplete, resumeReviewId = null }: PayslipUploa
       if (!current[id]) return current;
       const next = { ...current };
       delete next[id];
+      return next;
+    });
+  };
+
+  const updateReviewYearToDate = (key: ReviewYearToDateField, value: string) => {
+    setReviewYearToDateDraft((current) => current ? { ...current, [key]: value } : current);
+    setReviewLineItemsChecked(false);
+    setReviewLineItemsCheckError('');
+    setReviewYearToDateErrors((current) => {
+      if (!current[key]) return current;
+      const next = { ...current };
+      delete next[key];
+      return next;
+    });
+  };
+
+  const updateReviewContext = <Key extends ReviewDocumentContextField>(
+    key: Key,
+    value: ReviewDocumentContextDraft[Key],
+  ) => {
+    setReviewContextDraft((current) => current ? { ...current, [key]: value } : current);
+    setReviewLineItemsChecked(false);
+    setReviewLineItemsCheckError('');
+    setReviewContextErrors((current) => {
+      if (!current[key]) return current;
+      const next = { ...current };
+      delete next[key];
       return next;
     });
   };
@@ -434,6 +489,12 @@ const PayslipUpload = ({ onUploadComplete, resumeReviewId = null }: PayslipUploa
         const extractionDetails = normalizeExtractionDetails(extraction);
         setReviewExtraction(extractionDetails);
         setReviewLineItems(createReviewLineItemDrafts(extractionDetails.extraction_line_items ?? []));
+        setReviewYearToDateDraft(createReviewYearToDateDraft(extractionDetails.year_to_date));
+        setReviewContextDraft(createReviewDocumentContextDraft(extractionDetails.extraction_context));
+        setReviewYearToDateEditing(false);
+        setReviewContextEditing(false);
+        setReviewYearToDateErrors({});
+        setReviewContextErrors({});
         setReviewLineItemsChecked(false);
         setReviewLineItemErrors({});
         setReviewLineItemsCheckError('');
@@ -648,6 +709,12 @@ const PayslipUpload = ({ onUploadComplete, resumeReviewId = null }: PayslipUploa
       setFieldMeta(meta);
       setReviewExtraction(emptyReviewExtractionDetails());
       setReviewLineItems([]);
+      setReviewYearToDateDraft(null);
+      setReviewContextDraft(null);
+      setReviewYearToDateEditing(false);
+      setReviewContextEditing(false);
+      setReviewYearToDateErrors({});
+      setReviewContextErrors({});
       setReviewLineItemsChecked(false);
       setReviewLineItemErrors({});
       setReviewLineItemsCheckError('');
@@ -705,8 +772,29 @@ const PayslipUpload = ({ onUploadComplete, resumeReviewId = null }: PayslipUploa
     }
 
     setReviewLineItemErrors({});
-    if (reviewLineItems.length > 0 && !reviewLineItemsChecked) {
-      setReviewLineItemsCheckError('Confirm that you checked these detailed rows against the original payslip.');
+    const yearToDateValidation = validateReviewYearToDate(reviewYearToDateDraft);
+    if (Object.keys(yearToDateValidation.errors).length > 0) {
+      setReviewYearToDateErrors(yearToDateValidation.errors);
+      setReviewYearToDateEditing(true);
+      const firstInvalidField = Object.keys(yearToDateValidation.errors)[0] as ReviewYearToDateField;
+      requestAnimationFrame(() => reviewSupportingInputRefs.current[firstInvalidField]?.focus());
+      return;
+    }
+    setReviewYearToDateErrors({});
+
+    const contextValidation = validateReviewDocumentContext(reviewContextDraft);
+    if (Object.keys(contextValidation.errors).length > 0) {
+      setReviewContextErrors(contextValidation.errors);
+      setReviewContextEditing(true);
+      const firstInvalidField = Object.keys(contextValidation.errors)[0] as ReviewDocumentContextField;
+      requestAnimationFrame(() => reviewSupportingInputRefs.current[firstInvalidField]?.focus());
+      return;
+    }
+    setReviewContextErrors({});
+
+    const hasDetailedReview = reviewLineItems.length > 0 || reviewYearToDateDraft !== null || reviewContextDraft !== null;
+    if (hasDetailedReview && !reviewLineItemsChecked) {
+      setReviewLineItemsCheckError('Confirm that you checked these detailed payslip values against the original.');
       requestAnimationFrame(() => reviewLineItemsCheckboxRef.current?.focus());
       return;
     }
@@ -727,6 +815,8 @@ const PayslipUpload = ({ onUploadComplete, resumeReviewId = null }: PayslipUploa
         p_pension_amount: parseReviewAmount(reviewFields.pension_amount),
         p_total_deductions: parseReviewAmount(reviewFields.total_deductions),
         p_line_items: lineItemValidation.lineItems,
+        p_year_to_date: yearToDateValidation.yearToDate,
+        p_document_context: contextValidation.documentContext,
       });
 
       if (confirmationError) {
@@ -793,13 +883,19 @@ const PayslipUpload = ({ onUploadComplete, resumeReviewId = null }: PayslipUploa
   // Determine which monetary fields to show based on country
   const isIreland = reviewCountry === 'Ireland';
   const reviewFieldEvidence = reviewExtraction.extraction_field_evidence ?? [];
-  const reviewYearToDate = reviewExtraction.year_to_date;
-  const reviewExtractionContextEntries = reviewExtraction.extraction_context
-    ? EXTRACTION_CONTEXT_FIELDS.flatMap(({ key, label }) => {
-        const value = reviewExtraction.extraction_context?.[key];
-        return value ? [{ key, label, value: formatExtractionContextValue(key, value) }] : [];
-      })
-    : [];
+  const reviewExtractionContextEntries = reviewContextDraft ? [
+    ...(!isIreland && reviewContextDraft.taxCode ? [{ key: 'taxCode', label: 'Tax code', value: reviewContextDraft.taxCode }] : []),
+    ...(!isIreland && reviewContextDraft.nationalInsuranceCategory
+      ? [{ key: 'nationalInsuranceCategory', label: 'NI category', value: reviewContextDraft.nationalInsuranceCategory }]
+      : []),
+    ...(isIreland && reviewContextDraft.prsiClass ? [{ key: 'prsiClass', label: 'PRSI class', value: reviewContextDraft.prsiClass }] : []),
+    ...(reviewContextDraft.payFrequency ? [{
+      key: 'payFrequency',
+      label: 'Pay frequency',
+      value: formatExtractionContextValue('pay_frequency', reviewContextDraft.payFrequency),
+    }] : []),
+    ...(reviewContextDraft.payBasis ? [{ key: 'payBasis', label: 'Pay basis', value: reviewContextDraft.payBasis }] : []),
+  ] : [];
   const reviewCurrency = reviewExtraction.currency ?? (isIreland ? 'EUR' : 'GBP');
 
   const renderFieldStatus = (key: string) => {
@@ -1103,7 +1199,173 @@ const PayslipUpload = ({ onUploadComplete, resumeReviewId = null }: PayslipUploa
                   <p className="pi-review-line-item-error" role="alert">{reviewLineItemErrors._form.label}</p>
                 )}
 
-                {reviewLineItems.length > 0 && (
+                {reviewYearToDateDraft && (
+                  <div className="pi-review-supporting" aria-label="Year-to-date figures">
+                    <div className="pi-review-supporting-header">
+                      <div>
+                        <p>Year-to-date figures</p>
+                        <span>Check cumulative values as carefully as this payslip’s amounts.</span>
+                      </div>
+                      <button type="button" onClick={() => setReviewYearToDateEditing((editing) => !editing)}>
+                        <Pencil aria-hidden="true" /> {reviewYearToDateEditing ? 'Done' : 'Edit'}
+                      </button>
+                    </div>
+                    {reviewYearToDateEditing ? (
+                      <div className="pi-review-supporting-editor">
+                        {([
+                          ['grossPay', 'Gross YTD'],
+                          ['tax', 'Tax YTD'],
+                          ['ni', 'NI / PRSI YTD'],
+                          ['pension', 'Pension YTD'],
+                        ] as const).map(([key, label]) => (
+                          <div className="pi-review-line-item-field" key={key}>
+                            <Label htmlFor={`review-ytd-${key}`}>{label}</Label>
+                            <Input
+                              ref={(node) => { reviewSupportingInputRefs.current[key] = node; }}
+                              id={`review-ytd-${key}`}
+                              type="number"
+                              min="0"
+                              max="10000000"
+                              step="0.01"
+                              value={reviewYearToDateDraft[key]}
+                              onChange={(event) => updateReviewYearToDate(key, event.target.value)}
+                              aria-invalid={Boolean(reviewYearToDateErrors[key])}
+                              aria-describedby={reviewYearToDateErrors[key] ? `review-ytd-${key}-error` : undefined}
+                            />
+                            {reviewYearToDateErrors[key] && <p id={`review-ytd-${key}-error`} role="alert">{reviewYearToDateErrors[key]}</p>}
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="pi-review-extraction-ytd">
+                        {([
+                          ['Gross YTD', reviewYearToDateDraft.grossPay],
+                          ['Tax YTD', reviewYearToDateDraft.tax],
+                          ['NI / PRSI YTD', reviewYearToDateDraft.ni],
+                          ['Pension YTD', reviewYearToDateDraft.pension],
+                        ] as const).map(([label, value]) => (
+                          <div key={label}>
+                            <span>{label}</span>
+                            <strong>{formatReviewDraftMoney(value, reviewCurrency)}</strong>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {reviewContextDraft && (
+                  <div className="pi-review-supporting" aria-label="Payroll context printed on the payslip">
+                    <div className="pi-review-supporting-header">
+                      <div>
+                        <p>Payroll context</p>
+                        <span>Tax code, contribution class and pay basis can explain a change.</span>
+                      </div>
+                      <button type="button" onClick={() => setReviewContextEditing((editing) => !editing)}>
+                        <Pencil aria-hidden="true" /> {reviewContextEditing ? 'Done' : 'Edit'}
+                      </button>
+                    </div>
+                    {reviewContextEditing ? (
+                      <div className="pi-review-supporting-editor">
+                        {!isIreland && (
+                          <>
+                            <div className="pi-review-line-item-field">
+                              <Label htmlFor="review-context-tax-code">Tax code</Label>
+                              <Input
+                                ref={(node) => { reviewSupportingInputRefs.current.taxCode = node; }}
+                                id="review-context-tax-code"
+                                value={reviewContextDraft.taxCode}
+                                maxLength={40}
+                                onChange={(event) => updateReviewContext('taxCode', event.target.value)}
+                                aria-invalid={Boolean(reviewContextErrors.taxCode)}
+                              />
+                              {reviewContextErrors.taxCode && <p role="alert">{reviewContextErrors.taxCode}</p>}
+                            </div>
+                            <div className="pi-review-line-item-field">
+                              <Label htmlFor="review-context-ni-category">NI category</Label>
+                              <Input
+                                ref={(node) => { reviewSupportingInputRefs.current.nationalInsuranceCategory = node; }}
+                                id="review-context-ni-category"
+                                value={reviewContextDraft.nationalInsuranceCategory}
+                                maxLength={20}
+                                onChange={(event) => updateReviewContext('nationalInsuranceCategory', event.target.value)}
+                                aria-invalid={Boolean(reviewContextErrors.nationalInsuranceCategory)}
+                              />
+                              {reviewContextErrors.nationalInsuranceCategory && <p role="alert">{reviewContextErrors.nationalInsuranceCategory}</p>}
+                            </div>
+                          </>
+                        )}
+                        {isIreland && (
+                          <div className="pi-review-line-item-field">
+                            <Label htmlFor="review-context-prsi-class">PRSI class</Label>
+                            <Input
+                              ref={(node) => { reviewSupportingInputRefs.current.prsiClass = node; }}
+                              id="review-context-prsi-class"
+                              value={reviewContextDraft.prsiClass}
+                              maxLength={20}
+                              onChange={(event) => updateReviewContext('prsiClass', event.target.value)}
+                              aria-invalid={Boolean(reviewContextErrors.prsiClass)}
+                            />
+                            {reviewContextErrors.prsiClass && <p role="alert">{reviewContextErrors.prsiClass}</p>}
+                          </div>
+                        )}
+                        <div className="pi-review-line-item-field">
+                          <Label htmlFor="review-context-frequency">Pay frequency</Label>
+                          <select
+                            ref={(node) => { reviewSupportingInputRefs.current.payFrequency = node; }}
+                            id="review-context-frequency"
+                            value={reviewContextDraft.payFrequency}
+                            onChange={(event) => updateReviewContext('payFrequency', event.target.value as ReviewDocumentContextDraft['payFrequency'])}
+                          >
+                            <option value="">Not shown</option>
+                            <option value="weekly">Weekly</option>
+                            <option value="fortnightly">Fortnightly</option>
+                            <option value="four_weekly">Four-weekly</option>
+                            <option value="monthly">Monthly</option>
+                            <option value="annual">Annual</option>
+                            <option value="other">Other</option>
+                          </select>
+                        </div>
+                        <div className="pi-review-line-item-field">
+                          <Label htmlFor="review-context-pay-basis">Pay basis</Label>
+                          <Input
+                            ref={(node) => { reviewSupportingInputRefs.current.payBasis = node; }}
+                            id="review-context-pay-basis"
+                            value={reviewContextDraft.payBasis}
+                            maxLength={40}
+                            onChange={(event) => updateReviewContext('payBasis', event.target.value)}
+                            aria-invalid={Boolean(reviewContextErrors.payBasis)}
+                          />
+                          {reviewContextErrors.payBasis && <p role="alert">{reviewContextErrors.payBasis}</p>}
+                        </div>
+                      </div>
+                    ) : reviewExtractionContextEntries.length > 0 ? (
+                      <div className="pi-review-extraction-context-values">
+                        {reviewExtractionContextEntries.map((item) => (
+                          <div key={item.key}>
+                            <span>{item.label}</span>
+                            <strong>{item.value}</strong>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="pi-review-supporting-empty">No payroll context was transcribed. Choose Edit if the original shows it.</p>
+                    )}
+                  </div>
+                )}
+
+                {reviewFieldEvidence.length > 0 && (
+                  <details className="pi-review-extraction-evidence">
+                    <summary>Show headline source snippets ({reviewFieldEvidence.length})</summary>
+                    <div>
+                      {reviewFieldEvidence.map((item, index) => (
+                        <p key={`${item.field}-${index}`}><strong>{item.field.replace(/_/g, ' ')}</strong>{item.evidence ? ` — “${item.evidence}”` : ''}</p>
+                      ))}
+                    </div>
+                  </details>
+                )}
+
+                {(reviewLineItems.length > 0 || reviewYearToDateDraft || reviewContextDraft) && (
                   <div className={`pi-review-line-item-check ${reviewLineItemsCheckError ? 'pi-review-line-item-check--error' : ''}`}>
                     <input
                       ref={reviewLineItemsCheckboxRef}
@@ -1118,55 +1380,13 @@ const PayslipUpload = ({ onUploadComplete, resumeReviewId = null }: PayslipUploa
                       aria-describedby={reviewLineItemsCheckError ? 'review-line-items-check-help review-line-items-check-error' : 'review-line-items-check-help'}
                     />
                     <label htmlFor="review-line-items-checked">
-                      <strong>I checked these rows against the original.</strong>
-                      <span id="review-line-items-check-help">Only the rows shown here will be saved to your confirmed history.</span>
+                      <strong>I checked these detailed values against the original.</strong>
+                      <span id="review-line-items-check-help">These rows and payroll details will be saved with your confirmed history.</span>
                     </label>
                   </div>
                 )}
                 {reviewLineItemsCheckError && (
                   <p id="review-line-items-check-error" className="pi-review-line-item-error" role="alert">{reviewLineItemsCheckError}</p>
-                )}
-
-                {reviewYearToDate && (
-                  <div className="pi-review-extraction-ytd" aria-label="Extracted year-to-date figures">
-                    {[
-                      ['Gross YTD', reviewYearToDate.gross_pay],
-                      ['Tax YTD', reviewYearToDate.tax],
-                      ['NI / PRSI YTD', reviewYearToDate.ni],
-                      ['Pension YTD', reviewYearToDate.pension],
-                    ].map(([label, value]) => (
-                      <div key={label as string}>
-                        <span>{label}</span>
-                        <strong>{typeof value === 'number' ? formatReviewMoney(value, reviewCurrency) : '—'}</strong>
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                {reviewExtractionContextEntries.length > 0 && (
-                  <div className="pi-review-extraction-context" aria-label="Extracted payroll context">
-                    <p>Payroll context printed on the payslip</p>
-                    <span>Useful labels to check against the original, not a payroll verdict.</span>
-                    <div>
-                      {reviewExtractionContextEntries.map((item) => (
-                        <div key={item.key}>
-                          <span>{item.label}</span>
-                          <strong>{item.value}</strong>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {reviewFieldEvidence.length > 0 && (
-                  <details className="pi-review-extraction-evidence">
-                    <summary>Show headline source snippets ({reviewFieldEvidence.length})</summary>
-                    <div>
-                      {reviewFieldEvidence.map((item, index) => (
-                        <p key={`${item.field}-${index}`}><strong>{item.field.replace(/_/g, ' ')}</strong>{item.evidence ? ` — “${item.evidence}”` : ''}</p>
-                      ))}
-                    </div>
-                  </details>
                 )}
             </section>
 

@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -388,7 +388,7 @@ describe('PayslipUpload processing failure', () => {
     await waitFor(() => expect(screen.getByLabelText(/Pay date/)).toHaveFocus());
   });
 
-  it('requires the detailed rows to be checked before they can join confirmed history', async () => {
+  it('requires detailed payslip values to be checked before they can join confirmed history', async () => {
     mocks.payslipSelect.mockResolvedValue({
       data: {
         country: 'UK',
@@ -427,8 +427,8 @@ describe('PayslipUpload processing failure', () => {
 
     fireEvent.click(await screen.findByRole('button', { name: 'Confirm my payslip' }));
 
-    expect(await screen.findByText('Confirm that you checked these detailed rows against the original payslip.')).toBeInTheDocument();
-    expect(screen.getByRole('checkbox', { name: /I checked these rows against the original/i })).toHaveFocus();
+    expect(await screen.findByText('Confirm that you checked these detailed payslip values against the original.')).toBeInTheDocument();
+    expect(screen.getByRole('checkbox', { name: /I checked these detailed values against the original/i })).toHaveFocus();
     expect(mocks.rpc).not.toHaveBeenCalledWith('confirm_payslip_review', expect.anything());
   });
 
@@ -481,7 +481,7 @@ describe('PayslipUpload processing failure', () => {
     fireEvent.change(typePickers.at(-1) as HTMLSelectElement, { target: { value: 'deduction' } });
     const currentAmounts = screen.getAllByLabelText('This payslip');
     fireEvent.change(currentAmounts.at(-1) as HTMLInputElement, { target: { value: '35' } });
-    fireEvent.click(screen.getByRole('checkbox', { name: /I checked these rows against the original/i }));
+    fireEvent.click(screen.getByRole('checkbox', { name: /I checked these detailed values against the original/i }));
     fireEvent.click(screen.getByRole('button', { name: 'Confirm my payslip' }));
 
     await waitFor(() => expect(mocks.rpc).toHaveBeenCalledWith('confirm_payslip_review', expect.objectContaining({
@@ -501,6 +501,67 @@ describe('PayslipUpload processing failure', () => {
           year_to_date_amount: null,
         },
       ],
+    })));
+  });
+
+  it('sends corrected year-to-date and payroll context through the same confirmation call', async () => {
+    mocks.payslipSelect.mockResolvedValue({
+      data: {
+        country: 'UK',
+        file_name: 'April payslip.pdf',
+        pay_date: '2026-08-01',
+        status: 'needs_review',
+      },
+      error: null,
+    });
+    mocks.extractionSelect.mockResolvedValue({
+      data: {
+        gross_pay: 2200,
+        net_pay: 1600,
+        tax_amount: 400,
+        total_deductions: 600,
+        year_to_date_json: { gross_pay: 6600, tax: 1200, ni: 360, pension: 150 },
+        normalized_json: {
+          currency: 'GBP',
+          document_context: {
+            tax_code: '1257L',
+            national_insurance_category: 'A',
+            prsi_class: null,
+            pay_frequency: 'monthly',
+            pay_basis: 'Salary',
+          },
+          line_items: [],
+        },
+      },
+      error: null,
+    });
+
+    render(
+      <MemoryRouter>
+        <PayslipUpload resumeReviewId="review-supporting-details" />
+      </MemoryRouter>,
+    );
+
+    const ytdReview = await screen.findByLabelText('Year-to-date figures');
+    fireEvent.click(within(ytdReview).getByRole('button', { name: 'Edit' }));
+    fireEvent.change(within(ytdReview).getByLabelText('Tax YTD'), { target: { value: '1250.50' } });
+
+    const contextReview = screen.getByLabelText('Payroll context printed on the payslip');
+    fireEvent.click(within(contextReview).getByRole('button', { name: 'Edit' }));
+    fireEvent.change(within(contextReview).getByLabelText('Tax code'), { target: { value: 'S1257L' } });
+
+    fireEvent.click(screen.getByRole('checkbox', { name: /I checked these detailed values against the original/i }));
+    fireEvent.click(screen.getByRole('button', { name: 'Confirm my payslip' }));
+
+    await waitFor(() => expect(mocks.rpc).toHaveBeenCalledWith('confirm_payslip_review', expect.objectContaining({
+      p_year_to_date: { gross_pay: 6600, tax: 1250.5, ni: 360, pension: 150 },
+      p_document_context: {
+        tax_code: 'S1257L',
+        national_insurance_category: 'A',
+        prsi_class: null,
+        pay_frequency: 'monthly',
+        pay_basis: 'Salary',
+      },
     })));
   });
 

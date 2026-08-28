@@ -13,7 +13,9 @@ type ExtractionDetails = Pick<
   | 'extraction_line_items'
   | 'extraction_field_evidence'
   | 'year_to_date'
+  | 'year_to_date_reviewed'
   | 'extraction_context'
+  | 'extraction_context_reviewed'
 >;
 
 export const EXTRACTION_CONTEXT_FIELDS: ReadonlyArray<{
@@ -142,6 +144,8 @@ export function normalizeExtractionDetails(extraction: unknown): ExtractionDetai
     extraction_line_items: parseLineItems(normalized.line_items),
     extraction_field_evidence: parseFieldEvidence(normalized.field_evidence),
     year_to_date: parseYearToDate(row.year_to_date_json ?? normalized.year_to_date),
+    year_to_date_reviewed: normalized.year_to_date_reviewed === true,
     extraction_context: parseExtractionContext(normalized.document_context),
+    extraction_context_reviewed: normalized.document_context_reviewed === true,
   };
 }

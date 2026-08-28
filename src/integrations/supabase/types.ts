@@ -755,6 +755,8 @@ export type Database = {
           p_pension_amount: number | null
           p_total_deductions: number | null
           p_line_items?: Json | null
+          p_year_to_date?: Json | null
+          p_document_context?: Json | null
         }
         Returns: undefined
       }

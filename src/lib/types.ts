@@ -79,7 +79,9 @@ export interface Payslip {
   extraction_line_items?: PayslipLineItem[];
   extraction_field_evidence?: PayslipFieldEvidence[];
   year_to_date?: PayslipYearToDate;
+  year_to_date_reviewed?: boolean;
   extraction_context?: PayslipExtractionContext;
+  extraction_context_reviewed?: boolean;
   anomaly_count: number;
 }
 

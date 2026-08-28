@@ -207,6 +207,7 @@ const PayslipDetail = () => {
               {yearToDate && (
                 <div>
                   <h3 className="text-sm font-semibold text-foreground">Year to date</h3>
+                  {slip.year_to_date_reviewed && <p className="mt-1 text-xs text-muted-foreground">Checked by you against the original payslip.</p>}
                   <div className="mt-3 grid gap-3 sm:grid-cols-2">
                     {[
                       { label: 'Gross pay', value: yearToDate.gross_pay },
@@ -226,7 +227,11 @@ const PayslipDetail = () => {
               {extractionContextEntries.length > 0 && (
                 <div>
                   <h3 className="text-sm font-semibold text-foreground">Payroll context printed on the payslip</h3>
-                  <p className="mt-1 text-xs text-muted-foreground">Useful labels for understanding a deduction; they do not confirm that payroll is correct.</p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    {slip.extraction_context_reviewed
+                      ? 'Checked by you against the original payslip.'
+                      : 'Useful labels for understanding a deduction; they do not confirm that payroll is correct.'}
+                  </p>
                   <div className="mt-3 grid gap-3 sm:grid-cols-2">
                     {extractionContextEntries.map((item) => (
                       <div key={item.key} className="flex items-center justify-between gap-3 rounded-lg bg-muted/40 px-3 py-2 text-sm">

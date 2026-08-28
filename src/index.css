@@ -1186,6 +1186,95 @@
   margin-top: 3px;
 }
 
+.pi-review-supporting {
+  border-top: 1px solid #e5e0fa;
+  margin-top: 12px;
+  padding-top: 12px;
+}
+
+.pi-review-supporting-header {
+  align-items: flex-start;
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+}
+
+.pi-review-supporting-header p {
+  color: #17155d;
+  font-size: 12px;
+  font-weight: 900;
+  margin: 0;
+}
+
+.pi-review-supporting-header span,
+.pi-review-supporting-empty {
+  color: #64658d;
+  display: block;
+  font-size: 10px;
+  line-height: 1.4;
+  margin-top: 3px;
+}
+
+.pi-review-supporting-header button {
+  align-items: center;
+  color: #704bff;
+  display: inline-flex;
+  flex: 0 0 auto;
+  font-size: 11px;
+  font-weight: 900;
+  gap: 4px;
+  min-height: 30px;
+  padding: 3px 0 3px 8px;
+}
+
+.pi-review-supporting-header button:hover {
+  color: #5035c7;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.pi-review-supporting-header svg {
+  height: 12px;
+  width: 12px;
+}
+
+.pi-review-supporting-editor {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: minmax(0, 1fr);
+  margin-top: 10px;
+}
+
+.pi-review-extraction-context-values {
+  display: grid;
+  gap: 7px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin-top: 9px;
+}
+
+.pi-review-extraction-context-values > div {
+  background: #eeeafe;
+  border-radius: 9px;
+  padding: 8px 9px;
+}
+
+.pi-review-extraction-context-values span,
+.pi-review-extraction-context-values strong {
+  display: block;
+}
+
+.pi-review-extraction-context-values span {
+  color: #64658d;
+  font-size: 10px;
+  font-weight: 750;
+}
+
+.pi-review-extraction-context-values strong {
+  color: #17155d;
+  font-size: 12px;
+  margin-top: 3px;
+}
+
 .pi-review-extraction-ytd {
   display: grid;
   gap: 7px;
@@ -1429,6 +1518,10 @@
   .pi-review-line-item-field--label,
   .pi-review-line-item-editor-actions {
     grid-column: 1 / -1;
+  }
+
+  .pi-review-supporting-editor {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .pi-review-actions {

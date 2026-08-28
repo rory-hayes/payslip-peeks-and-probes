@@ -71,10 +71,10 @@ describe('release source hygiene', () => {
     expect(existsSync(projectFile('bun.lockb'))).toBe(false);
   });
 
-  it('keeps the web release gate aligned with the latest reviewed-line-item migration', () => {
+  it('keeps the web release gate aligned with the latest reviewed-detail migration', () => {
     const preflight = readFileSync(projectFile('scripts/release-web-preflight.mjs'), 'utf8');
     const readme = readFileSync(projectFile('README.md'), 'utf8');
-    const latestMigration = '20260828190000_confirm_review_line_items.sql';
+    const latestMigration = '20260828200000_confirm_review_supporting_details.sql';
 
     expect(existsSync(projectFile(`supabase/migrations/${latestMigration}`))).toBe(true);
     expect(preflight).toContain(`const REQUIRED_MIGRATION = "${latestMigration}"`);
