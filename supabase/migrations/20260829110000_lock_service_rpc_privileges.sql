@@ -66,12 +66,19 @@ DECLARE
   authenticated_function_names constant text[] := ARRAY[
     'begin_manual_payslip_review',
     'confirm_payslip_review',
-    'delete_failed_payslip',
     'has_active_subscription',
     'save_payday_check_in',
     'save_payday_plan'
   ];
 BEGIN
+  -- The legacy browser RPC was retired when direct Storage writes were locked
+  -- down. Keep it unavailable even if an older migration granted it to
+  -- authenticated before the server-owned cleanup flow was introduced.
+  IF to_regprocedure('public.delete_failed_payslip(uuid)') IS NOT NULL THEN
+    REVOKE ALL ON FUNCTION public.delete_failed_payslip(uuid)
+      FROM PUBLIC, anon, authenticated;
+  END IF;
+
   FOR service_function IN
     SELECT
       namespace.nspname AS schema_name,
@@ -149,6 +156,15 @@ BEGIN
       )
   ) THEN
     RAISE EXCEPTION 'A signed-in Payslip Insights RPC has an invalid browser-role privilege';
+  END IF;
+
+  IF to_regprocedure('public.delete_failed_payslip(uuid)') IS NOT NULL
+    AND (
+      has_function_privilege('anon', 'public.delete_failed_payslip(uuid)', 'EXECUTE')
+      OR has_function_privilege('authenticated', 'public.delete_failed_payslip(uuid)', 'EXECUTE')
+    )
+  THEN
+    RAISE EXCEPTION 'The retired browser-side failed-payslip deletion RPC is callable';
   END IF;
 END
 $migration$;

@@ -84,6 +84,26 @@ describe('release source hygiene', () => {
     expect(readme).toContain(latestMigration);
   });
 
+  it('does not reopen the retired browser-side failed-payslip deletion RPC', () => {
+    const privilegeMigration = readFileSync(
+      projectFile('supabase/migrations/20260829110000_lock_service_rpc_privileges.sql'),
+      'utf8',
+    );
+    const authenticatedList = privilegeMigration.match(
+      /authenticated_function_names constant text\[\] := ARRAY\[([\s\S]*?)\];/,
+    )?.[1];
+
+    expect(authenticatedList).toBeDefined();
+    expect(authenticatedList).not.toContain("'delete_failed_payslip'");
+    expect(privilegeMigration).toContain("'delete_failed_payslip_after_storage_cleanup'");
+    expect(privilegeMigration).toContain(
+      "REVOKE ALL ON FUNCTION public.delete_failed_payslip(uuid)",
+    );
+    expect(privilegeMigration).toContain(
+      "RAISE EXCEPTION 'The retired browser-side failed-payslip deletion RPC is callable'",
+    );
+  });
+
   it('keeps the secure storage migration behind an exact-client cutover gate', () => {
     const deployment = readFileSync(projectFile('scripts/deploy-supabase.mjs'), 'utf8');
     const lockdownMigration = '20260804115000_lock_down_direct_payslip_storage.sql';
