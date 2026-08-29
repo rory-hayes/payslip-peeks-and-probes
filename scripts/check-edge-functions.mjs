@@ -3,6 +3,11 @@ import path from 'node:path';
 import ts from 'typescript';
 
 const functionsRoot = path.resolve('supabase/functions');
+const migrationsRoot = path.resolve('supabase/migrations');
+const servicePrivilegeMigrationPath = path.join(
+  migrationsRoot,
+  '20260829110000_lock_service_rpc_privileges.sql',
+);
 const criticalNoStoreFunctions = [
   'create-checkout',
   'create-portal-session',
@@ -65,6 +70,33 @@ for (const functionName of criticalNoStoreFunctions) {
   if (!source.includes('Cache-Control') || !source.includes('no-store')) {
     errors.push(`${path.relative(process.cwd(), entry.path)} must return Cache-Control: no-store for sensitive responses.`);
   }
+}
+
+const migrationSources = readdirSync(migrationsRoot)
+  .filter((name) => /^\d{14}_.*\.sql$/.test(name))
+  .sort()
+  .map((name) => readFileSync(path.join(migrationsRoot, name), 'utf8'));
+const serviceOnlyFunctionNames = new Set();
+const serviceRoleGrantPattern = /GRANT\s+EXECUTE\s+ON\s+FUNCTION\s+public\.([a-z0-9_]+)\s*\([^;]*?\)\s+TO\s+service_role\s*;/gim;
+
+for (const source of migrationSources) {
+  for (const match of source.matchAll(serviceRoleGrantPattern)) {
+    serviceOnlyFunctionNames.add(match[1]);
+  }
+}
+
+const servicePrivilegeMigration = readFileSync(servicePrivilegeMigrationPath, 'utf8');
+for (const functionName of [...serviceOnlyFunctionNames].sort()) {
+  if (!servicePrivilegeMigration.includes(`'${functionName}'`)) {
+    errors.push(`Service-only RPC ${functionName} is missing from the final browser-role privilege lock.`);
+  }
+}
+
+if (!servicePrivilegeMigration.includes('FROM PUBLIC, anon, authenticated')) {
+  errors.push('The service RPC privilege lock must explicitly revoke PUBLIC, anon, and authenticated grants.');
+}
+if (!servicePrivilegeMigration.includes('ALTER DEFAULT PRIVILEGES FOR ROLE postgres')) {
+  errors.push('The service RPC privilege lock must remove permissive future function defaults.');
 }
 
 if (errors.length > 0) {
