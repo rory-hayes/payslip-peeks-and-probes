@@ -4,6 +4,7 @@ import {
   exportTaxReviewProgress,
   readTaxReviewProgress,
   writeTaxReviewProgress,
+  writeTaxReviewTopicSelection,
   type TaxReviewProgressStorage,
 } from './tax-review-progress';
 
@@ -39,8 +40,57 @@ describe('tax review progress', () => {
     expect(exportTaxReviewProgress(storage, 'user-1')).toEqual([{
       country: 'UK',
       reviewedStepIds: ['gather'],
+      selectedTopicIds: [],
       taxYearLabel: '2025/26',
     }]);
+  });
+
+  it('preserves checklist steps and selected review topics when either changes', () => {
+    const storage = memoryStorage();
+
+    expect(writeTaxReviewTopicSelection(
+      storage,
+      'user-1',
+      'UK',
+      '2025/26',
+      ['uk-pension', 'unknown'],
+      ['uk-pension', 'uk-gift-aid'],
+    )).toBe(true);
+    expect(writeTaxReviewProgress(storage, 'user-1', 'UK', '2025/26', ['gather'], ['gather'])).toBe(true);
+
+    expect(readTaxReviewProgress(
+      storage,
+      'user-1',
+      'UK',
+      '2025/26',
+      ['gather'],
+      ['uk-pension', 'uk-gift-aid'],
+    )).toEqual({
+      available: true,
+      reviewedStepIds: ['gather'],
+      selectedTopicIds: ['uk-pension'],
+    });
+
+    expect(writeTaxReviewTopicSelection(
+      storage,
+      'user-1',
+      'UK',
+      '2025/26',
+      ['uk-gift-aid'],
+      ['uk-pension', 'uk-gift-aid'],
+    )).toBe(true);
+    expect(readTaxReviewProgress(
+      storage,
+      'user-1',
+      'UK',
+      '2025/26',
+      ['gather'],
+      ['uk-pension', 'uk-gift-aid'],
+    )).toEqual({
+      available: true,
+      reviewedStepIds: ['gather'],
+      selectedTopicIds: ['uk-gift-aid'],
+    });
   });
 
   it('fails safely when browser storage is unavailable and clears one account only', () => {
@@ -54,6 +104,7 @@ describe('tax review progress', () => {
     expect(readTaxReviewProgress(null, 'user-1', 'UK', '2025/26', ['gather'])).toEqual({
       available: false,
       reviewedStepIds: [],
+      selectedTopicIds: [],
     });
     expect(writeTaxReviewProgress(null, 'user-1', 'UK', '2025/26', ['gather'], ['gather'])).toBe(false);
   });

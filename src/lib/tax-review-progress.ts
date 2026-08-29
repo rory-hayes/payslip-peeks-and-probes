@@ -3,12 +3,14 @@ export type TaxReviewProgressCountry = 'Ireland' | 'UK';
 export interface TaxReviewProgressEntry {
   country: TaxReviewProgressCountry;
   reviewedStepIds: string[];
+  selectedTopicIds: string[];
   taxYearLabel: string;
 }
 
 export interface TaxReviewProgressReadResult {
   available: boolean;
   reviewedStepIds: string[];
+  selectedTopicIds: string[];
 }
 
 export interface TaxReviewProgressStorage {
@@ -60,6 +62,7 @@ function normaliseEntry(value: unknown): TaxReviewProgressEntry | null {
   return {
     country: candidate.country,
     reviewedStepIds: uniqueStepIds(candidate.reviewedStepIds),
+    selectedTopicIds: uniqueStepIds(candidate.selectedTopicIds),
     taxYearLabel: candidate.taxYearLabel,
   };
 }
@@ -112,16 +115,19 @@ export function readTaxReviewProgress(
   country: TaxReviewProgressCountry,
   taxYearLabel: string,
   validStepIds: readonly string[],
+  validTopicIds: readonly string[] = [],
 ): TaxReviewProgressReadResult {
   const { available, document } = readDocument(storage, userId);
   const review = document.reviews.find((entry) => (
     entry.country === country && entry.taxYearLabel === taxYearLabel
   ));
   const validSteps = new Set(validStepIds);
+  const validTopics = new Set(validTopicIds);
 
   return {
     available,
     reviewedStepIds: (review?.reviewedStepIds ?? []).filter((stepId) => validSteps.has(stepId)),
+    selectedTopicIds: (review?.selectedTopicIds ?? []).filter((topicId) => validTopics.has(topicId)),
   };
 }
 
@@ -137,9 +143,50 @@ export function writeTaxReviewProgress(
   if (!current.available || !storage) return false;
 
   const validSteps = new Set(validStepIds);
+  const previousEntry = current.document.reviews.find((entry) => (
+    entry.country === country && entry.taxYearLabel === taxYearLabel
+  ));
   const nextEntry: TaxReviewProgressEntry = {
     country,
     reviewedStepIds: uniqueStepIds(reviewedStepIds).filter((stepId) => validSteps.has(stepId)),
+    selectedTopicIds: previousEntry?.selectedTopicIds ?? [],
+    taxYearLabel,
+  };
+  const nextReviews = current.document.reviews.filter((entry) => !(
+    entry.country === country && entry.taxYearLabel === taxYearLabel
+  ));
+  nextReviews.push(nextEntry);
+
+  try {
+    storage.setItem(storageKey(userId), JSON.stringify({
+      reviews: nextReviews.slice(-MAX_REVIEWS),
+      version: 1,
+    } satisfies TaxReviewProgressDocument));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export function writeTaxReviewTopicSelection(
+  storage: TaxReviewProgressStorage | null,
+  userId: string,
+  country: TaxReviewProgressCountry,
+  taxYearLabel: string,
+  selectedTopicIds: readonly string[],
+  validTopicIds: readonly string[],
+): boolean {
+  const current = readDocument(storage, userId);
+  if (!current.available || !storage) return false;
+
+  const validTopics = new Set(validTopicIds);
+  const previousEntry = current.document.reviews.find((entry) => (
+    entry.country === country && entry.taxYearLabel === taxYearLabel
+  ));
+  const nextEntry: TaxReviewProgressEntry = {
+    country,
+    reviewedStepIds: previousEntry?.reviewedStepIds ?? [],
+    selectedTopicIds: uniqueStepIds(selectedTopicIds).filter((topicId) => validTopics.has(topicId)),
     taxYearLabel,
   };
   const nextReviews = current.document.reviews.filter((entry) => !(

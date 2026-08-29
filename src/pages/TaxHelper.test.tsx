@@ -1,9 +1,10 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import TaxHelper from './TaxHelper';
 
 const state = vi.hoisted(() => ({ isDemo: true, profileCountry: 'UK' as string | null | undefined }));
+const clipboardWrite = vi.fn(async () => undefined);
 
 function installLocalStorage() {
   const values = new Map<string, string>();
@@ -43,6 +44,11 @@ describe('TaxHelper', () => {
     state.isDemo = true;
     state.profileCountry = 'UK';
     installLocalStorage();
+    clipboardWrite.mockClear();
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: { writeText: clipboardWrite },
+    });
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2026-08-28T12:00:00.000Z'));
   });
@@ -62,12 +68,15 @@ describe('TaxHelper', () => {
     expect(screen.getByRole('heading', { name: 'Sample 2025/26 review' })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Could any of these apply to you?' })).toBeInTheDocument();
     expect(screen.getByText('Seen in the sample')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Check the right route before 5 April 2030' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Know what to have ready.' })).toBeInTheDocument();
+    expect(screen.getByText(/sample choices reset when you leave/i)).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /check eligibility and claim route/i })).toHaveAttribute(
       'href',
       'https://www.gov.uk/guidance/claim-tax-relief-on-your-private-pension-payments',
     );
     expect(screen.getByRole('link', { name: /open sample history/i })).toHaveAttribute('href', '/dashboard#pay-history-heading');
-    expect(screen.getByRole('link', { name: /open your official account/i })).toHaveAttribute('href', 'https://www.gov.uk/personal-tax-account');
+    expect(screen.getByRole('link', { name: /check last year’s income tax/i })).toHaveAttribute('href', 'https://www.gov.uk/check-income-tax-last-year');
   });
 
   it('switches tax year without implying a refund calculation', () => {
@@ -75,8 +84,11 @@ describe('TaxHelper', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Current year' }));
 
-    expect(screen.getByRole('heading', { name: 'Sample 2026/27 review' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Sample 2026/27 current-year plan' })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: '0 sample payslips ready' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Fix current-year details before year-end' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /check your current income tax/i })).toHaveAttribute('href', 'https://www.gov.uk/check-income-tax-current-year');
+    expect(screen.queryByRole('link', { name: /check last year’s income tax/i })).not.toBeInTheDocument();
     expect(screen.queryByText('Seen in the sample')).not.toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Guidance, not a refund calculation' })).toBeInTheDocument();
     expect(screen.getByText(/does not calculate your final liability/i)).toBeInTheDocument();
@@ -93,6 +105,25 @@ describe('TaxHelper', () => {
       'https://www.revenue.ie/en/personal-tax-credits-reliefs-and-exemptions/land-and-property/rent-credit/index.aspx',
     );
     expect(screen.queryByRole('heading', { name: 'Marriage Allowance' })).not.toBeInTheDocument();
+  });
+
+  it('turns selected topics into a private records plan that can be copied', async () => {
+    vi.useRealTimers();
+    render(<MemoryRouter><TaxHelper /></MemoryRouter>);
+
+    fireEvent.click(screen.getAllByRole('button', { name: 'Add to my review' })[0]);
+
+    expect(screen.getByRole('button', { name: 'In my review' })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByText('Pension provider or scheme statement')).toBeInTheDocument();
+    expect(screen.getByText(/does not ask you to upload supporting tax documents here/i)).toBeInTheDocument();
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /copy my action plan/i }));
+      await Promise.resolve();
+    });
+    expect(clipboardWrite).toHaveBeenCalledOnce();
+    expect(clipboardWrite.mock.calls[0][0]).toContain('Pension contributions');
+    expect(await screen.findByText('Action plan copied.')).toBeInTheDocument();
   });
 
   it('keeps demo evidence in the UK but defaults a loading real account to Ireland', () => {
@@ -137,5 +168,27 @@ describe('TaxHelper', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Last completed' }));
     expect(screen.getByRole('progressbar')).toHaveAttribute('aria-valuenow', '1');
+  });
+
+  it('keeps selected review areas with the account, country, and tax year', () => {
+    state.isDemo = false;
+    const firstVisit = render(<MemoryRouter><TaxHelper /></MemoryRouter>);
+
+    const giftAidCard = screen.getByRole('heading', { name: 'Gift Aid donations' }).closest('article');
+    expect(giftAidCard).not.toBeNull();
+    fireEvent.click(giftAidCard!.querySelector('button')!);
+    expect(screen.getByText('Your choices are saved on this browser.')).toBeInTheDocument();
+    firstVisit.unmount();
+
+    render(<MemoryRouter><TaxHelper /></MemoryRouter>);
+    const restoredCard = screen.getByRole('heading', { name: 'Gift Aid donations' }).closest('article');
+    expect(restoredCard?.querySelector('button')).toHaveTextContent('In my review');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Current year' }));
+    const currentCard = screen.getByRole('heading', { name: 'Gift Aid donations' }).closest('article');
+    expect(currentCard?.querySelector('button')).toHaveTextContent('Add to my review');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Ireland' }));
+    expect(screen.getAllByRole('button', { name: 'Add to my review' }).length).toBeGreaterThan(0);
   });
 });

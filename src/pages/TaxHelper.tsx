@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router';
-import { ArrowRight, Check, CheckCircle2, ExternalLink, FileCheck2, Landmark, ReceiptText, ShieldCheck, Sparkles } from 'lucide-react';
+import { ArrowRight, Check, CheckCircle2, ClipboardCopy, Clock3, ExternalLink, FileCheck2, Files, Landmark, Plus, ReceiptText, ShieldCheck, Sparkles, X } from 'lucide-react';
 import AppLayout from '@/components/layout/AppLayout';
 import { Button } from '@/components/ui/button';
 import { usePayslips } from '@/hooks/use-payslip-data';
@@ -9,17 +9,24 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useDemo } from '@/contexts/DemoContext';
 import { DEMO_PAYSLIPS } from '@/lib/demo-data';
 import {
+  buildTaxReviewDocumentList,
+  buildTaxReviewPlanText,
+  CURRENT_TAX_STEPS,
   isDateInTaxYear,
   OFFICIAL_TAX_STEPS,
   TAX_REVIEW_TOPICS,
+  taxReviewTiming,
   taxYearWindow,
   type OfficialTaxStep,
   type TaxHelperCountry,
+  type TaxReviewPeriod,
+  type TaxReviewTopic,
 } from '@/lib/tax-helper';
 import {
   browserTaxReviewProgressStorage,
   readTaxReviewProgress,
   writeTaxReviewProgress,
+  writeTaxReviewTopicSelection,
 } from '@/lib/tax-review-progress';
 import './TaxHelper.css';
 
@@ -27,10 +34,229 @@ function countryFromProfile(country: string | null | undefined): TaxHelperCountr
   return country === 'UK' ? 'UK' : 'Ireland';
 }
 
+async function copyText(value: string): Promise<boolean> {
+  try {
+    if (!navigator.clipboard?.writeText) return false;
+    await navigator.clipboard.writeText(value);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function TaxTopicPlanner({
+  country,
+  hasPensionEvidence,
+  isSample,
+  period,
+  steps,
+  taxYearLabel,
+  topics,
+  userId,
+}: {
+  country: TaxHelperCountry;
+  hasPensionEvidence: boolean;
+  isSample: boolean;
+  period: TaxReviewPeriod;
+  steps: OfficialTaxStep[];
+  taxYearLabel: string;
+  topics: TaxReviewTopic[];
+  userId: string | null;
+}) {
+  const validTopicIds = useMemo(() => topics.map((topic) => topic.id), [topics]);
+  const initialProgress = useMemo(() => (
+    userId
+      ? readTaxReviewProgress(
+        browserTaxReviewProgressStorage(),
+        userId,
+        country,
+        taxYearLabel,
+        [],
+        validTopicIds,
+      )
+      : { available: false, reviewedStepIds: [], selectedTopicIds: [] }
+  ), [country, taxYearLabel, userId, validTopicIds]);
+  const [selected, setSelected] = useState<Set<string>>(
+    () => new Set(initialProgress.selectedTopicIds),
+  );
+  const [canPersist, setCanPersist] = useState(initialProgress.available);
+  const [copyStatus, setCopyStatus] = useState<'idle' | 'copied' | 'failed'>('idle');
+  const selectedTopics = topics.filter((topic) => selected.has(topic.id));
+  const documents = buildTaxReviewDocumentList(country, selectedTopics);
+  const baseDocumentCount = buildTaxReviewDocumentList(country, []).length;
+
+  const persistSelection = (next: Set<string>) => {
+    if (!userId) return;
+    setCanPersist(writeTaxReviewTopicSelection(
+      browserTaxReviewProgressStorage(),
+      userId,
+      country,
+      taxYearLabel,
+      [...next],
+      validTopicIds,
+    ));
+  };
+
+  const toggleTopic = (id: string) => {
+    const next = new Set(selected);
+    if (next.has(id)) next.delete(id);
+    else next.add(id);
+    setSelected(next);
+    setCopyStatus('idle');
+    persistSelection(next);
+  };
+
+  const clearTopics = () => {
+    const next = new Set<string>();
+    setSelected(next);
+    setCopyStatus('idle');
+    persistSelection(next);
+  };
+
+  const handleCopy = async () => {
+    const copied = await copyText(buildTaxReviewPlanText({
+      country,
+      documents,
+      period,
+      steps,
+      taxYearLabel,
+      topics: selectedTopics,
+    }));
+    setCopyStatus(copied ? 'copied' : 'failed');
+  };
+
+  const persistenceMessage = userId
+    ? canPersist
+      ? 'Your choices are saved on this browser.'
+      : 'Your choices are not being saved on this browser.'
+    : 'Sample choices reset when you leave.';
+
+  return (
+    <>
+      <section className="tax-helper__scan" aria-labelledby="tax-scan-heading">
+        <div className="tax-helper__section-heading tax-helper__section-heading--scan">
+          <div>
+            <p className="tax-helper__eyebrow">Five-minute scan</p>
+            <h2 id="tax-scan-heading">Could any of these apply to you?</h2>
+            <p className="tax-helper__section-intro">
+              Add anything familiar to your review plan. This does not decide eligibility or estimate a refund—the official rules do.
+            </p>
+          </div>
+          <div className="tax-helper__scan-note"><ReceiptText aria-hidden="true" /> {topics.length} common areas</div>
+        </div>
+
+        <div className="tax-helper__topic-grid">
+          {topics.map((topic) => {
+            const hasSignal = hasPensionEvidence && topic.payslipSignal === 'pension';
+            const isSelected = selected.has(topic.id);
+            const className = [
+              'tax-helper__topic',
+              hasSignal ? 'is-signalled' : '',
+              isSelected ? 'is-selected' : '',
+            ].filter(Boolean).join(' ');
+
+            return (
+              <article className={className} key={topic.id}>
+                <div className="tax-helper__topic-meta">
+                  <span><Landmark aria-hidden="true" /> {topic.source}</span>
+                  {hasSignal ? <strong><Sparkles aria-hidden="true" /> {isSample ? 'Seen in the sample' : 'Seen in your payslips'}</strong> : null}
+                </div>
+                <h3>{topic.title}</h3>
+                <p className="tax-helper__topic-prompt">{topic.prompt}</p>
+                <p className="tax-helper__topic-description">{topic.description}</p>
+                <div className="tax-helper__topic-actions">
+                  <button
+                    aria-pressed={isSelected}
+                    className="tax-helper__topic-select"
+                    onClick={() => toggleTopic(topic.id)}
+                    type="button"
+                  >
+                    {isSelected ? <Check aria-hidden="true" /> : <Plus aria-hidden="true" />}
+                    {isSelected ? 'In my review' : 'Add to my review'}
+                  </button>
+                  <a href={topic.href} rel="noreferrer" target="_blank">
+                    {topic.action} <ExternalLink aria-hidden="true" />
+                  </a>
+                </div>
+              </article>
+            );
+          })}
+        </div>
+      </section>
+
+      <section className="tax-helper__plan" aria-labelledby="tax-plan-heading">
+        <div className="tax-helper__plan-heading">
+          <div>
+            <p className="tax-helper__eyebrow">Your review plan</p>
+            <h2 id="tax-plan-heading">Know what to have ready.</h2>
+            <p>Keep these records privately. Payslip Insights does not ask you to upload supporting tax documents here.</p>
+          </div>
+          <span><Files aria-hidden="true" /> {selectedTopics.length} {selectedTopics.length === 1 ? 'area' : 'areas'} selected</span>
+        </div>
+
+        <div className="tax-helper__plan-grid">
+          <article className="tax-helper__plan-card">
+            <h3>Always useful</h3>
+            <p>Start with the records that connect your pay to the official account.</p>
+            <ul>
+              {documents.slice(0, baseDocumentCount).map((document) => (
+                <li key={document}><CheckCircle2 aria-hidden="true" /> {document}</li>
+              ))}
+            </ul>
+          </article>
+
+          <article className="tax-helper__plan-card">
+            <h3>For the areas you selected</h3>
+            {selectedTopics.length ? (
+              <div className="tax-helper__document-groups">
+                {selectedTopics.map((topic) => (
+                  <details key={topic.id} open={selectedTopics.length === 1}>
+                    <summary>{topic.title}<span>{topic.documents.length} items</span></summary>
+                    <ul>
+                      {topic.documents.map((document) => (
+                        <li key={document}><CheckCircle2 aria-hidden="true" /> {document}</li>
+                      ))}
+                    </ul>
+                  </details>
+                ))}
+              </div>
+            ) : (
+              <div className="tax-helper__plan-empty">
+                <Plus aria-hidden="true" />
+                <p>Choose an area above and its helpful records will appear here.</p>
+              </div>
+            )}
+          </article>
+        </div>
+
+        <div className="tax-helper__plan-actions">
+          <Button onClick={handleCopy} type="button" variant="outline">
+            <ClipboardCopy aria-hidden="true" /> Copy my action plan
+          </Button>
+          {selectedTopics.length ? (
+            <button className="tax-helper__clear-plan" onClick={clearTopics} type="button">
+              <X aria-hidden="true" /> Clear selected areas
+            </button>
+          ) : null}
+          <small className={!userId ? 'is-neutral' : canPersist ? undefined : 'is-error'}>{persistenceMessage}</small>
+          <span aria-live="polite" className={copyStatus === 'failed' ? 'is-error' : undefined}>
+            {copyStatus === 'copied'
+              ? 'Action plan copied.'
+              : copyStatus === 'failed'
+                ? 'Copy is unavailable in this browser.'
+                : ''}
+          </span>
+        </div>
+      </section>
+    </>
+  );
+}
+
 function TaxChecklist({
   country,
   historyPath,
   isSample,
+  period,
   steps,
   taxYearLabel,
   userId,
@@ -38,6 +264,7 @@ function TaxChecklist({
   country: TaxHelperCountry;
   historyPath: string;
   isSample: boolean;
+  period: TaxReviewPeriod;
   steps: OfficialTaxStep[];
   taxYearLabel: string;
   userId: string | null;
@@ -89,7 +316,7 @@ function TaxChecklist({
       <div className="tax-helper__section-heading">
         <div>
           <p className="tax-helper__eyebrow">Official-source checklist</p>
-          <h2 id="tax-steps-heading">{isSample ? 'Sample' : 'Your'} {taxYearLabel} review</h2>
+          <h2 id="tax-steps-heading">{isSample ? 'Sample' : 'Your'} {taxYearLabel} {period === 'current' ? 'current-year plan' : 'review'}</h2>
         </div>
         <div className="tax-helper__progress-copy">
           <span>{completedCount} of {steps.length} reviewed</span>
@@ -155,10 +382,11 @@ const TaxHelper = () => {
   const { data: payslips, isError, isLoading } = usePayslips();
   const { isDemo } = useDemo();
   const [manualCountry, setManualCountry] = useState<TaxHelperCountry | null>(null);
-  const [period, setPeriod] = useState<'completed' | 'current'>('completed');
+  const [period, setPeriod] = useState<TaxReviewPeriod>('completed');
   const country = manualCountry ?? (isDemo ? 'UK' : countryFromProfile(profile?.country));
   const window = useMemo(() => taxYearWindow(country, new Date(), period === 'completed' ? -1 : 0), [country, period]);
-  const steps = OFFICIAL_TAX_STEPS[country];
+  const steps = period === 'current' ? CURRENT_TAX_STEPS[country] : OFFICIAL_TAX_STEPS[country];
+  const timing = taxReviewTiming(country, window, period);
   const availablePayslips = isDemo ? DEMO_PAYSLIPS : (payslips ?? []);
   const confirmedThisYear = availablePayslips.filter(
     (payslip) => payslip.status === 'confirmed' && payslip.country === country && isDateInTaxYear(payslip.pay_date, window),
@@ -225,44 +453,34 @@ const TaxHelper = () => {
           </Button>
         </section>
 
-        <section className="tax-helper__scan" aria-labelledby="tax-scan-heading">
-          <div className="tax-helper__section-heading tax-helper__section-heading--scan">
-            <div>
-              <p className="tax-helper__eyebrow">Five-minute scan</p>
-              <h2 id="tax-scan-heading">Could any of these apply to you?</h2>
-              <p className="tax-helper__section-intro">
-                Open only the topics that sound familiar. These prompts do not decide eligibility or estimate a refund—the official rules do.
-              </p>
-            </div>
-            <div className="tax-helper__scan-note"><ReceiptText aria-hidden="true" /> {reviewTopics.length} common areas</div>
+        <aside className="tax-helper__timing">
+          <div className="tax-helper__timing-icon" aria-hidden="true"><Clock3 /></div>
+          <div>
+            <p className="tax-helper__eyebrow">{timing.eyebrow}</p>
+            <h2>{timing.title}</h2>
+            <p>{timing.description}</p>
           </div>
+          <a href={timing.href} rel="noreferrer" target="_blank">{timing.action} <ExternalLink aria-hidden="true" /></a>
+        </aside>
 
-          <div className="tax-helper__topic-grid">
-            {reviewTopics.map((topic) => {
-              const hasSignal = hasPensionEvidence && topic.payslipSignal === 'pension';
-              return (
-                <article className={hasSignal ? 'tax-helper__topic is-signalled' : 'tax-helper__topic'} key={topic.id}>
-                  <div className="tax-helper__topic-meta">
-                    <span><Landmark aria-hidden="true" /> {topic.source}</span>
-                    {hasSignal ? <strong><Sparkles aria-hidden="true" /> {isDemo ? 'Seen in the sample' : 'Seen in your payslips'}</strong> : null}
-                  </div>
-                  <h3>{topic.title}</h3>
-                  <p className="tax-helper__topic-prompt">{topic.prompt}</p>
-                  <p className="tax-helper__topic-description">{topic.description}</p>
-                  <a href={topic.href} rel="noreferrer" target="_blank">
-                    {topic.action} <ExternalLink aria-hidden="true" />
-                  </a>
-                </article>
-              );
-            })}
-          </div>
-        </section>
+        <TaxTopicPlanner
+          country={country}
+          hasPensionEvidence={hasPensionEvidence}
+          isSample={isDemo}
+          key={`topics:${isDemo ? 'sample' : user?.id ?? 'account'}:${country}:${window.label}`}
+          period={period}
+          steps={steps}
+          taxYearLabel={window.label}
+          topics={reviewTopics}
+          userId={isDemo ? null : user?.id ?? null}
+        />
 
         <TaxChecklist
           country={country}
           historyPath={historyPath}
           isSample={isDemo}
           key={`${isDemo ? 'sample' : user?.id ?? 'account'}:${country}:${window.label}`}
+          period={period}
           steps={steps}
           taxYearLabel={window.label}
           userId={isDemo ? null : user?.id ?? null}
