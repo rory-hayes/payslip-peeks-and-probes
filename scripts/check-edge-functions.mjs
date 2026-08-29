@@ -77,11 +77,16 @@ const migrationSources = readdirSync(migrationsRoot)
   .sort()
   .map((name) => readFileSync(path.join(migrationsRoot, name), 'utf8'));
 const serviceOnlyFunctionNames = new Set();
+const authenticatedFunctionNames = new Set();
 const serviceRoleGrantPattern = /GRANT\s+EXECUTE\s+ON\s+FUNCTION\s+public\.([a-z0-9_]+)\s*\([^;]*?\)\s+TO\s+service_role\s*;/gim;
+const authenticatedGrantPattern = /GRANT\s+EXECUTE\s+ON\s+FUNCTION\s+public\.([a-z0-9_]+)\s*\([^;]*?\)\s+TO\s+authenticated\s*;/gim;
 
 for (const source of migrationSources) {
   for (const match of source.matchAll(serviceRoleGrantPattern)) {
     serviceOnlyFunctionNames.add(match[1]);
+  }
+  for (const match of source.matchAll(authenticatedGrantPattern)) {
+    authenticatedFunctionNames.add(match[1]);
   }
 }
 
@@ -91,12 +96,20 @@ for (const functionName of [...serviceOnlyFunctionNames].sort()) {
     errors.push(`Service-only RPC ${functionName} is missing from the final browser-role privilege lock.`);
   }
 }
+for (const functionName of [...authenticatedFunctionNames].sort()) {
+  if (!servicePrivilegeMigration.includes(`'${functionName}'`)) {
+    errors.push(`Signed-in RPC ${functionName} is missing from the anonymous-role privilege lock.`);
+  }
+}
 
 if (!servicePrivilegeMigration.includes('FROM PUBLIC, anon, authenticated')) {
   errors.push('The service RPC privilege lock must explicitly revoke PUBLIC, anon, and authenticated grants.');
 }
 if (!servicePrivilegeMigration.includes('ALTER DEFAULT PRIVILEGES FOR ROLE postgres')) {
   errors.push('The service RPC privilege lock must remove permissive future function defaults.');
+}
+if (!servicePrivilegeMigration.includes('FROM PUBLIC, anon')) {
+  errors.push('The signed-in RPC privilege lock must explicitly revoke PUBLIC and anon grants.');
 }
 
 if (errors.length > 0) {

@@ -12,6 +12,7 @@ ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public
 DO $migration$
 DECLARE
   service_function record;
+  authenticated_function record;
   service_function_names constant text[] := ARRAY[
     'acquire_checkout_intent',
     'acquire_secure_checkout_intent',
@@ -62,6 +63,14 @@ DECLARE
     'settle_expired_secure_payslip_upload_session',
     'upsert_secure_stripe_subscription'
   ];
+  authenticated_function_names constant text[] := ARRAY[
+    'begin_manual_payslip_review',
+    'confirm_payslip_review',
+    'delete_failed_payslip',
+    'has_active_subscription',
+    'save_payday_check_in',
+    'save_payday_plan'
+  ];
 BEGIN
   FOR service_function IN
     SELECT
@@ -87,6 +96,33 @@ BEGIN
     );
   END LOOP;
 
+  -- These RPCs are deliberately available to a signed-in browser session,
+  -- but the platform's former default grant also made them callable by anon.
+  -- Keep their existing auth.uid()-bound API while closing that extra role.
+  FOR authenticated_function IN
+    SELECT
+      namespace.nspname AS schema_name,
+      procedure.proname AS function_name,
+      pg_get_function_identity_arguments(procedure.oid) AS identity_arguments
+    FROM pg_proc AS procedure
+    JOIN pg_namespace AS namespace ON namespace.oid = procedure.pronamespace
+    WHERE namespace.nspname = 'public'
+      AND procedure.proname = ANY(authenticated_function_names)
+  LOOP
+    EXECUTE format(
+      'REVOKE ALL ON FUNCTION %I.%I(%s) FROM PUBLIC, anon',
+      authenticated_function.schema_name,
+      authenticated_function.function_name,
+      authenticated_function.identity_arguments
+    );
+    EXECUTE format(
+      'GRANT EXECUTE ON FUNCTION %I.%I(%s) TO authenticated, service_role',
+      authenticated_function.schema_name,
+      authenticated_function.function_name,
+      authenticated_function.identity_arguments
+    );
+  END LOOP;
+
   IF EXISTS (
     SELECT 1
     FROM pg_proc AS procedure
@@ -99,6 +135,20 @@ BEGIN
       )
   ) THEN
     RAISE EXCEPTION 'A service-only Payslip Insights RPC is still callable by a browser role';
+  END IF;
+
+  IF EXISTS (
+    SELECT 1
+    FROM pg_proc AS procedure
+    JOIN pg_namespace AS namespace ON namespace.oid = procedure.pronamespace
+    WHERE namespace.nspname = 'public'
+      AND procedure.proname = ANY(authenticated_function_names)
+      AND (
+        has_function_privilege('anon', procedure.oid, 'EXECUTE')
+        OR NOT has_function_privilege('authenticated', procedure.oid, 'EXECUTE')
+      )
+  ) THEN
+    RAISE EXCEPTION 'A signed-in Payslip Insights RPC has an invalid browser-role privilege';
   END IF;
 END
 $migration$;
