@@ -205,6 +205,88 @@ export type Database = {
           },
         ]
       }
+      payday_plan_allocations: {
+        Row: {
+          amount: number
+          category: string
+          created_at: string
+          id: string
+          plan_id: string
+          updated_at: string
+        }
+        Insert: {
+          amount: number
+          category: string
+          created_at?: string
+          id?: string
+          plan_id: string
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          category?: string
+          created_at?: string
+          id?: string
+          plan_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payday_plan_allocations_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "payday_plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      payday_plans: {
+        Row: {
+          created_at: string
+          currency: string
+          id: string
+          net_pay: number
+          next_payday: string
+          pay_date: string
+          payslip_id: string | null
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          currency: string
+          id?: string
+          net_pay: number
+          next_payday: string
+          pay_date: string
+          payslip_id?: string | null
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          currency?: string
+          id?: string
+          net_pay?: number
+          next_payday?: string
+          pay_date?: string
+          payslip_id?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payday_plans_payslip_id_fkey"
+            columns: ["payslip_id"]
+            isOneToOne: false
+            referencedRelation: "payslips"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       payslip_extractions: {
         Row: {
           bonus_amount: number | null
@@ -305,6 +387,10 @@ export type Database = {
           pay_date: string | null
           pay_period_end: string | null
           pay_period_start: string | null
+          processing_attempts: number
+          processing_failure_code: string | null
+          processing_finished_at: string | null
+          processing_started_at: string | null
           status: string | null
           user_id: string
         }
@@ -318,6 +404,10 @@ export type Database = {
           pay_date?: string | null
           pay_period_end?: string | null
           pay_period_start?: string | null
+          processing_attempts?: number
+          processing_failure_code?: string | null
+          processing_finished_at?: string | null
+          processing_started_at?: string | null
           status?: string | null
           user_id: string
         }
@@ -331,6 +421,10 @@ export type Database = {
           pay_date?: string | null
           pay_period_end?: string | null
           pay_period_start?: string | null
+          processing_attempts?: number
+          processing_failure_code?: string | null
+          processing_finished_at?: string | null
+          processing_started_at?: string | null
           status?: string | null
           user_id?: string
         }
@@ -440,6 +534,81 @@ export type Database = {
         }
         Relationships: []
       }
+      recurring_bills: {
+        Row: {
+          amount: number
+          created_at: string
+          due_day: number | null
+          frequency: string
+          id: string
+          is_active: boolean
+          is_essential: boolean
+          name: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          due_day?: number | null
+          frequency?: string
+          id?: string
+          is_active?: boolean
+          is_essential?: boolean
+          name: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          due_day?: number | null
+          frequency?: string
+          id?: string
+          is_active?: boolean
+          is_essential?: boolean
+          name?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      savings_goals: {
+        Row: {
+          created_at: string
+          currency: string
+          current_amount: number
+          id: string
+          is_primary: boolean
+          name: string
+          target_amount: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          currency: string
+          current_amount?: number
+          id?: string
+          is_primary?: boolean
+          name: string
+          target_amount: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          currency?: string
+          current_amount?: number
+          id?: string
+          is_primary?: boolean
+          name?: string
+          target_amount?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       subscriptions: {
         Row: {
           cancel_at_period_end: boolean | null
@@ -535,6 +704,21 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      claim_payslip_processing: {
+        Args: { p_payslip_id: string; p_user_id: string }
+        Returns: boolean
+      }
+      consume_rate_limit: {
+        Args: {
+          p_bucket_key: string
+          p_max_per_window: number
+          p_window_start: string
+        }
+        Returns: {
+          allowed: boolean
+          current_count: number
+        }[]
+      }
       has_active_subscription: {
         Args: { check_env?: string; user_uuid: string }
         Returns: boolean
