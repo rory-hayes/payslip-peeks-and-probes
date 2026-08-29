@@ -95,6 +95,32 @@ describe('release source hygiene', () => {
       .toBeLessThan(deployment.indexOf("lockdownOnly: true"));
   });
 
+  it('indexes every application-owned foreign key used by tenant joins and cascades', () => {
+    const indexMigration = readFileSync(
+      projectFile('supabase/migrations/20260829100000_index_tenant_foreign_keys.sql'),
+      'utf8',
+    );
+    const expectedIndexes = [
+      ['account_deletion_billing_reviews', 'deletion_job_id'],
+      ['employers', 'user_id'],
+      ['issue_drafts', 'employer_id'],
+      ['issue_drafts', 'payslip_id'],
+      ['payday_plans', 'payslip_id'],
+      ['payslip_original_link_leases', 'payslip_id'],
+      ['payslips', 'employer_id'],
+      ['user_notes', 'anomaly_id'],
+      ['user_notes', 'payslip_id'],
+      ['user_notes', 'user_id'],
+    ];
+
+    for (const [table, column] of expectedIndexes) {
+      expect(indexMigration).toMatch(new RegExp(
+        `ON\\s+public\\.${table}\\s*\\(\\s*${column}\\s*\\)`,
+        'i',
+      ));
+    }
+  });
+
   it('keeps the landing primary action and orange text at AA contrast', () => {
     const landingCss = readFileSync(projectFile('src/pages/Landing.css'), 'utf8');
     const ink = cssHexVariable(landingCss, 'pi-ink');
