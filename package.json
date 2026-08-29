@@ -20,7 +20,7 @@
     "test:sites": "node --check scripts/preview-sites.mjs && node --test scripts/sites-worker.test.mjs",
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit",
-    "verify": "npm run typecheck && npm run lint && npm run check:edge-functions && npm run test:sites && node --test scripts/deploy-supabase.test.mjs scripts/verify-supabase-deployment.test.mjs && npm test && npm run release:ios:preflight && npm run build"
+    "verify": "npm run typecheck && npm run lint && npm run check:edge-functions && npm run test:sites && node --test scripts/deploy-supabase.test.mjs scripts/supabase-auth-readiness.test.mjs scripts/verify-supabase-deployment.test.mjs && npm test && npm run release:ios:preflight && npm run build"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",

@@ -858,6 +858,10 @@
   background: linear-gradient(90deg, var(--pi-violet), var(--pi-cyan));
 }
 
+.pi-landing__tax-progress span.is-started {
+  width: 25%;
+}
+
 .pi-landing__tax-preview ol {
   display: grid;
   gap: 0.7rem;

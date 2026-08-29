@@ -78,8 +78,8 @@ const FEATURES = [
   {
     icon: Landmark,
     eyebrow: 'Finish',
-    title: 'A tax-year review built on official sources',
-    description: 'Scan common reliefs and expenses, bring your confirmed history together, then follow the right Revenue or HMRC route.',
+    title: 'A tax-year plan built on official sources',
+    description: 'Choose the areas that may apply, see which private records to gather, and follow the right current-year or completed-year Revenue or HMRC route.',
   },
 ] as const;
 
@@ -89,7 +89,7 @@ const FREE_FEATURES = [
   'Checks for changes worth reviewing',
   'Payslip comparison and history',
   '2 payroll-message drafts per calendar month',
-  'UK or Ireland relief scan and tax-year checklist',
+  'UK or Ireland tax-year action plan and records checklist',
   'PDF export of your payslip history',
 ] as const;
 
@@ -376,29 +376,29 @@ const Landing = () => {
         <section className="pi-landing__tax-band">
           <div className="pi-landing__container pi-landing__tax-grid">
             <div className="pi-landing__tax-copy">
-              <p className="pi-landing__eyebrow">End of tax year</p>
-              <h2>A checklist, not a refund promise.</h2>
+              <p className="pi-landing__eyebrow">Current year to year-end</p>
+              <h2>A plan, not a refund promise.</h2>
               <p>
-                Choose Ireland or the UK, scan common reliefs and expenses, bring together the payslips you confirmed, and follow the correct official steps. We organise the review; Revenue or HMRC makes the decision.
+                Choose Ireland or the UK, switch between current and completed years, select the areas that may apply, and get a private checklist of records to gather. We organise the next steps; Revenue or HMRC makes the decision.
               </p>
               <button type="button" className="pi-landing__secondary-action" onClick={handleTryTaxDemo}>
-                Explore the tax-year demo <ArrowRight aria-hidden="true" />
+                Explore the tax-year planner <ArrowRight aria-hidden="true" />
               </button>
             </div>
-            <article className="pi-landing__tax-preview" aria-label="Sample official-source tax-year checklist">
+            <article className="pi-landing__tax-preview" aria-label="Sample official-source tax-year action plan">
               <div className="pi-landing__tax-preview-heading">
                 <div>
-                  <span>UK tax year 2025/26</span>
-                  <h3>Your year-end review</h3>
+                  <span>UK · current-year plan</span>
+                  <h3>Know what to have ready</h3>
                 </div>
                 <Landmark aria-hidden="true" />
               </div>
-              <div className="pi-landing__tax-progress-copy"><strong>0 of 5 reviewed</strong><span>Official-source checklist</span></div>
-              <div className="pi-landing__tax-progress" aria-hidden="true"><span /></div>
+              <div className="pi-landing__tax-progress-copy"><strong>1 area selected</strong><span>Private records plan</span></div>
+              <div className="pi-landing__tax-progress" aria-hidden="true"><span className="is-started" /></div>
               <ol>
-                <li><span>1</span><div><strong>Bring your confirmed pay together</strong><small>Your saved payslip history</small></div></li>
-                <li><span>2</span><div><strong>Check the official employment record</strong><small>HMRC or Revenue</small></div></li>
-                <li><span>3</span><div><strong>Follow the right claim or review route</strong><small>Official service makes the decision</small></div></li>
+                <li><span>1</span><div><strong>Keep confirmed payslips together</strong><small>Your reviewed pay history</small></div></li>
+                <li><span>2</span><div><strong>Gather topic-specific records</strong><small>Kept privately by you</small></div></li>
+                <li><span>3</span><div><strong>Follow the current HMRC route</strong><small>Official service makes the decision</small></div></li>
               </ol>
             </article>
           </div>
@@ -445,7 +445,7 @@ const Landing = () => {
               Prices are shown for {selectedPricing.countryLabel} in {selectedPricing.currency}.
             </p>
             <p className="pi-landing__currency-help">
-              Choose your billing currency. Your payslip country is selected separately during account setup.
+              Ireland is the default. When you create an account, billing follows your chosen country: Ireland in EUR, United Kingdom in GBP.
             </p>
 
             <div className="pi-landing__pricing-grid">

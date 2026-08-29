@@ -28,7 +28,7 @@ const freeFeatures = [
   'Enough to unlock your first real comparison',
   'Review, track, and compare confirmed payslips',
   '2 payroll-message drafts per calendar month',
-  'UK or Ireland relief scan and tax-year checklist',
+  'UK or Ireland tax-year action plan and records checklist',
   'PDF export of your payslip history',
   'Contact us by email',
 ];
@@ -541,7 +541,7 @@ const Pricing = () => {
                       { feature: 'Payslip review', free: 'Included', plus: 'Included', lifetime: 'Included' },
                       { feature: 'Payslip comparison & trends', free: 'Included', plus: 'Included', lifetime: 'Included' },
                       { feature: 'Payroll-message drafts', free: '2 / calendar month', plus: '12 / calendar month', lifetime: '12 / calendar month' },
-                      { feature: 'Tax-year relief scan & official checklist', free: 'Included', plus: 'Included', lifetime: 'Included' },
+                      { feature: 'Tax-year action plan & records checklist', free: 'Included', plus: 'Included', lifetime: 'Included' },
                       { feature: 'PDF export', free: 'Included', plus: 'Included', lifetime: 'Included' },
                       { feature: 'Contact', free: 'Email', plus: 'Email', lifetime: 'Email' },
                       { feature: 'Billing', free: 'No charge', plus: 'Monthly or yearly', lifetime: 'One payment' },

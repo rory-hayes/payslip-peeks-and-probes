@@ -71,13 +71,15 @@ describe('release source hygiene', () => {
     expect(existsSync(projectFile('bun.lockb'))).toBe(false);
   });
 
-  it('keeps the web release gate aligned with the latest reviewed-detail migration', () => {
+  it('keeps the web release gate aligned with the latest reviewed security migration', () => {
     const preflight = readFileSync(projectFile('scripts/release-web-preflight.mjs'), 'utf8');
     const readme = readFileSync(projectFile('README.md'), 'utf8');
-    const latestMigration = '20260828210000_reviewed_anomaly_checks.sql';
+    const latestMigration = '20260829110000_lock_service_rpc_privileges.sql';
 
     expect(existsSync(projectFile(`supabase/migrations/${latestMigration}`))).toBe(true);
     expect(preflight).toContain(`const REQUIRED_MIGRATION = "${latestMigration}"`);
+    expect(preflight).toContain('fetchProductionAuthSettings');
+    expect(preflight).toContain('productionAuthSettingIssues');
     expect(readme).toContain('every reviewed migration through');
     expect(readme).toContain(latestMigration);
   });
