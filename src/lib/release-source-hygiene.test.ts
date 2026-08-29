@@ -84,6 +84,26 @@ describe('release source hygiene', () => {
     expect(readme).toContain(latestMigration);
   });
 
+  it('does not reopen the retired browser-side failed-payslip deletion RPC', () => {
+    const privilegeMigration = readFileSync(
+      projectFile('supabase/migrations/20260829110000_lock_service_rpc_privileges.sql'),
+      'utf8',
+    );
+    const authenticatedList = privilegeMigration.match(
+      /authenticated_function_names constant text\[\] := ARRAY\[([\s\S]*?)\];/,
+    )?.[1];
+
+    expect(authenticatedList).toBeDefined();
+    expect(authenticatedList).not.toContain("'delete_failed_payslip'");
+    expect(privilegeMigration).toContain("'delete_failed_payslip_after_storage_cleanup'");
+    expect(privilegeMigration).toContain(
+      "REVOKE ALL ON FUNCTION public.delete_failed_payslip(uuid)",
+    );
+    expect(privilegeMigration).toContain(
+      "RAISE EXCEPTION 'The retired browser-side failed-payslip deletion RPC is callable'",
+    );
+  });
+
   it('keeps the secure storage migration behind an exact-client cutover gate', () => {
     const deployment = readFileSync(projectFile('scripts/deploy-supabase.mjs'), 'utf8');
     const lockdownMigration = '20260804115000_lock_down_direct_payslip_storage.sql';
@@ -93,6 +113,32 @@ describe('release source hygiene', () => {
     expect(deployment).toContain("'--scope',\n          'cutover'");
     expect(deployment.indexOf('release:web:verify-public'))
       .toBeLessThan(deployment.indexOf("lockdownOnly: true"));
+  });
+
+  it('indexes every application-owned foreign key used by tenant joins and cascades', () => {
+    const indexMigration = readFileSync(
+      projectFile('supabase/migrations/20260829100000_index_tenant_foreign_keys.sql'),
+      'utf8',
+    );
+    const expectedIndexes = [
+      ['account_deletion_billing_reviews', 'deletion_job_id'],
+      ['employers', 'user_id'],
+      ['issue_drafts', 'employer_id'],
+      ['issue_drafts', 'payslip_id'],
+      ['payday_plans', 'payslip_id'],
+      ['payslip_original_link_leases', 'payslip_id'],
+      ['payslips', 'employer_id'],
+      ['user_notes', 'anomaly_id'],
+      ['user_notes', 'payslip_id'],
+      ['user_notes', 'user_id'],
+    ];
+
+    for (const [table, column] of expectedIndexes) {
+      expect(indexMigration).toMatch(new RegExp(
+        `ON\\s+public\\.${table}\\s*\\(\\s*${column}\\s*\\)`,
+        'i',
+      ));
+    }
   });
 
   it('keeps the landing primary action and orange text at AA contrast', () => {

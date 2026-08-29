@@ -97,7 +97,14 @@ for (const functionName of [...serviceOnlyFunctionNames].sort()) {
   }
 }
 for (const functionName of [...authenticatedFunctionNames].sort()) {
-  if (!servicePrivilegeMigration.includes(`'${functionName}'`)) {
+  const retiredBrowserRpcPattern = new RegExp(
+    `REVOKE\\s+ALL\\s+ON\\s+FUNCTION\\s+public\\.${functionName}\\s*\\([^;]*?\\)\\s+FROM\\s+PUBLIC\\s*,\\s*anon\\s*,\\s*authenticated\\s*;`,
+    'im',
+  );
+  if (
+    !servicePrivilegeMigration.includes(`'${functionName}'`)
+    && !retiredBrowserRpcPattern.test(servicePrivilegeMigration)
+  ) {
     errors.push(`Signed-in RPC ${functionName} is missing from the anonymous-role privilege lock.`);
   }
 }
