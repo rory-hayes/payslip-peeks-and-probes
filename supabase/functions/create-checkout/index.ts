@@ -12,6 +12,11 @@ import {
   type StripeEnv,
 } from "../_shared/stripe.ts";
 import { validateCheckoutRequest } from "../_shared/checkout-request.ts";
+import {
+  PRICE_CATALOG,
+  priceLookupKeyForCurrency,
+  type BillingCurrency,
+} from "../_shared/billing-catalog.ts";
 
 const supabase = createClient(
   Deno.env.get("SUPABASE_URL")!,
@@ -118,6 +123,17 @@ async function hasBlockingBillingState(userId: string, environment: StripeEnv): 
   return legacy?.plan === "plus" && (
     legacy.status === "active" || legacy.status === "past_due"
   );
+}
+
+async function getAccountBillingCurrency(userId: string): Promise<BillingCurrency> {
+  const { data: profile, error } = await supabase
+    .from("profiles")
+    .select("country")
+    .eq("user_id", userId)
+    .single();
+
+  if (error || !profile) throw new Error("Could not confirm account billing country");
+  return profile.country === "UK" ? "gbp" : "eur";
 }
 
 async function acquireCheckoutIntent(
@@ -265,7 +281,9 @@ serve(async (req) => {
     const environment = getStripeEnvironment();
     const request = validateCheckoutRequest(body, environment);
     if (!request.ok) return jsonResponse(request.response, request.status);
-    const { catalogEntry, priceId } = request.value;
+    const accountCurrency = await getAccountBillingCurrency(user.id);
+    const priceId = priceLookupKeyForCurrency(request.value.priceId, accountCurrency);
+    const catalogEntry = PRICE_CATALOG[priceId];
 
     if (await hasBlockingBillingState(user.id, environment)) {
       return jsonResponse({

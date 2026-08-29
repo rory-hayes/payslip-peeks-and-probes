@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { PRICE_CATALOG } from '../../supabase/functions/_shared/billing-catalog';
 import {
   CUSTOMER_PRICING,
+  checkoutPriceForCurrency,
   getCustomerCheckoutPlan,
   getPriceBillingInterval,
   getPriceCurrency,
@@ -62,5 +63,11 @@ describe('customer pricing catalog', () => {
     expect(getPriceBillingInterval('quarterly')).toBeNull();
     expect(pricingPathForSelection('EUR', 'monthly')).toBe('/pricing?billing=monthly');
     expect(pricingPathForSelection('GBP', 'monthly')).toBe('/pricing?currency=GBP&billing=monthly');
+  });
+
+  it('keeps the plan and interval while matching checkout to the customer country currency', () => {
+    expect(checkoutPriceForCurrency('plus_yearly', 'GBP')).toBe('plus_yearly_gbp');
+    expect(checkoutPriceForCurrency('plus_monthly_gbp', 'EUR')).toBe('plus_monthly');
+    expect(checkoutPriceForCurrency('lifetime_once', 'GBP')).toBe('lifetime_once_gbp');
   });
 });

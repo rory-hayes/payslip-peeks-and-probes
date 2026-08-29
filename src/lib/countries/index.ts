@@ -16,16 +16,18 @@ export type {
  * files stay in the repository, but are intentionally not imported here: a
  * dormant calculator must not increase the download for UK/Ireland customers.
  */
-export const LAUNCH_COUNTRY_CODES = ['UK', 'Ireland'] as const;
+export const LAUNCH_COUNTRY_CODES = ['Ireland', 'UK'] as const;
 export type LaunchCountryCode = (typeof LAUNCH_COUNTRY_CODES)[number];
 export type LaunchCountryConfig = CountryConfig & { code: LaunchCountryCode };
+
+export const DEFAULT_LAUNCH_COUNTRY_CODE: LaunchCountryCode = 'Ireland';
 
 export const COUNTRIES: Record<LaunchCountryCode, LaunchCountryConfig> = {
   UK: { ...ukConfig, code: 'UK' },
   Ireland: { ...irelandConfig, code: 'Ireland' },
 };
 
-export const COUNTRY_LIST: readonly LaunchCountryConfig[] = [COUNTRIES.UK, COUNTRIES.Ireland];
+export const COUNTRY_LIST: readonly LaunchCountryConfig[] = [COUNTRIES.Ireland, COUNTRIES.UK];
 export const LAUNCH_COUNTRY_LIST = COUNTRY_LIST;
 
 export function isLaunchCountry(
@@ -36,5 +38,5 @@ export function isLaunchCountry(
 
 export function getCountryConfig(code: CountryCode | null | undefined): CountryConfig {
   if (isLaunchCountry(code)) return COUNTRIES[code];
-  return COUNTRIES.UK;
+  return COUNTRIES[DEFAULT_LAUNCH_COUNTRY_CODE];
 }

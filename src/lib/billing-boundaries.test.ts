@@ -6,7 +6,10 @@ import {
   type CheckoutIntentBinding,
   type LifetimeCheckoutIntentBinding,
 } from "../../supabase/functions/_shared/checkout-intent";
-import { matchesCatalogStripePrice } from "../../supabase/functions/_shared/billing-catalog";
+import {
+  matchesCatalogStripePrice,
+  priceLookupKeyForCurrency,
+} from "../../supabase/functions/_shared/billing-catalog";
 
 const intent: CheckoutIntentBinding = {
   checkout_mode: "subscription",
@@ -80,5 +83,11 @@ describe("billing trust boundaries", () => {
     expect(matchesCatalogStripePrice({ ...matchingPrice, unit_amount: 2999 }, "plus_yearly")).toBe(false);
     expect(matchesCatalogStripePrice({ ...matchingPrice, currency: "gbp" }, "plus_yearly")).toBe(false);
     expect(matchesCatalogStripePrice({ ...matchingPrice, recurring: { interval: "month", interval_count: 1 } }, "plus_yearly")).toBe(false);
+  });
+
+  it("keeps the product and interval while enforcing the account billing currency", () => {
+    expect(priceLookupKeyForCurrency("plus_yearly", "gbp")).toBe("plus_yearly_gbp");
+    expect(priceLookupKeyForCurrency("plus_monthly_gbp", "eur")).toBe("plus_monthly");
+    expect(priceLookupKeyForCurrency("lifetime_once", "gbp")).toBe("lifetime_once_gbp");
   });
 });

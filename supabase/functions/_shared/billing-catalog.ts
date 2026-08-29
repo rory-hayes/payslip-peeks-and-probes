@@ -28,6 +28,7 @@ export const PRICE_CATALOG = {
 } as const satisfies Record<string, PriceCatalogEntry>;
 
 export type PriceLookupKey = keyof typeof PRICE_CATALOG;
+export type BillingCurrency = PriceCatalogEntry["currency"];
 
 export function getPriceCatalogEntry(value: unknown): PriceCatalogEntry | null {
   if (typeof value !== "string") return null;
@@ -37,6 +38,20 @@ export function getPriceCatalogEntry(value: unknown): PriceCatalogEntry | null {
 
 export function isAllowedPriceLookupKey(value: unknown): value is PriceLookupKey {
   return getPriceCatalogEntry(value) !== null;
+}
+
+/** Keep the chosen product and interval while enforcing the account currency. */
+export function priceLookupKeyForCurrency(
+  priceLookupKey: PriceLookupKey,
+  currency: BillingCurrency,
+): PriceLookupKey {
+  if (priceLookupKey === "lifetime_once" || priceLookupKey === "lifetime_once_gbp") {
+    return currency === "gbp" ? "lifetime_once_gbp" : "lifetime_once";
+  }
+  if (priceLookupKey === "plus_monthly" || priceLookupKey === "plus_monthly_gbp") {
+    return currency === "gbp" ? "plus_monthly_gbp" : "plus_monthly";
+  }
+  return currency === "gbp" ? "plus_yearly_gbp" : "plus_yearly";
 }
 
 /** Minimal Stripe Price shape, kept runtime-safe for edge-function responses. */

@@ -79,7 +79,7 @@ const Settings = () => {
   const { subscription } = useSubscription();
   const { automaticChecksUsed, uploadsRemaining, draftsRemaining, isPremium, limits, uploadLimit, draftLimit } = useUsage();
   const [firstName, setFirstName] = useState('');
-  const [country, setCountry] = useState<LaunchCountryCode | ''>('UK');
+  const [country, setCountry] = useState<LaunchCountryCode | ''>('Ireland');
   const [annualSalary, setAnnualSalary] = useState('');
   const [frequency, setFrequency] = useState('monthly');
   const [employer, setEmployer] = useState('');
@@ -100,7 +100,7 @@ const Settings = () => {
   const [exporting, setExporting] = useState(false);
   const [managingBilling, setManagingBilling] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
-  const countryConfig = getCountryConfig(country || 'UK');
+  const countryConfig = getCountryConfig(country || 'Ireland');
   const currencySymbol = countryConfig.currencySymbol;
 
   const planLabel = subscription.plan === 'lifetime' ? 'Lifetime' : subscription.plan === 'plus' ? 'Plus' : 'Free';

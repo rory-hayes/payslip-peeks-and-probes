@@ -115,7 +115,7 @@ const Onboarding = () => {
         .from('profiles')
         .update({
           country: country || null,
-          currency: cfg?.currency ?? 'GBP',
+          currency: cfg?.currency ?? 'EUR',
           sub_region: needsSubRegion ? (subRegion || null) : null,
           filing_status: needsFilingStatus ? (filingStatus || null) : null,
           pay_frequency: frequency,
@@ -199,7 +199,7 @@ const Onboarding = () => {
 
   const countryCfg = country ? getCountryConfig(country) : null;
   const countryLabel = countryCfg?.name ?? '—';
-  const currencyLabel = countryCfg ? `${countryCfg.currency} (${countryCfg.currencySymbol})` : 'GBP (£)';
+  const currencyLabel = countryCfg ? `${countryCfg.currency} (${countryCfg.currencySymbol})` : 'EUR (€)';
 
   return (
     <div className="flex min-h-screen flex-col bg-background">
@@ -378,7 +378,7 @@ const Onboarding = () => {
                     </Label>
                     <div className="relative">
                       <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">
-                        {countryCfg?.currencySymbol ?? '£'}
+                        {countryCfg?.currencySymbol ?? '€'}
                       </span>
                       <Input
                         id="annualSalary"
@@ -525,7 +525,7 @@ const Onboarding = () => {
                     <span className="text-muted-foreground">Annual salary</span>
                     <span className="font-medium text-foreground">
                       {annualSalary.trim()
-                        ? `${countryCfg?.currencySymbol ?? '£'}${Number(annualSalary.replace(/[^0-9.]/g, '')).toLocaleString()}`
+                        ? `${countryCfg?.currencySymbol ?? '€'}${Number(annualSalary.replace(/[^0-9.]/g, '')).toLocaleString()}`
                         : 'Not set'}
                     </span>
                   </div>

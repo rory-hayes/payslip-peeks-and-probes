@@ -15,6 +15,11 @@ const state = vi.hoisted(() => ({
   subscriptionIsFetching: false,
   subscriptionIsSuccess: true,
   refetchSubscription: vi.fn(),
+  profileCurrency: 'EUR' as 'EUR' | 'GBP',
+  profileIsError: false,
+  profileIsFetching: false,
+  profileIsSuccess: true,
+  refetchProfile: vi.fn(),
 }));
 
 const payments = vi.hoisted(() => ({ configured: true }));
@@ -30,6 +35,16 @@ vi.mock('@/hooks/use-subscription', () => ({
     isFetching: state.subscriptionIsFetching,
     isSuccess: state.subscriptionIsSuccess,
     refetch: state.refetchSubscription,
+  }),
+}));
+
+vi.mock('@/hooks/use-profile', () => ({
+  useProfile: () => ({
+    data: state.profileIsSuccess ? { currency: state.profileCurrency } : undefined,
+    isError: state.profileIsError,
+    isFetching: state.profileIsFetching,
+    isSuccess: state.profileIsSuccess,
+    refetch: state.refetchProfile,
   }),
 }));
 
@@ -68,6 +83,11 @@ describe('Pricing', () => {
     state.subscriptionIsFetching = false;
     state.subscriptionIsSuccess = true;
     state.refetchSubscription.mockReset();
+    state.profileCurrency = 'EUR';
+    state.profileIsError = false;
+    state.profileIsFetching = false;
+    state.profileIsSuccess = true;
+    state.refetchProfile.mockReset();
     payments.configured = true;
   });
 
@@ -125,6 +145,19 @@ describe('Pricing', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Choose Plus' }));
 
     expect(screen.getByTestId('location')).toHaveTextContent('/sign-up?checkout=plus_yearly');
+  });
+
+  it('shows a signed-in UK customer only GBP prices and sends the matching plan to checkout', () => {
+    state.user = { id: 'user-1' };
+    state.profileCurrency = 'GBP';
+    renderPricing('/pricing');
+
+    expect(screen.queryByRole('group', { name: 'Choose billing currency' })).not.toBeInTheDocument();
+    expect(screen.getByText('New purchases are shown in GBP (£) for your United Kingdom account.')).toBeInTheDocument();
+    expect(screen.getByText('£17.99')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Upgrade to Plus' }));
+    expect(screen.getByTestId('location')).toHaveTextContent('/checkout?price=plus_yearly_gbp');
   });
 
   it('makes the currency choice understandable to assistive technology', () => {

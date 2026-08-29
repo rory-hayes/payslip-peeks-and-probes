@@ -84,6 +84,25 @@ export function getPriceBillingInterval(value: unknown): PriceBillingInterval | 
     : null;
 }
 
+/**
+ * Keep the chosen product and billing interval while presenting it in the
+ * currency that matches the customer's confirmed launch country.
+ */
+export function checkoutPriceForCurrency(
+  priceId: CheckoutPriceId,
+  currency: PriceCurrency,
+): CheckoutPriceId {
+  const targetPricing = CUSTOMER_PRICING[currency];
+
+  if (priceId === 'lifetime_once' || priceId === 'lifetime_once_gbp') {
+    return targetPricing.lifetime.checkoutPriceId;
+  }
+  if (priceId === 'plus_monthly' || priceId === 'plus_monthly_gbp') {
+    return targetPricing.plus.monthly.checkoutPriceId;
+  }
+  return targetPricing.plus.yearly.checkoutPriceId;
+}
+
 export function pricingPathForCurrency(currency: PriceCurrency): string {
   return currency === 'GBP' ? '/pricing?currency=GBP' : '/pricing';
 }

@@ -299,7 +299,11 @@ export function Plan() {
     && isValidIsoDate(nextPayday)
     && isIsoDateAfter(nextPayday, latestPayslip.pay_date),
   );
-  const planCurrency = latestPayslip ? currencyForPayslip(latestPayslip) : 'GBP';
+  const planCurrency = latestPayslip
+    ? currencyForPayslip(latestPayslip)
+    : profile?.currency === 'GBP'
+      ? 'GBP'
+      : 'EUR';
   const planSymbol = planCurrency === 'EUR' ? '€' : '£';
   const formatCurrency = (amount: number) => formatPlanCurrency(amount, planCurrency);
   const canSave = hasDraftValue && !hasInvalidAmount && !isOverAllocated && isNextPaydayValid && !savePlan.isPending;

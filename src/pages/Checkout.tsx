@@ -6,11 +6,18 @@ import { StripeEmbeddedCheckout } from "@/components/StripeEmbeddedCheckout";
 import { PaymentTestModeBanner } from "@/components/PaymentTestModeBanner";
 import { BrandLockup } from "@/components/BrandLockup";
 import { getCheckoutPriceId } from '@/lib/checkout-price';
+import { checkoutPriceForCurrency } from '@/lib/customer-pricing';
+import { useProfile } from '@/hooks/use-profile';
 
 export default function Checkout() {
   const { user } = useAuth();
   const [searchParams] = useSearchParams();
-  const priceId = getCheckoutPriceId(searchParams.get("price"));
+  const requestedPriceId = getCheckoutPriceId(searchParams.get("price"));
+  const { data: profile, isLoading: profileLoading, isError: profileError } = useProfile();
+  const billingCurrency = profile?.currency === 'GBP' ? 'GBP' : 'EUR';
+  const priceId = requestedPriceId
+    ? checkoutPriceForCurrency(requestedPriceId, billingCurrency)
+    : null;
 
   if (!user) return <Navigate to="/sign-in" replace />;
   if (!priceId) return <Navigate to="/pricing" replace />;
@@ -31,7 +38,23 @@ export default function Checkout() {
         </div>
       </nav>
       <main className="container max-w-2xl py-12">
-        <StripeEmbeddedCheckout priceId={priceId} />
+        {profileLoading ? (
+          <div className="rounded-2xl border border-border bg-card p-8 text-center shadow-sm" role="status">
+            <p className="text-sm text-muted-foreground">Confirming your billing currency…</p>
+          </div>
+        ) : profileError ? (
+          <div className="rounded-2xl border border-border bg-card p-8 text-center shadow-sm" role="alert">
+            <h1 className="text-xl font-semibold text-foreground">We couldn’t confirm your billing currency</h1>
+            <p className="mx-auto mt-3 max-w-md text-sm leading-6 text-muted-foreground">
+              Please try again before starting payment. You have not been charged.
+            </p>
+            <Button asChild className="mt-6">
+              <Link to="/pricing">Back to pricing</Link>
+            </Button>
+          </div>
+        ) : (
+          <StripeEmbeddedCheckout priceId={priceId} />
+        )}
       </main>
     </div>
   );

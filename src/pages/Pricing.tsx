@@ -6,6 +6,7 @@ import { Switch } from '@/components/ui/switch';
 import { CheckCircle, ArrowLeft, Sparkles } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { type Subscription, useSubscription } from '@/hooks/use-subscription';
+import { useProfile } from '@/hooks/use-profile';
 import { PaymentTestModeBanner } from '@/components/PaymentTestModeBanner';
 import { analytics } from '@/lib/analytics';
 import { isPaymentsClientConfigured } from '@/lib/stripe';
@@ -127,6 +128,13 @@ function AuthenticatedPlanAction({
 const Pricing = () => {
   const { user } = useAuth();
   const {
+    data: profile,
+    isError: isProfileError,
+    isFetching: isProfileFetching,
+    isSuccess: isProfileSettled,
+    refetch: refetchProfile,
+  } = useProfile();
+  const {
     subscription,
     isError: isSubscriptionError,
     isFetching: isSubscriptionFetching,
@@ -136,7 +144,10 @@ const Pricing = () => {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
 
-  const currency = getPriceCurrency(searchParams.get('currency')) ?? 'EUR';
+  const isLoggedIn = !!user;
+  const currency = isLoggedIn
+    ? profile?.currency === 'GBP' ? 'GBP' : 'EUR'
+    : getPriceCurrency(searchParams.get('currency')) ?? 'EUR';
   const billing = getPriceBillingInterval(searchParams.get('billing')) ?? 'yearly';
   const pricing = CUSTOMER_PRICING[currency];
   const plusPrice = pricing.plus[billing];
@@ -144,6 +155,47 @@ const Pricing = () => {
   useEffect(() => {
     applySeo(marketingSeoFor('/pricing'));
   }, []);
+
+  if (isLoggedIn && !isProfileSettled) {
+    return (
+      <div className="min-h-screen bg-card">
+        <PaymentTestModeBanner />
+        <main className="container flex min-h-[70vh] max-w-2xl items-center justify-center py-16">
+          <div className="w-full rounded-2xl border border-border bg-card p-8 text-center shadow-sm">
+            <Link to="/dashboard" className="inline-flex">
+              <BrandLockup size="sm" />
+            </Link>
+            {isProfileError ? (
+              <div className="mt-6" role="alert">
+                <h1 className="text-xl font-semibold text-foreground">We couldn’t confirm your billing country</h1>
+                <p className="mt-3 text-sm leading-6 text-muted-foreground">
+                  We have not changed your plan or started a checkout. Try again before choosing a paid plan.
+                </p>
+                <div className="mt-6 flex flex-col justify-center gap-3 sm:flex-row">
+                  <Button
+                    variant="outline"
+                    className="min-h-11"
+                    onClick={() => void refetchProfile()}
+                    disabled={isProfileFetching}
+                  >
+                    {isProfileFetching ? 'Retrying…' : 'Try again'}
+                  </Button>
+                  <Button asChild className="min-h-11">
+                    <Link to="/settings">Review country in Settings</Link>
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <div className="mt-6" role="status">
+                <h1 className="text-xl font-semibold text-foreground">Confirming your billing country…</h1>
+                <p className="mt-3 text-sm text-muted-foreground">We’ll show the exact price and currency before checkout.</p>
+              </div>
+            )}
+          </div>
+        </main>
+      </div>
+    );
+  }
 
   const setCurrency = (nextCurrency: PriceCurrency) => {
     setSearchParams((current) => {
@@ -163,7 +215,6 @@ const Pricing = () => {
     }, { replace: true });
   };
 
-  const isLoggedIn = !!user;
   const paymentsConfigured = isPaymentsClientConfigured();
   const checkoutAvailable = paymentsConfigured && acceptsRealPayslips;
   const subscriptionActionState: SubscriptionActionState = !isLoggedIn
@@ -239,36 +290,47 @@ const Pricing = () => {
               Use Free to check two payslips and see your first comparison. Choose a paid plan for continued payday checks and payroll-message drafts.
             </p>
 
-            {/* Currency toggle */}
-            <div className="space-y-2">
-              <div className="inline-flex items-center gap-1 rounded-lg bg-muted p-1" role="group" aria-label="Choose billing currency">
-                <button
-                  type="button"
-                  onClick={() => setCurrency('EUR')}
-                  aria-pressed={currency === 'EUR'}
-                  aria-label="Show prices in euro"
-                  className={`min-h-11 px-4 rounded-md text-sm font-medium transition-colors ${
-                    currency === 'EUR' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
-                  }`}
-                >
-                  Ireland · EUR
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setCurrency('GBP')}
-                  aria-pressed={currency === 'GBP'}
-                  aria-label="Show prices in pounds sterling"
-                  className={`min-h-11 px-4 rounded-md text-sm font-medium transition-colors ${
-                    currency === 'GBP' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
-                  }`}
-                >
-                  United Kingdom · GBP
-                </button>
+            {/* Public visitors can compare markets; signed-in customers get one account currency. */}
+            {isLoggedIn ? (
+              <div className="space-y-2">
+                <p className="text-sm font-medium text-foreground">
+                  New purchases are shown in {pricing.currency} ({pricing.symbol}) for your {pricing.countryLabel} account.
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  Need to correct your country? <Link to="/settings" className="font-medium text-primary hover:underline">Update it in Settings</Link> before checkout.
+                </p>
               </div>
-              <p className="text-xs text-muted-foreground">
-                Choose the currency for your plan. It does not change the country you select when reviewing a payslip.
-              </p>
-            </div>
+            ) : (
+              <div className="space-y-2">
+                <div className="inline-flex items-center gap-1 rounded-lg bg-muted p-1" role="group" aria-label="Choose billing currency">
+                  <button
+                    type="button"
+                    onClick={() => setCurrency('EUR')}
+                    aria-pressed={currency === 'EUR'}
+                    aria-label="Show prices in euro"
+                    className={`min-h-11 px-4 rounded-md text-sm font-medium transition-colors ${
+                      currency === 'EUR' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
+                    }`}
+                  >
+                    Ireland · EUR
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setCurrency('GBP')}
+                    aria-pressed={currency === 'GBP'}
+                    aria-label="Show prices in pounds sterling"
+                    className={`min-h-11 px-4 rounded-md text-sm font-medium transition-colors ${
+                      currency === 'GBP' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
+                    }`}
+                  >
+                    United Kingdom · GBP
+                  </button>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Choose the currency for your plan. It does not change the country you select when reviewing a payslip.
+                </p>
+              </div>
+            )}
             <p className="sr-only" aria-live="polite">
               Prices are shown for {pricing.countryLabel} in {pricing.currency}.
             </p>

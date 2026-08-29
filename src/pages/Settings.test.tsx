@@ -183,17 +183,20 @@ describe('Settings', () => {
     renderSettings();
 
     expect(screen.getByLabelText('First name')).toHaveAttribute('id', 'settings-first-name');
-    expect(screen.getByLabelText('Annual gross salary (£)')).toHaveAttribute('aria-describedby', 'settings-annual-salary-help');
+    expect(screen.getByLabelText('Annual gross salary (€)')).toHaveAttribute('aria-describedby', 'settings-annual-salary-help');
     expect(screen.getByLabelText('Employer name')).toHaveAttribute('id', 'settings-employer-name');
     expect(screen.getByLabelText('Payroll / HR email')).toHaveAttribute('aria-describedby', 'settings-payroll-email-help');
 
     const countryGroup = screen.getByRole('group', { name: 'Country' });
-    expect(within(countryGroup).getByRole('radio', { name: /UK/ })).toBeChecked();
-    expect(within(countryGroup).getByRole('radio', { name: /Ireland/ })).not.toBeChecked();
+    expect(within(countryGroup).getByRole('radio', { name: /Ireland/ })).toBeChecked();
+    expect(within(countryGroup).getByRole('radio', { name: /UK/ })).not.toBeChecked();
 
     const frequencyGroup = screen.getByRole('group', { name: 'Pay frequency' });
     expect(within(frequencyGroup).getByRole('radio', { name: 'monthly' })).toBeChecked();
     expect(screen.getByRole('switch', { name: 'Pension contribution' })).toHaveAttribute('aria-checked', 'false');
+
+    fireEvent.click(within(countryGroup).getByRole('radio', { name: /UK/ }));
+    expect(screen.getByLabelText('Annual gross salary (£)')).toBeInTheDocument();
     expect(screen.getByRole('switch', { name: 'Student loan' })).toHaveAttribute('aria-checked', 'false');
     expect(screen.queryByRole('slider', { name: 'Change threshold' })).not.toBeInTheDocument();
     expect(screen.getByRole('progressbar', { name: 'Automatic checks used on the Free plan' })).toHaveAttribute('aria-valuenow', '0');

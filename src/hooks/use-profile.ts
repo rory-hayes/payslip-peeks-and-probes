@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 
-import type { CountryCode } from '@/lib/countries';
+import { getCountryConfig, isLaunchCountry, type CountryCode } from '@/lib/countries';
 
 export interface UserProfile {
   country: CountryCode | null;
@@ -34,9 +34,17 @@ export function useProfile() {
         .eq('user_id', user!.id)
         .single();
       if (error) throw error;
+      const country = data.country as UserProfile['country'];
+      const countryCurrency = isLaunchCountry(country) ? getCountryConfig(country).currency : null;
       return {
-        country: data.country as UserProfile['country'],
-        currency: ((['EUR', 'USD'].includes(data.currency ?? '') ? data.currency : 'GBP') as UserProfile['currency']),
+        country,
+        currency: (
+          countryCurrency === 'GBP' || countryCurrency === 'EUR'
+            ? countryCurrency
+            : country && (data.currency === 'USD' || data.currency === 'GBP' || data.currency === 'EUR')
+              ? data.currency
+              : 'EUR'
+        ),
         annual_salary: data.annual_salary ? Number(data.annual_salary) : null,
         first_name: data.first_name,
         employer_name: data.employer_name,
@@ -58,7 +66,7 @@ export function useProfile() {
 
 export function useCurrency() {
   const { data: profile } = useProfile();
-  const currency = profile?.currency ?? 'GBP';
+  const currency = profile?.currency ?? 'EUR';
   const symbolMap = { GBP: '£', EUR: '€', USD: '$' } as const;
   const symbol = symbolMap[currency];
   // Locale per country so European number formatting (€1.234,56) works correctly
