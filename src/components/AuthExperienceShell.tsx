@@ -54,9 +54,9 @@ export function AuthExperienceShell({ children, mode = 'account' }: AuthExperien
   const outcomes = isPreview ? PREVIEW_OUTCOMES : AUTH_OUTCOMES;
 
   return (
-    <main className="min-h-screen bg-[#f6f7fc] px-4 py-5 sm:px-6 lg:px-8 lg:py-8">
-      <div className="mx-auto grid min-h-[calc(100vh-2.5rem)] max-w-6xl overflow-hidden rounded-[2rem] border border-[#ebe9f6] bg-white shadow-[0_24px_80px_rgba(23,21,93,0.10)] lg:min-h-[calc(100vh-4rem)] lg:grid-cols-[1.02fr_0.98fr]">
-        <section className="order-1 flex items-center justify-center px-5 py-8 sm:px-10 lg:order-2 lg:px-14 lg:py-12">
+    <main className="pi-auth-page min-h-screen bg-[#f6f7fc] px-4 py-5 sm:px-6 lg:px-8 lg:py-4">
+      <div className="pi-auth-frame mx-auto grid min-h-[calc(100vh-2.5rem)] max-w-6xl overflow-hidden rounded-[2rem] border border-[#ebe9f6] bg-white shadow-[0_24px_80px_rgba(23,21,93,0.10)] lg:min-h-[calc(100dvh-2rem)] lg:grid-cols-[1.02fr_0.98fr]">
+        <section className="pi-auth-form-panel order-1 flex items-center justify-center px-5 py-8 sm:px-10 lg:order-2 lg:px-14 lg:py-8">
           <div className="w-full max-w-md">
             <Link to="/" className="mb-8 inline-flex lg:hidden" aria-label="Payslip Insights home">
               <BrandLockup />
@@ -75,7 +75,7 @@ export function AuthExperienceShell({ children, mode = 'account' }: AuthExperien
 
         <aside
           aria-label="Why people use Payslip Insights"
-          className="order-2 relative overflow-hidden bg-[#17155d] px-6 py-9 text-white sm:px-10 lg:order-1 lg:px-12 lg:py-12"
+          className="pi-auth-product-panel order-2 relative overflow-hidden bg-[#17155d] px-6 py-9 text-white sm:px-10 lg:order-1 lg:px-12 lg:py-8"
         >
           <div className="absolute -right-20 -top-24 h-72 w-72 rounded-full bg-[#55e4e8]/25 blur-3xl" aria-hidden="true" />
           <div className="absolute -bottom-24 -left-20 h-72 w-72 rounded-full bg-[#8b73ff]/25 blur-3xl" aria-hidden="true" />
@@ -85,7 +85,7 @@ export function AuthExperienceShell({ children, mode = 'account' }: AuthExperien
               <BrandLockup className="[&>span]:text-white" />
             </Link>
 
-            <div className="my-auto max-w-lg py-2 lg:py-10">
+            <div className="pi-auth-promise my-auto max-w-lg py-2 lg:py-4">
               <p className="mb-4 text-xs font-bold uppercase tracking-[0.18em] text-[#73f0f2]">
                 {isPreview ? 'Product preview' : 'Your private payday companion'}
               </p>
@@ -113,7 +113,7 @@ export function AuthExperienceShell({ children, mode = 'account' }: AuthExperien
               </div>
             </div>
 
-            <div className="relative mt-8 hidden min-h-36 overflow-hidden rounded-[1.5rem] border border-white/10 bg-[#e9fbfc] sm:block lg:mt-0">
+            <div className="pi-auth-illustration relative mt-8 hidden min-h-36 overflow-hidden rounded-[1.5rem] border border-white/10 bg-[#e9fbfc] sm:block lg:mt-0">
               <div className="relative z-10 max-w-[58%] p-5 text-[#17155d]">
                 <p className="text-xs font-bold uppercase tracking-[0.14em] text-[#6d52e6]">UK &amp; Ireland</p>
                 <p className="mt-2 text-lg font-black leading-tight">Built for PAYE, PRSI, USC and NI payslips.</p>

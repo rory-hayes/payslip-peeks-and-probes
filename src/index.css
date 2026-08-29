@@ -2,6 +2,31 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Keep the two-column account entry inside a laptop viewport without shrinking
+   form controls or changing the mobile reading order. */
+@media (min-width: 1024px) and (max-height: 760px) {
+  .pi-auth-page.pi-auth-page {
+    padding-block: 0.75rem;
+  }
+
+  .pi-auth-frame.pi-auth-frame {
+    min-height: calc(100dvh - 1.5rem);
+  }
+
+  .pi-auth-form-panel.pi-auth-form-panel,
+  .pi-auth-product-panel.pi-auth-product-panel {
+    padding-block: 1rem;
+  }
+
+  .pi-auth-promise.pi-auth-promise {
+    padding-block: 0.5rem;
+  }
+
+  .pi-auth-illustration.pi-auth-illustration {
+    display: none;
+  }
+}
+
 @layer base {
   :root {
     --background: 0 0% 100%;
