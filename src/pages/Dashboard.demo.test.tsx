@@ -16,6 +16,7 @@ const state = vi.hoisted(() => ({
   refetchAccess: vi.fn(),
   refetchAnomalies: vi.fn(),
   refetchPayslips: vi.fn(),
+  generatePaySummaryPdf: vi.fn(),
 }));
 
 vi.mock("@/contexts/DemoContext", () => ({
@@ -29,7 +30,8 @@ vi.mock("@/hooks/use-payslip-data", () => ({
 }));
 
 vi.mock("@/hooks/use-profile", () => ({
-  useCurrency: () => ({ currency: "GBP", format: (value: number) => `£${value}`, symbol: "£" }),
+  // Demo mode must not inherit the signed-out Ireland/EUR fallback.
+  useCurrency: () => ({ currency: "EUR", format: (value: number) => `€${value}`, symbol: "€" }),
   useProfile: () => ({ data: null }),
 }));
 
@@ -55,10 +57,18 @@ vi.mock("@/components/layout/AppLayout", () => ({
 vi.mock("@/components/ExpectedVsActual", () => ({ default: () => null }));
 vi.mock("@/components/ExpectedVsActualChart", () => ({ default: () => null }));
 vi.mock("@/components/NetPayTrendChart", () => ({ default: () => null }));
-vi.mock("@/components/YearToDateSummary", () => ({ default: () => null }));
-vi.mock("@/components/YearToDateChart", () => ({ default: () => null }));
+vi.mock("@/components/YearToDateSummary", () => ({
+  default: ({ formatCurrency }: { formatCurrency: (value: number) => string }) => (
+    <div data-testid="year-to-date-summary-currency">{formatCurrency(11_250)}</div>
+  ),
+}));
+vi.mock("@/components/YearToDateChart", () => ({
+  default: ({ currencySymbol, formatCurrency }: { currencySymbol: string; formatCurrency: (value: number) => string }) => (
+    <div data-testid="year-to-date-chart-currency">{currencySymbol}|{formatCurrency(8_405)}</div>
+  ),
+}));
 vi.mock("@/components/UpgradePrompt", () => ({ default: () => null }));
-vi.mock("@/lib/generate-pay-summary-pdf", () => ({ generatePaySummaryPdf: vi.fn() }));
+vi.mock("@/lib/generate-pay-summary-pdf", () => ({ generatePaySummaryPdf: state.generatePaySummaryPdf }));
 
 const Location = () => <output data-testid="location">{useLocation().pathname}</output>;
 
@@ -76,6 +86,7 @@ describe("Dashboard demo mode", () => {
     state.refetchAccess.mockReset();
     state.refetchAnomalies.mockReset();
     state.refetchPayslips.mockReset();
+    state.generatePaySummaryPdf.mockReset();
   });
 
   it("shows sample data without linking a demo visitor into protected detail routes", async () => {
@@ -97,6 +108,10 @@ describe("Dashboard demo mode", () => {
     expect(screen.getByRole("heading", { name: "What changed from your usual pay?" })).toBeInTheDocument();
     expect(screen.getByText("Your take-home was £137.50 lower than your usual £2,847.50. Based on your last 2 confirmed payslips.")).toBeInTheDocument();
     expect(screen.getByText("Sample data only")).toBeInTheDocument();
+    expect(screen.getByTestId("year-to-date-summary-currency")).toHaveTextContent("£11,250.00");
+    await waitFor(() => {
+      expect(screen.getByTestId("year-to-date-chart-currency")).toHaveTextContent("£|£8,405.00");
+    });
 
     fireEvent.click(screen.getByRole("button", { name: "Sign up free" }));
 
@@ -112,6 +127,20 @@ describe("Dashboard demo mode", () => {
     expect(state.disableDemo).not.toHaveBeenCalled();
     expect(screen.getByTestId("location")).toHaveTextContent("/sign-up");
     await waitFor(() => expect(container.querySelector(".pi-dashboard__chart-loading")).not.toBeInTheDocument());
+  });
+
+  it("exports the UK demo in GBP even when the signed-out profile fallback is EUR", async () => {
+    render(
+      <MemoryRouter initialEntries={["/dashboard"]}>
+        <Dashboard />
+      </MemoryRouter>,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Export PDF" }));
+
+    await waitFor(() => expect(state.generatePaySummaryPdf).toHaveBeenCalledWith(
+      expect.objectContaining({ country: "UK", currency: "GBP" }),
+    ));
   });
 
   it("opens a useful but account-safe sample preview from the dashboard", async () => {

@@ -6,10 +6,12 @@ import { TrendingUp } from 'lucide-react';
 
 interface Props {
   payslips: Payslip[];
+  formatCurrency?: (value: number) => string;
 }
 
-const YearToDateSummary = ({ payslips }: Props) => {
-  const { format: fmt } = useCurrency();
+const YearToDateSummary = ({ payslips, formatCurrency }: Props) => {
+  const { format: profileCurrencyFormat } = useCurrency();
+  const fmt = formatCurrency ?? profileCurrencyFormat;
   const currentYear = new Date().getFullYear();
 
   const { payslips: ytdSlips, rows } = summariseYearToDate(payslips, currentYear);

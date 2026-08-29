@@ -9,10 +9,14 @@ import {
 
 interface Props {
   payslips: Payslip[];
+  currencySymbol?: string;
+  formatCurrency?: (value: number) => string;
 }
 
-const YearToDateChart = ({ payslips }: Props) => {
-  const { format: fmt, symbol } = useCurrency();
+const YearToDateChart = ({ payslips, currencySymbol, formatCurrency }: Props) => {
+  const { format: profileCurrencyFormat, symbol: profileCurrencySymbol } = useCurrency();
+  const fmt = formatCurrency ?? profileCurrencyFormat;
+  const symbol = currencySymbol ?? profileCurrencySymbol;
   const currentYear = new Date().getFullYear();
   const titleId = useId();
   const summaryId = useId();

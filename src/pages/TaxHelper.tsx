@@ -24,7 +24,7 @@ import {
 import './TaxHelper.css';
 
 function countryFromProfile(country: string | null | undefined): TaxHelperCountry {
-  return country === 'Ireland' ? 'Ireland' : 'UK';
+  return country === 'UK' ? 'UK' : 'Ireland';
 }
 
 function TaxChecklist({
@@ -154,7 +154,7 @@ const TaxHelper = () => {
   const { isDemo } = useDemo();
   const [manualCountry, setManualCountry] = useState<TaxHelperCountry | null>(null);
   const [period, setPeriod] = useState<'completed' | 'current'>('completed');
-  const country = manualCountry ?? countryFromProfile(profile?.country);
+  const country = manualCountry ?? (isDemo ? 'UK' : countryFromProfile(profile?.country));
   const window = useMemo(() => taxYearWindow(country, new Date(), period === 'completed' ? -1 : 0), [country, period]);
   const steps = OFFICIAL_TAX_STEPS[country];
   const availablePayslips = isDemo ? DEMO_PAYSLIPS : (payslips ?? []);

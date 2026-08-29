@@ -3,7 +3,7 @@ import { MemoryRouter } from 'react-router';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import TaxHelper from './TaxHelper';
 
-const state = vi.hoisted(() => ({ isDemo: true }));
+const state = vi.hoisted(() => ({ isDemo: true, profileCountry: 'UK' as string | null | undefined }));
 
 function installLocalStorage() {
   const values = new Map<string, string>();
@@ -23,7 +23,7 @@ vi.mock('@/components/layout/AppLayout', () => ({
 }));
 
 vi.mock('@/hooks/use-profile', () => ({
-  useProfile: () => ({ data: { country: 'UK' } }),
+  useProfile: () => ({ data: state.profileCountry === undefined ? undefined : { country: state.profileCountry } }),
 }));
 
 vi.mock('@/hooks/use-payslip-data', () => ({
@@ -41,6 +41,7 @@ vi.mock('@/contexts/AuthContext', () => ({
 describe('TaxHelper', () => {
   beforeEach(() => {
     state.isDemo = true;
+    state.profileCountry = 'UK';
     installLocalStorage();
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2026-08-28T12:00:00.000Z'));
@@ -58,7 +59,10 @@ describe('TaxHelper', () => {
     expect(screen.getByRole('heading', { name: 'Your 2025/26 review' })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Could any of these apply to you?' })).toBeInTheDocument();
     expect(screen.getByText('Seen in your payslips')).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: /check pension-relief rules/i })).toHaveAttribute('href', 'https://www.gov.uk/tax-on-your-private-pension/pension-tax-relief');
+    expect(screen.getByRole('link', { name: /check eligibility and claim route/i })).toHaveAttribute(
+      'href',
+      'https://www.gov.uk/guidance/claim-tax-relief-on-your-private-pension-payments',
+    );
     expect(screen.getByRole('link', { name: /open payslip history/i })).toHaveAttribute('href', '/dashboard#pay-history-heading');
     expect(screen.getByRole('link', { name: /open your official account/i })).toHaveAttribute('href', 'https://www.gov.uk/personal-tax-account');
   });
@@ -86,6 +90,21 @@ describe('TaxHelper', () => {
       'https://www.revenue.ie/en/personal-tax-credits-reliefs-and-exemptions/land-and-property/rent-credit/index.aspx',
     );
     expect(screen.queryByRole('heading', { name: 'Marriage Allowance' })).not.toBeInTheDocument();
+  });
+
+  it('keeps demo evidence in the UK but defaults a loading real account to Ireland', () => {
+    state.profileCountry = undefined;
+    const sample = render(<MemoryRouter><TaxHelper /></MemoryRouter>);
+
+    expect(screen.getByRole('button', { name: 'United Kingdom' })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByRole('heading', { name: '3 confirmed payslips ready' })).toBeInTheDocument();
+    sample.unmount();
+
+    state.isDemo = false;
+    render(<MemoryRouter><TaxHelper /></MemoryRouter>);
+
+    expect(screen.getByRole('button', { name: 'Ireland' })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByRole('heading', { name: 'Your 2025 review' })).toBeInTheDocument();
   });
 
   it('tracks checklist progress only after an explicit review action', () => {

@@ -114,4 +114,25 @@ describe('Financial history charts', () => {
     expect(within(table).getByRole('rowheader', { name: 'Feb' })).toBeInTheDocument();
     expect(within(table).getByText('£4250.00')).toBeInTheDocument();
   });
+
+  it('uses an explicit journey currency instead of an unrelated profile fallback', () => {
+    const formatDemoCurrency = (value: number) => `DEMO-£${value.toFixed(2)}`;
+
+    render(
+      <YearToDateChart
+        currencySymbol="£"
+        formatCurrency={formatDemoCurrency}
+        payslips={[
+          payslip({ id: 'jan', pay_date: `${CURRENT_YEAR}-01-31`, gross_pay: 3_000, tax_amount: 400, net_pay: 2_100 }),
+          payslip({ id: 'feb', pay_date: `${CURRENT_YEAR}-02-28`, gross_pay: 3_100, tax_amount: 450, net_pay: 2_150 }),
+        ]}
+      />,
+    );
+
+    const figure = screen.getByRole('figure', { name: `${CURRENT_YEAR} Cumulative Year-to-Date` });
+    expect(figure).toHaveAccessibleDescription(
+      'Cumulative confirmed pay through Feb: gross pay DEMO-£6100.00, tax DEMO-£850.00, and net pay DEMO-£4250.00.',
+    );
+    expect(within(figure).getByText('DEMO-£4250.00')).toBeInTheDocument();
+  });
 });

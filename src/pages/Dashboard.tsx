@@ -76,7 +76,10 @@ const Dashboard = () => {
   const unresolvedCount = newAnomalies.length;
   const featuredAnomaly = newAnomalies[0];
 
-  const demoCurrencyFormat = (value: number) => `£${value.toLocaleString('en-GB', { minimumFractionDigits: 2 })}`;
+  const demoCurrencyFormat = (value: number) => `£${value.toLocaleString('en-GB', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })}`;
   const fmtCurrency = isDemo ? demoCurrencyFormat : formatCurrency;
   const sym = isDemo ? '£' : currSym;
   const usualPayCompareUrl = hasUsualPayBaseline && latest && usualPayBaseline.referencePayslipId
@@ -117,8 +120,8 @@ const Dashboard = () => {
     };
     generatePaySummaryPdf({
       payslips: confirmedPayslips,
-      currency,
-      country: profile?.country ?? null,
+      currency: isDemo ? 'GBP' : currency,
+      country: isDemo ? 'UK' : profile?.country ?? null,
       annualSalary: profile?.annual_salary,
       deductionOpts,
       firstName: profile?.first_name,
@@ -498,10 +501,14 @@ const Dashboard = () => {
                     <ExpectedVsActualChart payslips={confirmedPayslips} />
                   </Suspense>
                 ) : null}
-                <YearToDateSummary payslips={confirmedPayslips} />
+                <YearToDateSummary payslips={confirmedPayslips} formatCurrency={fmtCurrency} />
                 {hasYearToDateChart ? (
                   <Suspense fallback={<div className="pi-dashboard__chart-loading"><Skeleton className="h-full w-full" /></div>}>
-                    <YearToDateChart payslips={confirmedPayslips} />
+                    <YearToDateChart
+                      currencySymbol={sym}
+                      formatCurrency={fmtCurrency}
+                      payslips={confirmedPayslips}
+                    />
                   </Suspense>
                 ) : null}
               </div>
