@@ -305,6 +305,10 @@ export type Database = {
           pay_date: string | null
           pay_period_end: string | null
           pay_period_start: string | null
+          processing_attempts: number
+          processing_failure_code: string | null
+          processing_finished_at: string | null
+          processing_started_at: string | null
           status: string | null
           user_id: string
         }
@@ -318,6 +322,10 @@ export type Database = {
           pay_date?: string | null
           pay_period_end?: string | null
           pay_period_start?: string | null
+          processing_attempts?: number
+          processing_failure_code?: string | null
+          processing_finished_at?: string | null
+          processing_started_at?: string | null
           status?: string | null
           user_id: string
         }
@@ -331,6 +339,10 @@ export type Database = {
           pay_date?: string | null
           pay_period_end?: string | null
           pay_period_start?: string | null
+          processing_attempts?: number
+          processing_failure_code?: string | null
+          processing_finished_at?: string | null
+          processing_started_at?: string | null
           status?: string | null
           user_id?: string
         }
@@ -535,6 +547,21 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      claim_payslip_processing: {
+        Args: { p_payslip_id: string; p_user_id: string }
+        Returns: boolean
+      }
+      consume_rate_limit: {
+        Args: {
+          p_bucket_key: string
+          p_max_per_window: number
+          p_window_start: string
+        }
+        Returns: {
+          allowed: boolean
+          current_count: number
+        }[]
+      }
       has_active_subscription: {
         Args: { check_env?: string; user_uuid: string }
         Returns: boolean
