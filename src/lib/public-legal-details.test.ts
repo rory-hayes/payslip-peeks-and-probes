@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { publicLegalDetailsFrom } from './public-legal-details';
+import { publicLegalDetailsFrom, realPayslipAccessFrom } from './public-legal-details';
 
 describe('public legal details', () => {
   it('is configured only when every public operator field is present', () => {
@@ -30,5 +30,21 @@ describe('public legal details', () => {
       governingLaw: null,
       configured: false,
     });
+  });
+
+  it('requires an explicit production workflow switch as well as complete legal details', () => {
+    const legalDetails = {
+      VITE_LEGAL_OPERATOR_NAME: 'Example Operator',
+      VITE_LEGAL_OPERATOR_ADDRESS: '1 Example Street, Dublin',
+      VITE_LEGAL_GOVERNING_LAW: 'the laws of Ireland',
+    };
+
+    expect(realPayslipAccessFrom(legalDetails, true)).toBe(false);
+    expect(realPayslipAccessFrom({
+      ...legalDetails,
+      VITE_CUSTOMER_WORKFLOWS_ENABLED: 'true',
+    }, true)).toBe(true);
+    expect(realPayslipAccessFrom({ VITE_CUSTOMER_WORKFLOWS_ENABLED: 'true' }, true)).toBe(false);
+    expect(realPayslipAccessFrom({}, false)).toBe(true);
   });
 });

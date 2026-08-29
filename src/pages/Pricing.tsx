@@ -273,7 +273,7 @@ const Pricing = () => {
                   <Link to="/sign-in">Sign in</Link>
                 </Button>
                 <Button asChild size="sm" className="min-h-11">
-                  <Link to="/sign-up">Get started</Link>
+                  <Link to="/sign-up">{acceptsRealPayslips ? 'Get started' : 'Preview'}</Link>
                 </Button>
               </>
             )}
@@ -366,7 +366,7 @@ const Pricing = () => {
                   />
                 ) : (
                   <Button asChild variant="outline" className="mt-8 w-full">
-                    <Link to="/sign-up">Get started free</Link>
+                    <Link to="/sign-up">{acceptsRealPayslips ? 'Get started free' : 'Explore preview'}</Link>
                   </Button>
                 )}
               </CardContent>

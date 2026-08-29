@@ -3,6 +3,7 @@ import { Link } from 'react-router';
 import { Button } from '@/components/ui/button';
 import { BrandLockup } from '@/components/BrandLockup';
 import { Menu, X } from 'lucide-react';
+import { acceptsRealPayslips } from '@/lib/public-legal-details';
 
 interface MarketingNavProps {
   /** Highlight a top-level nav item */
@@ -64,7 +65,7 @@ const MarketingNav = ({ active = null }: MarketingNavProps) => {
               <Link to="/sign-in">Sign in</Link>
             </Button>
             <Button asChild size="sm" className="min-h-11">
-              <Link to="/sign-up">Get started</Link>
+              <Link to="/sign-up">{acceptsRealPayslips ? 'Get started' : 'Preview'}</Link>
             </Button>
           </div>
         </div>

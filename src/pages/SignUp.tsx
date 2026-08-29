@@ -6,8 +6,9 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Separator } from '@/components/ui/separator';
-import { CheckCircle } from 'lucide-react';
+import { ArrowRight, CheckCircle, ShieldCheck } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useDemo } from '@/contexts/DemoContext';
 import { useToast } from '@/hooks/use-toast';
 import { analytics } from '@/lib/analytics';
 import { AuthExperienceShell } from '@/components/AuthExperienceShell';
@@ -25,6 +26,7 @@ const SignUp = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { signUp, signInWithGoogle } = useAuth();
+  const { enableDemo } = useDemo();
   const { toast } = useToast();
   const [firstName, setFirstName] = useState('');
   const [email, setEmail] = useState('');
@@ -40,8 +42,10 @@ const SignUp = () => {
 
   useEffect(() => {
     applySeo({
-      title: 'Create an account | Payslip Insights',
-      description: 'Create a secure Payslip Insights account.',
+      title: acceptsRealPayslips ? 'Create an account | Payslip Insights' : 'Product preview | Payslip Insights',
+      description: acceptsRealPayslips
+        ? 'Create a secure Payslip Insights account.'
+        : 'Explore the Payslip Insights sample while secure real-payslip uploads complete release checks.',
       canonicalPath: null,
       noIndex: true,
     });
@@ -49,7 +53,7 @@ const SignUp = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!agreed) return;
+    if (!acceptsRealPayslips || !agreed) return;
 
     analytics.track('sign_up_started');
     setLoading(true);
@@ -78,7 +82,7 @@ const SignUp = () => {
   };
 
   const handleGoogleSignUp = async () => {
-    if (!agreed) return;
+    if (!acceptsRealPayslips || !agreed) return;
 
     setGoogleLoading(true);
     try {
@@ -97,6 +101,48 @@ const SignUp = () => {
       setGoogleLoading(false);
     }
   };
+
+  const handleOpenDemo = () => {
+    analytics.track('demo_started');
+    enableDemo();
+    navigate('/dashboard');
+  };
+
+  if (!acceptsRealPayslips) {
+    return (
+      <AuthExperienceShell mode="preview">
+        <Card className="border-0 shadow-none">
+          <CardHeader className="px-0 pt-0 text-left">
+            <p className="mb-1 text-xs font-bold uppercase tracking-[0.16em] text-primary">Early-access preview</p>
+            <h1 className="text-2xl font-semibold leading-tight tracking-tight">Secure uploads are not open yet</h1>
+            <CardDescription className="text-sm leading-6">
+              We are completing the production controls required before accepting real payslips or new accounts. The full sample journey is ready to explore now.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-5 px-0 pb-0">
+            <div className="flex items-start gap-3 rounded-2xl border border-primary/15 bg-primary/5 p-4" role="status">
+              <ShieldCheck className="mt-0.5 h-5 w-5 shrink-0 text-primary" aria-hidden="true" />
+              <div>
+                <h2 className="text-sm font-semibold text-foreground">No personal details needed</h2>
+                <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                  The preview uses fictional sample data and includes the payday dashboard, comparison evidence and tax-year helper.
+                </p>
+              </div>
+            </div>
+            <Button className="min-h-11 w-full gap-2" onClick={handleOpenDemo}>
+              Explore the sample <ArrowRight className="h-4 w-4" aria-hidden="true" />
+            </Button>
+            <Button asChild className="min-h-11 w-full" variant="outline">
+              <Link to={signInPath}>Sign in to an existing account</Link>
+            </Button>
+            <p className="text-center text-xs leading-5 text-muted-foreground">
+              Questions about early access? <a className="font-medium text-primary hover:underline" href="mailto:support@payslipinsights.com">Contact support</a> without attaching a payslip.
+            </p>
+          </CardContent>
+        </Card>
+      </AuthExperienceShell>
+    );
+  }
 
   return (
     <AuthExperienceShell>

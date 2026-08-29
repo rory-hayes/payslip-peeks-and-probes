@@ -295,6 +295,28 @@
   margin-top: 2rem;
 }
 
+.pi-landing__release-note {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 1rem 0 0;
+  padding: 0.55rem 0.75rem;
+  border: 1px solid rgba(109, 82, 230, 0.18);
+  border-radius: 0.75rem;
+  background: rgba(239, 236, 255, 0.72);
+  color: var(--pi-ink);
+  font-size: 0.76rem;
+  font-weight: 750;
+  line-height: 1.4;
+}
+
+.pi-landing__release-note svg {
+  width: 1rem;
+  height: 1rem;
+  flex-shrink: 0;
+  color: var(--pi-violet);
+}
+
 .pi-landing__hero-notes {
   flex-wrap: wrap;
   gap: 0.9rem 1.25rem;
@@ -1094,7 +1116,9 @@
   width: 100%;
   margin-top: auto;
   border-color: var(--pi-ink);
+  background: transparent;
   color: var(--pi-ink);
+  cursor: pointer;
 }
 
 .pi-landing__price-card .pi-landing__button {

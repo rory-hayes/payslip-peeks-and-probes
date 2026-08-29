@@ -87,6 +87,10 @@ for (const [name, description] of [
   }
 }
 
+if (environmentValue("VITE_CUSTOMER_WORKFLOWS_ENABLED").toLowerCase() !== "true") {
+  blockers.push("Set VITE_CUSTOMER_WORKFLOWS_ENABLED=true only after the production backend, legal, isolation, deletion, and real-account release proofs have passed.");
+}
+
 if (paidLaunch) {
   const stripeKey = environmentValue("VITE_PAYMENTS_CLIENT_TOKEN");
   if (!stripeKey.startsWith("pk_live_") || isPlaceholder(stripeKey)) {
@@ -137,7 +141,8 @@ if (sourceHas("src/pages/Terms.tsx", "Before a public paid launch, we will publi
 
 if (!sourceHas("src/pages/Privacy.tsx", "publicLegalDetails")
   || !sourceHas("src/pages/Terms.tsx", "publicLegalDetails")
-  || !sourceHas("src/components/PayslipUpload.tsx", "acceptsRealPayslips")) {
+  || !sourceHas("src/components/PayslipUpload.tsx", "acceptsRealPayslips")
+  || !sourceHas("src/pages/SignUp.tsx", "acceptsRealPayslips")) {
   blockers.push("Keep the configured operator details visible and fail closed before unconfigured production uploads.");
 }
 

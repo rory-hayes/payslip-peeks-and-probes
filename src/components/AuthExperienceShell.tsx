@@ -6,6 +6,7 @@ import payslipCheckHero from '@/assets/option-one-payslip-check-hero-v1.webp';
 
 type AuthExperienceShellProps = {
   children: ReactNode;
+  mode?: 'account' | 'preview';
 };
 
 const AUTH_OUTCOMES = [
@@ -26,11 +27,32 @@ const AUTH_OUTCOMES = [
   },
 ] as const;
 
+const PREVIEW_OUTCOMES = [
+  {
+    icon: ScanLine,
+    title: 'Explore a complete sample',
+    description: 'Review a UK payslip journey without sharing a document.',
+  },
+  {
+    icon: FileCheck2,
+    title: 'See the comparison clearly',
+    description: 'Follow the figures from payday through year-to-date history.',
+  },
+  {
+    icon: Check,
+    title: 'Try the tax-year helper',
+    description: 'Switch between the official HMRC and Revenue checklists.',
+  },
+] as const;
+
 /**
  * Shared account-entry frame. The form stays first in the reading order while
  * the wider layout puts the product promise beside it on larger screens.
  */
-export function AuthExperienceShell({ children }: AuthExperienceShellProps) {
+export function AuthExperienceShell({ children, mode = 'account' }: AuthExperienceShellProps) {
+  const isPreview = mode === 'preview';
+  const outcomes = isPreview ? PREVIEW_OUTCOMES : AUTH_OUTCOMES;
+
   return (
     <main className="min-h-screen bg-[#f6f7fc] px-4 py-5 sm:px-6 lg:px-8 lg:py-8">
       <div className="mx-auto grid min-h-[calc(100vh-2.5rem)] max-w-6xl overflow-hidden rounded-[2rem] border border-[#ebe9f6] bg-white shadow-[0_24px_80px_rgba(23,21,93,0.10)] lg:min-h-[calc(100vh-4rem)] lg:grid-cols-[1.02fr_0.98fr]">
@@ -42,7 +64,11 @@ export function AuthExperienceShell({ children }: AuthExperienceShellProps) {
             {children}
             <div className="mt-6 flex items-start gap-2.5 rounded-2xl bg-[#f6f7fc] px-4 py-3 text-xs leading-5 text-[#64658d]">
               <LockKeyhole className="mt-0.5 h-4 w-4 shrink-0 text-[#17155d]" aria-hidden="true" />
-              <p>Your payslip stays private to your account. Findings are guidance and issue spotting, not tax or legal advice.</p>
+              <p>
+                {isPreview
+                  ? 'The preview uses sample data. Do not upload, paste or email a real payslip while secure uploads are closed.'
+                  : 'Your payslip stays private to your account. Findings are guidance and issue spotting, not tax or legal advice.'}
+              </p>
             </div>
           </div>
         </section>
@@ -60,16 +86,20 @@ export function AuthExperienceShell({ children }: AuthExperienceShellProps) {
             </Link>
 
             <div className="my-auto max-w-lg py-2 lg:py-10">
-              <p className="mb-4 text-xs font-bold uppercase tracking-[0.18em] text-[#73f0f2]">Your private payday companion</p>
+              <p className="mb-4 text-xs font-bold uppercase tracking-[0.18em] text-[#73f0f2]">
+                {isPreview ? 'Product preview' : 'Your private payday companion'}
+              </p>
               <p className="max-w-md text-4xl font-black leading-[0.98] tracking-[-0.055em] sm:text-5xl">
-                Know what changed. Keep the evidence.
+                {isPreview ? 'See the full journey. No document needed.' : 'Know what changed. Keep the evidence.'}
               </p>
               <p className="mt-5 max-w-md text-sm leading-6 text-white/72 sm:text-base">
-                Two automatic checks are included on Free—enough to understand your first payslip and compare the next one.
+                {isPreview
+                  ? 'The sample experience is open while real-account uploads finish their production release checks.'
+                  : 'Two automatic checks are included on Free—enough to understand your first payslip and compare the next one.'}
               </p>
 
               <div className="mt-8 grid gap-3">
-                {AUTH_OUTCOMES.map(({ icon: Icon, title, description }) => (
+                {outcomes.map(({ icon: Icon, title, description }) => (
                   <div key={title} className="flex gap-3 rounded-2xl border border-white/12 bg-white/[0.07] p-3.5 backdrop-blur-sm">
                     <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#73f0f2] text-[#17155d]">
                       <Icon className="h-4 w-4" aria-hidden="true" />

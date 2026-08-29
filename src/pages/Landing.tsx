@@ -202,7 +202,11 @@ const Landing = () => {
               {isMobileMenuOpen ? <X aria-hidden="true" /> : <Menu aria-hidden="true" />}
             </button>
             <Link to="/sign-in" className="pi-landing__sign-in">Sign in</Link>
-            <Link to="/sign-up" className="pi-landing__button pi-landing__button--small">Get started</Link>
+            {acceptsRealPayslips ? (
+              <Link to="/sign-up" className="pi-landing__button pi-landing__button--small">Get started</Link>
+            ) : (
+              <button type="button" className="pi-landing__button pi-landing__button--small" onClick={handleTryDemo}>Preview</button>
+            )}
           </div>
         </nav>
         {isMobileMenuOpen && (
@@ -227,13 +231,31 @@ const Landing = () => {
                 Upload your payslip, confirm the figures, and see what changed. Compare pay, ask payroll clearly, and stay ready for tax year-end.
               </p>
               <div className="pi-landing__hero-actions">
-                <Link to="/sign-up" className="pi-landing__button" onClick={() => analytics.track('marketing_cta_clicked')}>
-                  Check a payslip <ArrowRight aria-hidden="true" />
-                </Link>
-                <button type="button" className="pi-landing__secondary-action" onClick={handleTryDemo}>
-                  Try the demo <ArrowRight aria-hidden="true" />
-                </button>
+                {acceptsRealPayslips ? (
+                  <>
+                    <Link to="/sign-up" className="pi-landing__button" onClick={() => analytics.track('marketing_cta_clicked')}>
+                      Check a payslip <ArrowRight aria-hidden="true" />
+                    </Link>
+                    <button type="button" className="pi-landing__secondary-action" onClick={handleTryDemo}>
+                      Try the demo <ArrowRight aria-hidden="true" />
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <button type="button" className="pi-landing__button" onClick={handleTryDemo}>
+                      Explore the live demo <ArrowRight aria-hidden="true" />
+                    </button>
+                    <a className="pi-landing__secondary-action" href="#how-it-works">
+                      See how it works <ArrowRight aria-hidden="true" />
+                    </a>
+                  </>
+                )}
               </div>
+              {!acceptsRealPayslips ? (
+                <p className="pi-landing__release-note" role="status">
+                  <ShieldCheck aria-hidden="true" /> Early-access preview · real uploads and new accounts are not open yet.
+                </p>
+              ) : null}
               <div className="pi-landing__hero-notes" aria-label="Product highlights">
                 <span><Check aria-hidden="true" /> Check figures against the original</span>
                 <span><Check aria-hidden="true" /> UK &amp; Ireland focused</span>
@@ -438,7 +460,11 @@ const Landing = () => {
                     <li key={feature}><Check aria-hidden="true" />{feature}</li>
                   ))}
                 </ul>
-                <Link to="/sign-up" className="pi-landing__outline-button" onClick={() => analytics.track('marketing_cta_clicked')}>Get started free</Link>
+                {acceptsRealPayslips ? (
+                  <Link to="/sign-up" className="pi-landing__outline-button" onClick={() => analytics.track('marketing_cta_clicked')}>Get started free</Link>
+                ) : (
+                  <button type="button" className="pi-landing__outline-button" onClick={handleTryDemo}>Explore free demo</button>
+                )}
               </article>
 
               <article className="pi-landing__price-card pi-landing__price-card--plus">
@@ -490,12 +516,22 @@ const Landing = () => {
           <div className="pi-landing__container">
             <div className="pi-landing__closing-panel">
               <div>
-                <h2>Ready to check your payslips?</h2>
-                <p>Upload a payslip, understand what changed, and leave with a clear, evidence-backed next step.</p>
+                <h2>{acceptsRealPayslips ? 'Ready to check your payslips?' : 'Ready to see the full journey?'}</h2>
+                <p>
+                  {acceptsRealPayslips
+                    ? 'Upload a payslip, understand what changed, and leave with a clear, evidence-backed next step.'
+                    : 'Explore the fictional sample from payday through comparison and tax-year review. No account or document needed.'}
+                </p>
               </div>
-              <Link to="/sign-up" className="pi-landing__button pi-landing__button--light" onClick={() => analytics.track('marketing_cta_clicked')}>
-                Get started for free <ArrowRight aria-hidden="true" />
-              </Link>
+              {acceptsRealPayslips ? (
+                <Link to="/sign-up" className="pi-landing__button pi-landing__button--light" onClick={() => analytics.track('marketing_cta_clicked')}>
+                  Get started for free <ArrowRight aria-hidden="true" />
+                </Link>
+              ) : (
+                <button type="button" className="pi-landing__button pi-landing__button--light" onClick={handleTryDemo}>
+                  Explore the demo <ArrowRight aria-hidden="true" />
+                </button>
+              )}
             </div>
           </div>
         </section>

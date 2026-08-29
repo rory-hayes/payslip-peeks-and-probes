@@ -1,7 +1,8 @@
 type PublicLegalEnvironment = Partial<Record<
   | 'VITE_LEGAL_OPERATOR_NAME'
   | 'VITE_LEGAL_OPERATOR_ADDRESS'
-  | 'VITE_LEGAL_GOVERNING_LAW',
+  | 'VITE_LEGAL_GOVERNING_LAW'
+  | 'VITE_CUSTOMER_WORKFLOWS_ENABLED',
   string
 >>;
 
@@ -32,6 +33,13 @@ export function publicLegalDetailsFrom(environment: PublicLegalEnvironment): Pub
 
 export const publicLegalDetails = publicLegalDetailsFrom(import.meta.env);
 
-// Development and automated tests must remain usable, but an accidentally
-// published production bundle fails closed before accepting a real payslip.
-export const acceptsRealPayslips = !import.meta.env.PROD || publicLegalDetails.configured;
+export function realPayslipAccessFrom(environment: PublicLegalEnvironment, isProduction: boolean): boolean {
+  if (!isProduction) return true;
+  return publicLegalDetailsFrom(environment).configured
+    && environment.VITE_CUSTOMER_WORKFLOWS_ENABLED?.trim().toLowerCase() === 'true';
+}
+
+// Development and automated tests remain usable. Production needs both its
+// public operator details and a separate, deliberate release switch that is
+// enabled only after backend and real-account proof has passed.
+export const acceptsRealPayslips = realPayslipAccessFrom(import.meta.env, import.meta.env.PROD);
