@@ -115,6 +115,10 @@ parameters to analytics.
 
 - [ ] Legal entity, contact, governing law, provider, retention, and cookie
   disclosures are final and reviewed by the owner.
+- [ ] `support@payslipinsights.com` and `privacy@payslipinsights.com` have usable
+  MX routing to monitored inboxes; inbound delivery and a human reply from each
+  public address have been tested without exposing the private destination
+  inbox in source, logs, or the browser bundle.
 - [ ] From the account that owns the intended Supabase project, set the
   database password only in the local shell and run
   `npm run deploy:supabase -- --confirm` from a clean worktree; do not use
@@ -133,7 +137,8 @@ parameters to analytics.
 - [ ] A matching paid production browser key is configured and the payment
   banner is absent in a fresh production browser.
 - [ ] The web release serves the expected `release.json`, security headers,
-  route metadata, and current artifact.
+  route metadata, current artifact, and no Lovable editing badge or injected
+  host analytics.
 - [ ] The companion has been tested with a release-device build or is clearly
   labelled as a non-paid preview; do not imply native billing parity.
 - [ ] The first validation cohort is tracked by explicit purchase and repeat
