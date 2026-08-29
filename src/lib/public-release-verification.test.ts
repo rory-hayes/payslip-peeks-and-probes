@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   DIRECT_ROUTE_CHECKS,
   cleanCheckedOutRevision,
+  contactMailRoutingIssues,
   directRouteResponseIssues,
   expectedTitleFromSource,
   headerIssues,
@@ -104,6 +105,15 @@ describe('public release verification contract', () => {
     expect(isCanonicalBuildTimestamp('1')).toBe(false);
     expect(isCanonicalBuildTimestamp('2026-08-04T12:00:00Z')).toBe(false);
     expect(isCanonicalBuildTimestamp('2026-02-30T12:00:00.000Z')).toBe(false);
+  });
+
+  it('requires working mail routing for the published support and privacy addresses', () => {
+    expect(contactMailRoutingIssues([{ exchange: 'mail.payslipinsights.com', priority: 10 }]))
+      .toEqual([]);
+    expect(contactMailRoutingIssues([]))
+      .toEqual([expect.stringMatching(/MX mail routing/i)]);
+    expect(contactMailRoutingIssues([{ exchange: '.', priority: 0 }]))
+      .toEqual([expect.stringMatching(/usable MX destination/i)]);
   });
 
   it('detects old product claims and known host-level injection', () => {

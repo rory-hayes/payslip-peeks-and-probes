@@ -1,4 +1,5 @@
 import { execFileSync } from 'node:child_process';
+import { resolveMx } from 'node:dns/promises';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -11,6 +12,7 @@ const MIN_HSTS_MAX_AGE_SECONDS = 31_536_000;
 const GIT_SHA_PATTERN = /^[0-9a-f]{40}$/;
 const CANONICAL_ISO_TIMESTAMP_PATTERN = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/;
 const VERIFICATION_SCOPES = new Set(['release', 'cutover']);
+const REQUIRED_CONTACT_EMAIL_DOMAIN = 'payslipinsights.com';
 export const DIRECT_ROUTE_CHECKS = [
   { label: 'guides hub', path: '/guides', staticMetadata: true, ogType: 'website' },
   { label: 'guide', path: '/guides/how-to-check-your-payslip', staticMetadata: true, ogType: 'article' },
@@ -79,6 +81,23 @@ export function isCanonicalBuildTimestamp(value) {
 
   const timestamp = Date.parse(value);
   return Number.isFinite(timestamp) && new Date(timestamp).toISOString() === value;
+}
+
+export function contactMailRoutingIssues(records) {
+  if (!Array.isArray(records) || records.length === 0) {
+    return [`The public support and privacy addresses need MX mail routing for ${REQUIRED_CONTACT_EMAIL_DOMAIN}.`];
+  }
+
+  const usableRecords = records.filter((record) => (
+    record
+    && typeof record.exchange === 'string'
+    && record.exchange.trim()
+    && record.exchange.trim() !== '.'
+    && Number.isFinite(record.priority)
+  ));
+  return usableRecords.length > 0
+    ? []
+    : [`The public support and privacy addresses need a usable MX destination for ${REQUIRED_CONTACT_EMAIL_DOMAIN}.`];
 }
 
 export function validateReleaseManifest(value, expectedRevision) {
@@ -524,16 +543,20 @@ async function main() {
     ...route,
     url: directRouteUrl(publicUrl, route.path),
   }));
-  const [manifestResponse, homeResponse, directRouteResponses] = await Promise.all([
+  const [manifestResponse, homeResponse, directRouteResponses, contactMailRecords] = await Promise.all([
     fetchWithTimeout(manifestUrl, 'application/json'),
     fetchWithTimeout(root, 'text/html'),
     Promise.all(directRoutes.map(async (route) => ({
       ...route,
       response: await fetchWithTimeout(route.url, 'text/html'),
     }))),
+    scope === 'release'
+      ? resolveMx(REQUIRED_CONTACT_EMAIL_DOMAIN).catch(() => [])
+      : Promise.resolve([]),
   ]);
 
   const issues = [];
+  if (scope === 'release') issues.push(...contactMailRoutingIssues(contactMailRecords));
   if (!manifestResponse.ok) {
     issues.push(`The public release manifest returned HTTP ${manifestResponse.status}.`);
   } else {
@@ -623,6 +646,7 @@ async function main() {
   if (scope === 'release') {
     console.log('- Public page: expected title, built application module, no known host injection, and restrictive headers');
     console.log('- Direct routes: indexable routes serve distinct static metadata; sign-in and protected-route shells serve static noindex HTML without a host redirect');
+    console.log('- Contact operations: the public support and privacy email domain has usable MX routing');
   } else {
     console.log('- Public page: expected title and one same-origin built application module');
     console.log('- Scope: secure-client cutover only; run the default verifier separately for the complete public-quality audit');
