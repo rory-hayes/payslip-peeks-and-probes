@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { MemoryRouter, useLocation } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import Dashboard from "./Dashboard";
@@ -7,6 +7,7 @@ const state = vi.hoisted(() => ({
   accessError: false,
   accessPending: false,
   accessReady: true,
+  acceptsRealPayslips: false,
   disableDemo: vi.fn(),
   isDemo: true,
   isPremium: true,
@@ -21,6 +22,12 @@ const state = vi.hoisted(() => ({
 
 vi.mock("@/contexts/DemoContext", () => ({
   useDemo: () => ({ disableDemo: state.disableDemo, isDemo: state.isDemo }),
+}));
+
+vi.mock("@/lib/public-legal-details", () => ({
+  get acceptsRealPayslips() {
+    return state.acceptsRealPayslips;
+  },
 }));
 
 vi.mock("@/hooks/use-payslip-data", () => ({
@@ -77,6 +84,7 @@ describe("Dashboard demo mode", () => {
     state.accessError = false;
     state.accessPending = false;
     state.accessReady = true;
+    state.acceptsRealPayslips = false;
     state.disableDemo.mockReset();
     state.isDemo = true;
     state.isPremium = true;
@@ -97,7 +105,7 @@ describe("Dashboard demo mode", () => {
       </MemoryRouter>,
     );
 
-    expect(screen.getByText("This read-only demo keeps sample payslips on this dashboard.")).toBeInTheDocument();
+    expect(screen.getByText("This read-only demo uses fictional payslips. Secure uploads and new accounts are not open yet.")).toBeInTheDocument();
     expect(container.querySelectorAll("[data-demo-read-only='true']").length).toBeGreaterThan(0);
     expect(container.querySelector("a[href='/vault']")).toBeNull();
     expect(container.querySelector("a[href^='/payslip/']")).toBeNull();
@@ -113,20 +121,37 @@ describe("Dashboard demo mode", () => {
       expect(screen.getByTestId("year-to-date-chart-currency")).toHaveTextContent("£|£8,405.00");
     });
 
-    fireEvent.click(screen.getByRole("button", { name: "Sign up free" }));
+    expect(screen.queryByRole("button", { name: "Sign up free" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Sign up to upload" })).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "About early access" }));
 
     // The demo stays visible until the public page mounts so the route change
     // cannot race into a protected-route redirect.
     expect(state.disableDemo).not.toHaveBeenCalled();
     expect(screen.getByTestId("location")).toHaveTextContent("/sign-up");
 
-    fireEvent.click(screen.getByRole("button", { name: "Sign up to upload" }));
+    fireEvent.click(screen.getByRole("button", { name: "About secure uploads" }));
 
     // The app clears demo state after the public destination mounts. Clearing
     // it on this protected dashboard would race into a /sign-in redirect.
     expect(state.disableDemo).not.toHaveBeenCalled();
     expect(screen.getByTestId("location")).toHaveTextContent("/sign-up");
     await waitFor(() => expect(container.querySelector(".pi-dashboard__chart-loading")).not.toBeInTheDocument());
+  });
+
+  it("restores account and upload calls to action only for an enabled customer release", () => {
+    state.acceptsRealPayslips = true;
+
+    render(
+      <MemoryRouter initialEntries={["/dashboard"]}>
+        <Dashboard />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByText("This read-only demo keeps sample payslips on this dashboard.")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Sign up free" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Sign up to upload" })).toBeInTheDocument();
   });
 
   it("exports the UK demo in GBP even when the signed-out profile fallback is EUR", async () => {
@@ -158,6 +183,7 @@ describe("Dashboard demo mode", () => {
 
     const dialog = await screen.findByRole("dialog");
     expect(dialog).toHaveTextContent("Sample payslip check");
+    expect(within(dialog).getByRole("button", { name: "About secure uploads" })).toBeInTheDocument();
     expect(dialog).toHaveTextContent("Tax increased more than expected");
     expect(dialog).toHaveTextContent("What was reviewed");
     expect(dialog).toHaveTextContent("Figures checked against the original");

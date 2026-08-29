@@ -12,6 +12,7 @@ import {
 import AnomalyExplanation from '@/components/AnomalyExplanation';
 import { formatDate } from '@/lib/date-utils';
 import { EXTRACTION_CONTEXT_FIELDS, formatExtractionContextValue } from '@/lib/payslip-extraction-details';
+import { acceptsRealPayslips } from '@/lib/public-legal-details';
 import type { AnomalyResult, Payslip } from '@/lib/types';
 
 export interface DemoPayslipPreviewState {
@@ -174,7 +175,7 @@ const DemoPayslipPreview = ({ onOpenChange, onSignUp, preview }: DemoPayslipPrev
                 <Button type="button" variant="outline" className="pi-demo-preview__secondary-action">Keep exploring</Button>
               </DialogClose>
               <Button type="button" className="pi-demo-preview__primary-action" onClick={onSignUp}>
-                Sign up to check mine <ArrowRight aria-hidden="true" />
+                {acceptsRealPayslips ? 'Sign up to check mine' : 'About secure uploads'} <ArrowRight aria-hidden="true" />
               </Button>
             </DialogFooter>
           </>

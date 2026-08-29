@@ -19,12 +19,13 @@ import { useDemo } from '@/contexts/DemoContext';
 import DemoPayslipPreview, { type DemoPayslipPreviewState } from '@/components/DemoPayslipPreview';
 import DemoReadOnlyLink from '@/components/DemoReadOnlyLink';
 import { DEMO_PAYSLIPS, DEMO_ANOMALIES, DEMO_TRENDS } from '@/lib/demo-data';
+import { acceptsRealPayslips } from '@/lib/public-legal-details';
 import type { Payslip, AnomalyResult, PayTrend } from '@/lib/types';
 import payslipCheckHero from '@/assets/option-one-payslip-check-hero-v1.webp';
 import aquaCorner from '@/assets/option-one-aqua-corner-v2.webp';
 import {
   Upload, TrendingUp, TrendingDown, AlertTriangle, FileText, ArrowRight, Download,
-  Shield, Sparkles, X, GitCompareArrows, MessageSquareText, Landmark,
+  Shield, ShieldCheck, Sparkles, X, GitCompareArrows, MessageSquareText, Landmark,
 } from 'lucide-react';
 import './Dashboard.css';
 
@@ -98,7 +99,7 @@ const Dashboard = () => {
   const showUsageAccessError = !isDemo && accessError;
   const showUsageAccessPending = !isDemo && accessPending && !accessError;
 
-  const leaveDemoForSignUp = () => {
+  const openAccountEntry = () => {
     setDemoPreview(null);
     navigate('/sign-up', { state: { exitDemo: true } });
   };
@@ -138,12 +139,16 @@ const Dashboard = () => {
               <Sparkles className="pi-dashboard__demo-icon" aria-hidden="true" />
               <p>
                 <strong>You&apos;re viewing sample data.</strong>{' '}
-                <span>This read-only demo keeps sample payslips on this dashboard.</span>
+                <span>
+                  {acceptsRealPayslips
+                    ? 'This read-only demo keeps sample payslips on this dashboard.'
+                    : 'This read-only demo uses fictional payslips. Secure uploads and new accounts are not open yet.'}
+                </span>
               </p>
             </div>
             <div className="pi-dashboard__demo-actions">
-              <Button className="pi-dashboard__small-primary" size="sm" onClick={leaveDemoForSignUp}>
-                Sign up free
+              <Button className="pi-dashboard__small-primary" size="sm" onClick={openAccountEntry}>
+                {acceptsRealPayslips ? 'Sign up free' : 'About early access'}
               </Button>
               <Button
                 className="pi-dashboard__icon-button"
@@ -181,9 +186,11 @@ const Dashboard = () => {
               </Button>
             )}
             {isDemo ? (
-              <Button className="pi-dashboard__primary-action" onClick={leaveDemoForSignUp}>
-                <Upload className="h-4 w-4" aria-hidden="true" />
-                Sign up to upload
+              <Button className="pi-dashboard__primary-action" onClick={openAccountEntry}>
+                {acceptsRealPayslips
+                  ? <Upload className="h-4 w-4" aria-hidden="true" />
+                  : <ShieldCheck className="h-4 w-4" aria-hidden="true" />}
+                {acceptsRealPayslips ? 'Sign up to upload' : 'About secure uploads'}
               </Button>
             ) : pendingReview ? (
               <Button asChild className="pi-dashboard__primary-action">
@@ -610,7 +617,7 @@ const Dashboard = () => {
         {isDemo ? (
           <DemoPayslipPreview
             onOpenChange={closeDemoPreview}
-            onSignUp={leaveDemoForSignUp}
+            onSignUp={openAccountEntry}
             preview={demoPreview}
           />
         ) : null}

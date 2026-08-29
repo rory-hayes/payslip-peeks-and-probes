@@ -243,7 +243,7 @@ const Landing = () => {
                 ) : (
                   <>
                     <button type="button" className="pi-landing__button" onClick={handleTryDemo}>
-                      Explore the live demo <ArrowRight aria-hidden="true" />
+                      Explore the sample <ArrowRight aria-hidden="true" />
                     </button>
                     <a className="pi-landing__secondary-action" href="#how-it-works">
                       See how it works <ArrowRight aria-hidden="true" />

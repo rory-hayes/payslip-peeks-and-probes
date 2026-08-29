@@ -43,7 +43,7 @@ describe('Landing production preview gate', () => {
     expect(screen.getByRole('link', { name: 'View Plus details' })).toHaveAttribute('href', '/pricing');
     expect(screen.getByRole('heading', { name: 'Ready to see the full journey?' })).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Explore the live demo' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Explore the sample' }));
 
     expect(state.enableDemo).toHaveBeenCalledOnce();
     expect(screen.getByTestId('location')).toHaveTextContent('/dashboard');

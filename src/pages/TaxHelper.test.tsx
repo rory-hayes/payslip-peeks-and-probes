@@ -55,15 +55,18 @@ describe('TaxHelper', () => {
     render(<MemoryRouter><TaxHelper /></MemoryRouter>);
 
     expect(screen.getByRole('button', { name: 'Last completed' })).toHaveAttribute('aria-pressed', 'true');
-    expect(screen.getByRole('heading', { name: '3 confirmed payslips ready' })).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: 'Your 2025/26 review' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'A tax year, organised.' })).toBeInTheDocument();
+    expect(screen.getByText(/fictional payslips connect to the official HMRC steps/i)).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: '3 sample payslips ready' })).toBeInTheDocument();
+    expect(screen.getByText(/these fictional figures show how a review can connect saved payslips/i)).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Sample 2025/26 review' })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Could any of these apply to you?' })).toBeInTheDocument();
-    expect(screen.getByText('Seen in your payslips')).toBeInTheDocument();
+    expect(screen.getByText('Seen in the sample')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /check eligibility and claim route/i })).toHaveAttribute(
       'href',
       'https://www.gov.uk/guidance/claim-tax-relief-on-your-private-pension-payments',
     );
-    expect(screen.getByRole('link', { name: /open payslip history/i })).toHaveAttribute('href', '/dashboard#pay-history-heading');
+    expect(screen.getByRole('link', { name: /open sample history/i })).toHaveAttribute('href', '/dashboard#pay-history-heading');
     expect(screen.getByRole('link', { name: /open your official account/i })).toHaveAttribute('href', 'https://www.gov.uk/personal-tax-account');
   });
 
@@ -72,9 +75,9 @@ describe('TaxHelper', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Current year' }));
 
-    expect(screen.getByRole('heading', { name: 'Your 2026/27 review' })).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: '0 confirmed payslips ready' })).toBeInTheDocument();
-    expect(screen.queryByText('Seen in your payslips')).not.toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Sample 2026/27 review' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: '0 sample payslips ready' })).toBeInTheDocument();
+    expect(screen.queryByText('Seen in the sample')).not.toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Guidance, not a refund calculation' })).toBeInTheDocument();
     expect(screen.getByText(/does not calculate your final liability/i)).toBeInTheDocument();
   });
@@ -97,7 +100,7 @@ describe('TaxHelper', () => {
     const sample = render(<MemoryRouter><TaxHelper /></MemoryRouter>);
 
     expect(screen.getByRole('button', { name: 'United Kingdom' })).toHaveAttribute('aria-pressed', 'true');
-    expect(screen.getByRole('heading', { name: '3 confirmed payslips ready' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: '3 sample payslips ready' })).toBeInTheDocument();
     sample.unmount();
 
     state.isDemo = false;

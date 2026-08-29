@@ -30,12 +30,14 @@ function countryFromProfile(country: string | null | undefined): TaxHelperCountr
 function TaxChecklist({
   country,
   historyPath,
+  isSample,
   steps,
   taxYearLabel,
   userId,
 }: {
   country: TaxHelperCountry;
   historyPath: string;
+  isSample: boolean;
   steps: OfficialTaxStep[];
   taxYearLabel: string;
   userId: string | null;
@@ -87,7 +89,7 @@ function TaxChecklist({
       <div className="tax-helper__section-heading">
         <div>
           <p className="tax-helper__eyebrow">Official-source checklist</p>
-          <h2 id="tax-steps-heading">Your {taxYearLabel} review</h2>
+          <h2 id="tax-steps-heading">{isSample ? 'Sample' : 'Your'} {taxYearLabel} review</h2>
         </div>
         <div className="tax-helper__progress-copy">
           <span>{completedCount} of {steps.length} reviewed</span>
@@ -138,7 +140,7 @@ function TaxChecklist({
         <div className="tax-helper__complete" role="status">
           <CheckCircle2 aria-hidden="true" />
           <div>
-            <h3>Your {taxYearLabel} checklist is reviewed.</h3>
+            <h3>{isSample ? 'The sample' : `Your ${taxYearLabel}`} checklist is reviewed.</h3>
             <p>Keep any official calculation, submission or response with the payslips and documents you used.</p>
           </div>
         </div>
@@ -173,10 +175,12 @@ const TaxHelper = () => {
       <div className="tax-helper">
         <header className="tax-helper__hero">
           <div>
-            <p className="tax-helper__eyebrow">Tax year</p>
-            <h1>Your tax year, organised.</h1>
+            <p className="tax-helper__eyebrow">{isDemo ? 'Sample tax-year review' : 'Tax year'}</p>
+            <h1>{isDemo ? 'A tax year, organised.' : 'Your tax year, organised.'}</h1>
             <p className="tax-helper__intro">
-              Bring your confirmed payslips together, then follow the official steps for {country === 'Ireland' ? 'Revenue' : 'HMRC'}. We guide the review; the official service makes the decision.
+              {isDemo
+                ? `Explore how fictional payslips connect to the official ${country === 'Ireland' ? 'Revenue' : 'HMRC'} steps. The sample resets when you leave; the official service still makes every decision.`
+                : `Bring your confirmed payslips together, then follow the official steps for ${country === 'Ireland' ? 'Revenue' : 'HMRC'}. We guide the review; the official service makes the decision.`}
             </p>
           </div>
           <div className="tax-helper__shield" aria-hidden="true"><ShieldCheck /></div>
@@ -198,18 +202,26 @@ const TaxHelper = () => {
           <div className="tax-helper__readiness-copy">
             <p>{country === 'Ireland' ? 'Calendar year' : 'UK tax year'} {window.label}</p>
             <h2 id="tax-readiness-heading">
-              {!isDemo && isLoading ? 'Checking your confirmed history…' : !isDemo && isError ? 'Your payslip history is unavailable' : `${confirmedThisYear.length} confirmed ${confirmedThisYear.length === 1 ? 'payslip' : 'payslips'} ready`}
+              {!isDemo && isLoading
+                ? 'Checking your confirmed history…'
+                : !isDemo && isError
+                  ? 'Your payslip history is unavailable'
+                  : `${confirmedThisYear.length} ${isDemo ? 'sample' : 'confirmed'} ${confirmedThisYear.length === 1 ? 'payslip' : 'payslips'} ready`}
             </h2>
             <span>
               {!isDemo && isError
                 ? 'Nothing has been changed. Try again later before relying on this count.'
+                : isDemo
+                  ? confirmedThisYear.length
+                    ? 'These fictional figures show how a review can connect saved payslips with the official service.'
+                    : 'The sample has no payslips for this country and tax year. The official checklist is still available below.'
                 : confirmedThisYear.length
                   ? 'Use these as your personal evidence when reviewing the figures held by the official service.'
                   : 'Confirm your payslips as you go so the year-end review does not begin from a pile of documents.'}
             </span>
           </div>
           <Button asChild className="tax-helper__history-action" variant="outline">
-            <Link to={historyPath}>Open payslip history <ArrowRight aria-hidden="true" /></Link>
+            <Link to={historyPath}>{isDemo ? 'Open sample history' : 'Open payslip history'} <ArrowRight aria-hidden="true" /></Link>
           </Button>
         </section>
 
@@ -232,7 +244,7 @@ const TaxHelper = () => {
                 <article className={hasSignal ? 'tax-helper__topic is-signalled' : 'tax-helper__topic'} key={topic.id}>
                   <div className="tax-helper__topic-meta">
                     <span><Landmark aria-hidden="true" /> {topic.source}</span>
-                    {hasSignal ? <strong><Sparkles aria-hidden="true" /> Seen in your payslips</strong> : null}
+                    {hasSignal ? <strong><Sparkles aria-hidden="true" /> {isDemo ? 'Seen in the sample' : 'Seen in your payslips'}</strong> : null}
                   </div>
                   <h3>{topic.title}</h3>
                   <p className="tax-helper__topic-prompt">{topic.prompt}</p>
@@ -249,6 +261,7 @@ const TaxHelper = () => {
         <TaxChecklist
           country={country}
           historyPath={historyPath}
+          isSample={isDemo}
           key={`${isDemo ? 'sample' : user?.id ?? 'account'}:${country}:${window.label}`}
           steps={steps}
           taxYearLabel={window.label}
