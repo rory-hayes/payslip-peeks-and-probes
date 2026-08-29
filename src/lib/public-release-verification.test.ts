@@ -131,6 +131,21 @@ describe('public release verification contract', () => {
     `, expectedTitle, RELEASE_ORIGIN)).toEqual({ issues: [], moduleAssetPath: '/assets/index-abc123.js' });
   });
 
+  it('allows inert JSON-LD beside the application module while rejecting injected executable scripts', () => {
+    const withStructuredData = `
+      <title>${EXPECTED_TITLE}</title>
+      <div id="root"></div>
+      <script type="module" crossorigin src="/assets/index-abc123.js"></script>
+      <script type="application/ld+json" id="prerendered-seo-schema">{"@type":"WebSite"}</script>
+    `;
+
+    expect(inspectPublicHomePage(withStructuredData, EXPECTED_TITLE, RELEASE_ORIGIN))
+      .toEqual({ issues: [], moduleAssetPath: '/assets/index-abc123.js' });
+
+    expect(inspectPublicHomePage(`${withStructuredData}<script>window.hostBadge = true;</script>`, EXPECTED_TITLE, RELEASE_ORIGIN).issues)
+      .toContain('The public page contains an additional executable script outside the reviewed application module.');
+  });
+
   it('allows host-owned scripts only for the secure-client cutover check', () => {
     const html = `
       <title>${EXPECTED_TITLE}</title>

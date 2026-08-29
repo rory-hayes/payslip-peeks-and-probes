@@ -201,6 +201,24 @@ describe("Dashboard demo mode", () => {
     await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
   });
 
+  it("returns keyboard focus to the sample payslip control after Escape closes the preview", async () => {
+    render(
+      <MemoryRouter initialEntries={["/dashboard"]}>
+        <Dashboard />
+      </MemoryRouter>,
+    );
+
+    const previewButton = screen.getByRole("button", { name: "Open sample payslip preview" });
+    previewButton.focus();
+    fireEvent.click(previewButton);
+
+    const dialog = await screen.findByRole("dialog");
+    fireEvent.keyDown(dialog, { code: "Escape", key: "Escape" });
+
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    expect(previewButton).toHaveFocus();
+  });
+
   it("uses calm customer-facing priority labels instead of internal severity values", () => {
     render(
       <MemoryRouter initialEntries={["/dashboard"]}>

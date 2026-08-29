@@ -1,3 +1,4 @@
+import type { RefObject } from 'react';
 import { AlertTriangle, ArrowRight, CheckCircle2, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -24,6 +25,7 @@ interface DemoPayslipPreviewProps {
   onOpenChange: (open: boolean) => void;
   onSignUp: () => void;
   preview: DemoPayslipPreviewState | null;
+  returnFocusRef: RefObject<HTMLElement | null>;
 }
 
 function formatDemoCurrency(value: number): string {
@@ -37,7 +39,7 @@ function formatDemoCurrency(value: number): string {
  * A safe, dashboard-local product preview. It never links a visitor into a
  * protected account route or makes a claim about their own pay.
  */
-const DemoPayslipPreview = ({ onOpenChange, onSignUp, preview }: DemoPayslipPreviewProps) => {
+const DemoPayslipPreview = ({ onOpenChange, onSignUp, preview, returnFocusRef }: DemoPayslipPreviewProps) => {
   const payslip = preview?.payslip;
   const anomaly = preview?.anomaly;
   const extractionContextEntries = payslip?.extraction_context
@@ -49,7 +51,16 @@ const DemoPayslipPreview = ({ onOpenChange, onSignUp, preview }: DemoPayslipPrev
 
   return (
     <Dialog open={Boolean(preview)} onOpenChange={onOpenChange}>
-      <DialogContent className="pi-demo-preview-dialog">
+      <DialogContent
+        className="pi-demo-preview-dialog"
+        onCloseAutoFocus={(event) => {
+          const returnTarget = returnFocusRef.current;
+          if (!returnTarget?.isConnected) return;
+
+          event.preventDefault();
+          returnTarget.focus();
+        }}
+      >
         {payslip ? (
           <>
             <DialogHeader className="pi-demo-preview__header">

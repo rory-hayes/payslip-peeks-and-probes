@@ -133,12 +133,27 @@ export function inspectPublicHomePage(html, expectedTitle, publicOrigin) {
   }
 
   const scripts = [...html.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script\s*>/gi)];
-  if (scripts.length !== 1) {
+  const applicationModules = scripts.filter(([, attributes, inlineContent]) => {
+    return /\btype=["']module["']/i.test(attributes)
+      && !inlineContent.trim();
+  });
+  if (applicationModules.length !== 1) {
     issues.push('The public page must contain exactly one static application module script.');
     return { issues, moduleAssetPath: null };
   }
 
-  const [, attributes, inlineContent] = scripts[0];
+  const executableExtras = scripts.filter((script) => {
+    if (script === applicationModules[0]) return false;
+
+    const [, attributes] = script;
+    const type = attributes.match(/\btype=["']([^"']+)["']/i)?.[1]?.trim().toLowerCase() ?? '';
+    return !type || type === 'module' || type === 'text/javascript' || type === 'application/javascript';
+  });
+  if (executableExtras.length > 0) {
+    issues.push('The public page contains an additional executable script outside the reviewed application module.');
+  }
+
+  const [, attributes, inlineContent] = applicationModules[0];
   const source = attributes.match(/\bsrc=["']([^"']+)["']/i)?.[1] ?? null;
   const isModule = /\btype=["']module["']/i.test(attributes);
   if (!isModule || !source || inlineContent.trim()) {

@@ -1,4 +1,4 @@
-import { lazy, Suspense, useState } from 'react';
+import { lazy, Suspense, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -54,6 +54,7 @@ const Dashboard = () => {
     uploadsRemaining,
   } = useUsage();
   const [demoPreview, setDemoPreview] = useState<DemoPayslipPreviewState | null>(null);
+  const demoPreviewTriggerRef = useRef<HTMLElement | null>(null);
 
   const isLoading = isDemo ? false : loadingSlips || loadingAnomalies;
   const hasDataLoadError = !isDemo && Boolean(payslipsError || anomaliesError);
@@ -106,6 +107,13 @@ const Dashboard = () => {
 
   const closeDemoPreview = (open: boolean) => {
     if (!open) setDemoPreview(null);
+  };
+
+  const openDemoPreview = (preview: DemoPayslipPreviewState) => {
+    demoPreviewTriggerRef.current = document.activeElement instanceof HTMLElement
+      ? document.activeElement
+      : null;
+    setDemoPreview(preview);
   };
 
   const handleExportPdf = async () => {
@@ -338,7 +346,7 @@ const Dashboard = () => {
                     className="pi-dashboard__payslip-link"
                     demoAriaLabel="Open sample payslip preview"
                     isDemo={isDemo}
-                    onDemoActivate={() => setDemoPreview({ anomaly: featuredAnomaly, payslip: latest })}
+                    onDemoActivate={() => openDemoPreview({ anomaly: featuredAnomaly, payslip: latest })}
                     to={`/payslip/${latest.id}`}
                   >
                     {isDemo ? <>Review sample payslip <ArrowRight className="h-4 w-4" aria-hidden="true" /></> : <>Open payslip <ArrowRight className="h-4 w-4" aria-hidden="true" /></>}
@@ -411,7 +419,7 @@ const Dashboard = () => {
                   <p>Build a concise message from the figures you confirmed and the change you want explained.</p>
                 </div>
                 {isDemo ? (
-                  <button className="pi-dashboard__next-link" onClick={() => setDemoPreview({ anomaly: featuredAnomaly, payslip: latest })} type="button">
+                  <button className="pi-dashboard__next-link" onClick={() => openDemoPreview({ anomaly: featuredAnomaly, payslip: latest })} type="button">
                     See the evidence first <ArrowRight aria-hidden="true" />
                   </button>
                 ) : (
@@ -554,7 +562,7 @@ const Dashboard = () => {
                         className="pi-dashboard__anomaly-row"
                         demoAriaLabel={`Open sample details: ${anomaly.title}`}
                         isDemo={isDemo}
-                        onDemoActivate={() => setDemoPreview({
+                        onDemoActivate={() => openDemoPreview({
                           anomaly,
                           payslip: allPayslips.find((payslip) => payslip.id === anomaly.payslip_id) ?? latest,
                         })}
@@ -593,7 +601,7 @@ const Dashboard = () => {
                       className="pi-dashboard__history-row"
                       demoAriaLabel={`Open sample payslip from ${formatDate(slip.pay_date)}`}
                       isDemo={isDemo}
-                      onDemoActivate={() => setDemoPreview({ anomaly: sampleAnomaly, payslip: slip })}
+                      onDemoActivate={() => openDemoPreview({ anomaly: sampleAnomaly, payslip: slip })}
                       to={`/payslip/${slip.id}`}
                     >
                       <div className="pi-dashboard__history-icon"><FileText className="h-5 w-5" aria-hidden="true" /></div>
@@ -619,6 +627,7 @@ const Dashboard = () => {
             onOpenChange={closeDemoPreview}
             onSignUp={openAccountEntry}
             preview={demoPreview}
+            returnFocusRef={demoPreviewTriggerRef}
           />
         ) : null}
 
