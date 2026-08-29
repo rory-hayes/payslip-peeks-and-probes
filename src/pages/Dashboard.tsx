@@ -25,7 +25,7 @@ import payslipCheckHero from '@/assets/option-one-payslip-check-hero-v1.webp';
 import aquaCorner from '@/assets/option-one-aqua-corner-v2.webp';
 import {
   Upload, TrendingUp, TrendingDown, AlertTriangle, FileText, ArrowRight, Download,
-  Shield, ShieldCheck, Sparkles, X, GitCompareArrows, MessageSquareText, Landmark,
+  Shield, Sparkles, X, GitCompareArrows, MessageSquareText, Landmark,
 } from 'lucide-react';
 import './Dashboard.css';
 
@@ -194,12 +194,12 @@ const Dashboard = () => {
               </Button>
             )}
             {isDemo ? (
-              <Button className="pi-dashboard__primary-action" onClick={openAccountEntry}>
-                {acceptsRealPayslips
-                  ? <Upload className="h-4 w-4" aria-hidden="true" />
-                  : <ShieldCheck className="h-4 w-4" aria-hidden="true" />}
-                {acceptsRealPayslips ? 'Sign up to upload' : 'About secure uploads'}
-              </Button>
+              acceptsRealPayslips ? (
+                <Button className="pi-dashboard__primary-action" onClick={openAccountEntry}>
+                  <Upload className="h-4 w-4" aria-hidden="true" />
+                  Sign up to upload
+                </Button>
+              ) : null
             ) : pendingReview ? (
               <Button asChild className="pi-dashboard__primary-action">
                 <Link to={`/vault?review=${encodeURIComponent(pendingReview.id)}`}>
@@ -343,7 +343,7 @@ const Dashboard = () => {
                     </p>
                   ) : <p className="pi-dashboard__first-pay">Your first payslip in the timeline.</p>}
                   <DemoReadOnlyLink
-                    className="pi-dashboard__payslip-link"
+                    className={isDemo ? 'pi-dashboard__payslip-link pi-dashboard__payslip-link--primary' : 'pi-dashboard__payslip-link'}
                     demoAriaLabel="Open sample payslip preview"
                     isDemo={isDemo}
                     onDemoActivate={() => openDemoPreview({ anomaly: featuredAnomaly, payslip: latest })}

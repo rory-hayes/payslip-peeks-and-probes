@@ -19,6 +19,7 @@ const state = vi.hoisted(() => ({
   refetchPayslips: vi.fn(),
   generatePaySummaryPdf: vi.fn(),
 }));
+const clipboardWrite = vi.fn(async () => undefined);
 
 vi.mock("@/contexts/DemoContext", () => ({
   useDemo: () => ({ disableDemo: state.disableDemo, isDemo: state.isDemo }),
@@ -95,6 +96,11 @@ describe("Dashboard demo mode", () => {
     state.refetchAnomalies.mockReset();
     state.refetchPayslips.mockReset();
     state.generatePaySummaryPdf.mockReset();
+    clipboardWrite.mockClear();
+    Object.defineProperty(navigator, "clipboard", {
+      configurable: true,
+      value: { writeText: clipboardWrite },
+    });
   });
 
   it("shows sample data without linking a demo visitor into protected detail routes", async () => {
@@ -123,6 +129,7 @@ describe("Dashboard demo mode", () => {
 
     expect(screen.queryByRole("button", { name: "Sign up free" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Sign up to upload" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "About secure uploads" })).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "About early access" }));
 
@@ -131,12 +138,6 @@ describe("Dashboard demo mode", () => {
     expect(state.disableDemo).not.toHaveBeenCalled();
     expect(screen.getByTestId("location")).toHaveTextContent("/sign-up");
 
-    fireEvent.click(screen.getByRole("button", { name: "About secure uploads" }));
-
-    // The app clears demo state after the public destination mounts. Clearing
-    // it on this protected dashboard would race into a /sign-in redirect.
-    expect(state.disableDemo).not.toHaveBeenCalled();
-    expect(screen.getByTestId("location")).toHaveTextContent("/sign-up");
     await waitFor(() => expect(container.querySelector(".pi-dashboard__chart-loading")).not.toBeInTheDocument());
   });
 
@@ -178,13 +179,17 @@ describe("Dashboard demo mode", () => {
 
     const previewButton = screen.getByRole("button", { name: "Open sample payslip preview" });
     expect(previewButton).toHaveTextContent("Review sample payslip");
+    expect(previewButton).toHaveClass("pi-dashboard__payslip-link--primary");
 
     fireEvent.click(previewButton);
 
     const dialog = await screen.findByRole("dialog");
     expect(dialog).toHaveTextContent("Sample payslip check");
-    expect(within(dialog).getByRole("button", { name: "About secure uploads" })).toBeInTheDocument();
+    expect(within(dialog).getByRole("link", { name: "Explore tax-year helper" })).toHaveAttribute("href", "/tax-helper");
     expect(dialog).toHaveTextContent("Tax increased more than expected");
+    expect(dialog).toHaveTextContent("A payroll question you could send");
+    expect(dialog).toHaveTextContent("Question about my 31 Mar 2026 payslip");
+    expect(dialog).toHaveTextContent("Your income tax moved from £510.00 to £640.00");
     expect(dialog).toHaveTextContent("What was reviewed");
     expect(dialog).toHaveTextContent("Figures checked against the original");
     expect(dialog).toHaveTextContent("Basic pay");
@@ -196,6 +201,12 @@ describe("Dashboard demo mode", () => {
     expect(dialog).not.toHaveTextContent("updated incorrectly");
     expect(screen.getByTestId("location")).toHaveTextContent("/dashboard");
     expect(container.querySelector("a[href^='/payslip/']")).toBeNull();
+
+    fireEvent.click(within(dialog).getByRole("button", { name: "Copy sample question" }));
+    await waitFor(() => expect(clipboardWrite).toHaveBeenCalledOnce());
+    expect(clipboardWrite.mock.calls[0][0]).toContain("Subject: Question about my 31 Mar 2026 payslip");
+    expect(clipboardWrite.mock.calls[0][0]).toContain("Your income tax moved from £510.00 to £640.00");
+    expect(within(dialog).getByText("Sample question copied.")).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "Keep exploring" }));
     await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
