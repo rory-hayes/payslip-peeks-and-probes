@@ -1,3 +1,4 @@
+// Release deployment sync: keep this reviewed function aligned with the repository revision.
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { checkRateLimit } from "../_shared/rate-limit.ts";
