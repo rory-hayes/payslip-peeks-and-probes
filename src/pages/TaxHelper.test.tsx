@@ -57,26 +57,27 @@ describe('TaxHelper', () => {
     vi.useRealTimers();
   });
 
-  it('starts with the last completed UK tax year and sample evidence', () => {
+  it('starts with the last completed Irish tax year and sample evidence', () => {
     render(<MemoryRouter><TaxHelper /></MemoryRouter>);
 
     expect(screen.getByRole('button', { name: 'Last completed' })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByRole('button', { name: 'Ireland' })).toHaveAttribute('aria-pressed', 'true');
     expect(screen.getByRole('heading', { name: 'A tax year, organised.' })).toBeInTheDocument();
-    expect(screen.getByText(/fictional payslips connect to the official HMRC steps/i)).toBeInTheDocument();
+    expect(screen.getByText(/fictional payslips connect to the official Revenue steps/i)).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: '3 sample payslips ready' })).toBeInTheDocument();
     expect(screen.getByText(/these fictional figures show how a review can connect saved payslips/i)).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: 'Sample 2025/26 review' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Sample 2025 review' })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Could any of these apply to you?' })).toBeInTheDocument();
     expect(screen.getByText('Seen in the sample')).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: 'Check the right route before 5 April 2030' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Review before 31 December 2029' })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Know what to have ready.' })).toBeInTheDocument();
     expect(screen.getByText(/sample choices reset when you leave/i)).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: /check eligibility and claim route/i })).toHaveAttribute(
+    expect(screen.getByRole('link', { name: /check pension-relief rules/i })).toHaveAttribute(
       'href',
-      'https://www.gov.uk/guidance/claim-tax-relief-on-your-private-pension-payments',
+      'https://www.revenue.ie/en/jobs-and-pensions/pension/relief/how-to-claim.aspx',
     );
     expect(screen.getByRole('link', { name: /open sample history/i })).toHaveAttribute('href', '/dashboard#pay-history-heading');
-    expect(screen.getByRole('link', { name: /check last year’s income tax/i })).toHaveAttribute('href', 'https://www.gov.uk/check-income-tax-last-year');
+    expect(screen.getByRole('link', { name: /see Revenue’s return steps/i })).toHaveAttribute('href', 'https://www.revenue.ie/en/jobs-and-pensions/end-of-year-process/paye-income-tax-return.aspx');
   });
 
   it('switches tax year without implying a refund calculation', () => {
@@ -84,27 +85,31 @@ describe('TaxHelper', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Current year' }));
 
-    expect(screen.getByRole('heading', { name: 'Sample 2026/27 current-year plan' })).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: '0 sample payslips ready' })).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: 'Fix current-year details before year-end' })).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: /check your current income tax/i })).toHaveAttribute('href', 'https://www.gov.uk/check-income-tax-current-year');
-    expect(screen.queryByRole('link', { name: /check last year’s income tax/i })).not.toBeInTheDocument();
-    expect(screen.queryByText('Seen in the sample')).not.toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Sample 2026 current-year plan' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: '3 sample payslips ready' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Some current-year changes can reach payroll sooner' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /check real time credits/i })).toHaveAttribute('href', 'https://www.revenue.ie/en/personal-tax-credits-reliefs-and-exemptions/real-time-credits/index.aspx');
+    expect(screen.queryByRole('link', { name: /see Revenue’s return steps/i })).not.toBeInTheDocument();
+    expect(screen.getByText('Seen in the sample')).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Guidance, not a refund calculation' })).toBeInTheDocument();
     expect(screen.getByText(/does not calculate your final liability/i)).toBeInTheDocument();
   });
 
-  it('switches the relief scan to Revenue sources for Ireland', () => {
+  it('switches the relief scan to HMRC sources for the UK', () => {
     render(<MemoryRouter><TaxHelper /></MemoryRouter>);
 
-    fireEvent.click(screen.getByRole('button', { name: 'Ireland' }));
+    fireEvent.click(screen.getByRole('button', { name: 'United Kingdom' }));
 
-    expect(screen.getByRole('heading', { name: 'Rent you paid' })).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: /check rent tax credit rules/i })).toHaveAttribute(
+    expect(screen.getByRole('heading', { name: 'Marriage Allowance' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /check marriage allowance/i })).toHaveAttribute(
       'href',
-      'https://www.revenue.ie/en/personal-tax-credits-reliefs-and-exemptions/land-and-property/rent-credit/index.aspx',
+      'https://www.gov.uk/marriage-allowance',
     );
-    expect(screen.queryByRole('heading', { name: 'Marriage Allowance' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Rent you paid' })).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Current year' }));
+    expect(screen.getByRole('heading', { name: '3 sample payslips ready' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Sample 2026/27 current-year plan' })).toBeInTheDocument();
   });
 
   it('turns selected topics into a private records plan that can be copied', async () => {
@@ -114,7 +119,7 @@ describe('TaxHelper', () => {
     fireEvent.click(screen.getAllByRole('button', { name: 'Add to my review' })[0]);
 
     expect(screen.getByRole('button', { name: 'In my review' })).toHaveAttribute('aria-pressed', 'true');
-    expect(screen.getByText('Pension provider or scheme statement')).toBeInTheDocument();
+    expect(screen.getByText('Pension, PRSA or AVC statement')).toBeInTheDocument();
     expect(screen.getByText(/does not ask you to upload supporting tax documents here/i)).toBeInTheDocument();
 
     await act(async () => {
@@ -122,15 +127,15 @@ describe('TaxHelper', () => {
       await Promise.resolve();
     });
     expect(clipboardWrite).toHaveBeenCalledOnce();
-    expect(clipboardWrite.mock.calls[0][0]).toContain('Pension contributions');
+    expect(clipboardWrite.mock.calls[0][0]).toContain('Pension or AVC contributions');
     expect(await screen.findByText('Action plan copied.')).toBeInTheDocument();
   });
 
-  it('keeps demo evidence in the UK but defaults a loading real account to Ireland', () => {
+  it('defaults both the public sample and a loading real account to Ireland', () => {
     state.profileCountry = undefined;
     const sample = render(<MemoryRouter><TaxHelper /></MemoryRouter>);
 
-    expect(screen.getByRole('button', { name: 'United Kingdom' })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByRole('button', { name: 'Ireland' })).toHaveAttribute('aria-pressed', 'true');
     expect(screen.getByRole('heading', { name: '3 sample payslips ready' })).toBeInTheDocument();
     sample.unmount();
 
@@ -172,23 +177,24 @@ describe('TaxHelper', () => {
 
   it('keeps selected review areas with the account, country, and tax year', () => {
     state.isDemo = false;
+    state.profileCountry = 'Ireland';
     const firstVisit = render(<MemoryRouter><TaxHelper /></MemoryRouter>);
 
-    const giftAidCard = screen.getByRole('heading', { name: 'Gift Aid donations' }).closest('article');
-    expect(giftAidCard).not.toBeNull();
-    fireEvent.click(giftAidCard!.querySelector('button')!);
+    const rentCard = screen.getByRole('heading', { name: 'Rent you paid' }).closest('article');
+    expect(rentCard).not.toBeNull();
+    fireEvent.click(rentCard!.querySelector('button')!);
     expect(screen.getByText('Your choices are saved on this browser.')).toBeInTheDocument();
     firstVisit.unmount();
 
     render(<MemoryRouter><TaxHelper /></MemoryRouter>);
-    const restoredCard = screen.getByRole('heading', { name: 'Gift Aid donations' }).closest('article');
+    const restoredCard = screen.getByRole('heading', { name: 'Rent you paid' }).closest('article');
     expect(restoredCard?.querySelector('button')).toHaveTextContent('In my review');
 
     fireEvent.click(screen.getByRole('button', { name: 'Current year' }));
-    const currentCard = screen.getByRole('heading', { name: 'Gift Aid donations' }).closest('article');
+    const currentCard = screen.getByRole('heading', { name: 'Rent you paid' }).closest('article');
     expect(currentCard?.querySelector('button')).toHaveTextContent('Add to my review');
 
-    fireEvent.click(screen.getByRole('button', { name: 'Ireland' }));
+    fireEvent.click(screen.getByRole('button', { name: 'United Kingdom' }));
     expect(screen.getAllByRole('button', { name: 'Add to my review' }).length).toBeGreaterThan(0);
   });
 });

@@ -7,7 +7,7 @@ import { usePayslips } from '@/hooks/use-payslip-data';
 import { useProfile } from '@/hooks/use-profile';
 import { useAuth } from '@/contexts/AuthContext';
 import { useDemo } from '@/contexts/DemoContext';
-import { DEMO_PAYSLIPS } from '@/lib/demo-data';
+import { DEMO_TAX_PAYSLIPS } from '@/lib/demo-data';
 import {
   buildTaxReviewDocumentList,
   buildTaxReviewPlanText,
@@ -383,11 +383,11 @@ const TaxHelper = () => {
   const { isDemo } = useDemo();
   const [manualCountry, setManualCountry] = useState<TaxHelperCountry | null>(null);
   const [period, setPeriod] = useState<TaxReviewPeriod>('completed');
-  const country = manualCountry ?? (isDemo ? 'UK' : countryFromProfile(profile?.country));
+  const country = manualCountry ?? (isDemo ? 'Ireland' : countryFromProfile(profile?.country));
   const window = useMemo(() => taxYearWindow(country, new Date(), period === 'completed' ? -1 : 0), [country, period]);
   const steps = period === 'current' ? CURRENT_TAX_STEPS[country] : OFFICIAL_TAX_STEPS[country];
   const timing = taxReviewTiming(country, window, period);
-  const availablePayslips = isDemo ? DEMO_PAYSLIPS : (payslips ?? []);
+  const availablePayslips = isDemo ? DEMO_TAX_PAYSLIPS : (payslips ?? []);
   const confirmedThisYear = availablePayslips.filter(
     (payslip) => payslip.status === 'confirmed' && payslip.country === country && isDateInTaxYear(payslip.pay_date, window),
   );
